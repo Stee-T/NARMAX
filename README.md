@@ -5,7 +5,7 @@ In short, the FOrLSR algorithms allow to obtain an analytical expression (aka sy
 
 ## Paper 1: AOrLSR
 
-The first part (rFOrLSR) presents a common algorithm but with its nested loops being transformed in a single matrix operation (for heavy parallelization and GPU operation) and made recursive to flatten the complexity from quadratic to linear. ? linear algebra-based optimization with numerics.
+The first part (rFOrLSR) presents a common algorithm but with its nested loops being transformed in a single matrix operation (for heavy parallelization and GPU operation) and made recursive to flatten the complexity from quadratic to linear. → linear algebra-based optimization with numerics.
 
 The second part of the paper is the arborescence design, which is essentially a linear algebra and graph-theory-based optimization procedure to tackle the NP-hard problem of finding the linear equation solution with the largest amount of zero entries in the solution vector and the smallest solving error.
 [Read or download the AOrLSR paper](https://stephane.thunus.org/AOrLSR_paper.pdf).
@@ -13,12 +13,9 @@ The second part of the paper is the arborescence design, which is essentially a 
 ## Paper 2: DMOrLSR
 
 The second paper (Dictionary morphing least squares regression) morphs the user-passed regressor (functions) to allow expansions which adapt their terms to the system output (imagine a fourier transform which finds the exact peaks and then only contains those terms, being sparse). This is based on genetic algorithms, linear algebra, matrix calculus / infinitesimal optimization, with closed form gradients and Hessians independent of the user-passed function, number of arguments and data.
-
-The library makes optimal sparse least squares fitting of any vectors passed by the user for the given system response. All provided examples are with severely non-linear auto-regressive systems, however the user can pass dictionaries with any type of functions. This is thus a very general mathematical framework supporting for example wavelet-, RBF, polynomial, etc fitting. The papers also contain an example of using the library to fit a nested expansion in |x|^n inside a fraction or of nesting non-linearities inside other non-linearities.
 [Read or download the DMOrLSR paper](https://stephane.thunus.org/DMOrLSR_Paper.pdf).
 
-
 ## Python Package for both Papers:
-Those algorithms will soon be released as a GPU-accelerated [open-source python machine learning package](https://github.com/Stee-T/rFOrLSR).
+Those algorithms will soon be released here as a GPU-accelerated python machine learning package.
 
 The library makes optimal sparse least squares fitting of any vectors passed by the user for the given system response. All provided examples are with severely non-linear auto-regressive systems, however the user can pass dictionaries with any type of functions. This is thus a very general mathematical framework supporting for example wavelet-, RBF, polynomial, etc fitting. The papers also contain an example of using the library to fit a nested expansion in |x|^n inside a fraction or of nesting non-linearities inside other non-linearities. 
