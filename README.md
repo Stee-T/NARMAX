@@ -8,12 +8,12 @@ In short, the FOrLSR algorithms allow to obtain an analytical expression (aka sy
 The first part (rFOrLSR) presents a common algorithm but with its nested loops being transformed in a single matrix operation (for heavy parallelization and GPU operation) and made recursive to flatten the complexity from quadratic to linear. → linear algebra-based optimization with numerics.
 
 The second part of the paper is the arborescence design, which is essentially a linear algebra and graph-theory-based optimization procedure to tackle the NP-hard problem of finding the linear equation solution with the largest amount of zero entries in the solution vector and the smallest solving error.
-[Read or download the AOrLSR paper](https://stephane.thunus.org/AOrLSR_paper.pdf).
+Read or download the AOrLSR paper.
 
 ## Paper 2: DMOrLSR - Dictionary Morphing Orthogonal Least Squares Regression
 
 The second paper morphs the user-passed regressor (functions) to allow expansions which adapt their terms to the system output (imagine a fourier transform which finds the exact peaks and then only contains those terms, being sparse). This is based on genetic algorithms, linear algebra, matrix calculus / infinitesimal optimization, with closed form gradients and Hessians independent of the user-passed function, number of arguments and data.
-[Read or download the DMOrLSR paper](https://stephane.thunus.org/DMOrLSR_Paper.pdf).
+Read or download the DMOrLSR paper.
 
 ## Python Package for both Papers:
 Those algorithms will soon be released here as a GPU-accelerated python machine learning package.
