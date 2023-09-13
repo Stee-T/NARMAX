@@ -10,7 +10,7 @@ The first part (rFOrLSR) presents a common algorithm but with its nested loops b
 The second part of the paper is the arborescence design, which is essentially a linear algebra and graph-theory-based optimization procedure to tackle the NP-hard problem of finding the linear equation solution with the largest amount of zero entries in the solution vector and the smallest solving error.
 [Read or download the AOrLSR paper](https://stephane.thunus.org/AOrLSR_paper.pdf).
 
-## Paper 2: DMOrLSR - Dictionary Morphing Least Squares Regression
+## Paper 2: DMOrLSR - Dictionary Morphing Orthogonal Least Squares Regression
 
 The second paper morphs the user-passed regressor (functions) to allow expansions which adapt their terms to the system output (imagine a fourier transform which finds the exact peaks and then only contains those terms, being sparse). This is based on genetic algorithms, linear algebra, matrix calculus / infinitesimal optimization, with closed form gradients and Hessians independent of the user-passed function, number of arguments and data.
 [Read or download the DMOrLSR paper](https://stephane.thunus.org/DMOrLSR_Paper.pdf).
