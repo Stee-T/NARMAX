@@ -1,6 +1,6 @@
 # FOrLSR Papers supporting code
 
-I have submitted for peer review to IEEE my research on NARMAX systems, where I propose an optimized version of the **FOrLSR** (*forward orthogonal Least squares regression*) in addition to two new algorithmic classes in that framework. 
+I'll soon submit for peer review to IEEE my research on NARMAX systems, where I propose an optimized version of the **FOrLSR** (*forward orthogonal Least squares regression*) in addition to two new algorithmic classes in that framework (each in its own paper). 
 In short, the FOrLSR algorithms allow to obtain an analytical expression (aka symbolic representation) for any unknown system or function. The abstract and the conclusion of the papers give an overview of the work. Note that the critical parts of the papers (pseudo-codes, theorem, proofs, etc) have been removed, as the work is currently unpublished and thus not yet registered as my intellectual property.
 
 ## Paper 1: AOrLSR
