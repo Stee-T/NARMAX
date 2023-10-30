@@ -257,6 +257,8 @@ Recognized regressors:
 ```
 
 ## Figure 1
+![Figure1](https://github.com/Stee-T/rFOrLSR/blob/main/Examples/1%20-%20Linear%20in%20the%20Parameters/Figure_1.png)
+
 **Top Graph:** Overlays the actual system response $y\[k\]$ with the estimated system response $\hat{y}\[k\]$. In the ideal case (like here) where the fitted system is correctly retrieved and there is no noise, the two curves  overlap. The estimation is on top of the system output for more visibility.
 
 **Bottom Graph:** Displays the residuals $y\[k\] - \hat{y}\[k\]$. Remember that the top left corner can display the y-axis scaling.  
@@ -273,6 +275,8 @@ Correctly pruning a NARMAX model is non-trivial and will be covered in a further
 Further research is needed to make those graphs contain more relevant information.
 
 So now that I've crushed your regressor importance estimation dreams, enjoy the nice-looking graphs :)
+
+![Figure2](https://github.com/Stee-T/rFOrLSR/blob/main/Examples/1%20-%20Linear%20in%20the%20Parameters/Figure_2.png)
 
 **Top Graph:** 
 Contains the ERR of the regressors in the order imposed by the arborescence order (see warning above).
