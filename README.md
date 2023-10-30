@@ -5,7 +5,7 @@ This GPU-accelerated Python package contains the machine learning algorithms des
 
 **Note 1:** The library currently only implements the arborescence part (see below) and is thus not finished, missing the dictionary morphing part. This means that currently only static regressors can be fitted. Thus, the dictionary terms need to be pre-defined and are not adapted to the system by the regression.
 
-**Note 2:** Github's Latex engine is unreliable, so please forgive that certain expressions (especially sums and underlines) are not rendered properly or not at all. All $x$ and $\chi$ in matrix equations are of course vectors and should be underlined (check the readme.md if in doubt).
+**Note 2:** Github's Latex engine is unreliable, so please forgive that certain expressions (especially sums and underlines) are not rendered properly or not at all. All $x$ and $\chi$ in in matrix equations are of course vectors and should be underlined (check the readme.md if in doubt).
 
 <br/>
 
