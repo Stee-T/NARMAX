@@ -1,13 +1,13 @@
 <div align="justify">
 
-# Basics & Example 1: Linear-in-the-parameter System
+# Example 1: Basics & Linear-in-the-parameter System
 
 This is the main example covering the basics of the library. It will show the necessary steps to construct a dictionary $D_C$ with all 3 signal constructors, how to run the arborescence and how to interpret the results.
 
 ## 1. Imports
 The main dependency is PyTorch which is used to do matrix operations on the GPU. Make sure that CUDA or MPS (M1/M2 Macs) is installed and that your PyTorch installation recognizes it. The library will issue a warning if no GPU is usable, as the fitting will be much slower.
 
-A list of dependencies is available on the main git page (#TODO: link).  
+A list of dependencies is available on [the main git page](https://github.com/Stee-T/rFOrLSR/tree/main).  
 We also tell matplotlib to use a dark background, because it's no longer the 90s and we don't like looking at the sun.  
 The rFOrLSR.Test_Systems contains many systems to demonstrate the library. In real word usage, the system is the system under investigation.
 
@@ -226,9 +226,9 @@ Metrics based on the absolute value and the median are used rather than their cl
 
 The metrics are given in percentage, as the error is normed by $\max(|\underline{y}|)$ to make it independent of $\underline{y}$'s amplitude.
 
-- **Mean Absolute Error (MAE):** $\sum_{k=1}^p |y[k] - \hat{y}[k]|$  
+- **Mean Absolute Error (MAE):** $\Sigma_{k=1}^p |y[k] - \hat{y}[k]|$  
 More representative than the MSE (mean squared error), since no squaring is performed, see above.  
-This is also what the `rFOrLSR.DefaultValidation` computes. The norming is however done with $\sum_{k=1}^p |y[k]|$ instead of $\max(|\underline{y}|)$.
+This is also what the `rFOrLSR.DefaultValidation` computes. The norming is however done with $\Sigma_{k=1}^p |y[k]|$ instead of $\max(|\underline{y}|)$.
 
 - **Maximal Deviation (MD):** $\max(|\underline{y} - \underline{\hat{y}}|)$.  
 Largest error for the given input sequence $\underline{x}$.
