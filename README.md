@@ -26,20 +26,20 @@ A NARMAX system contains thus any arbitrary mixture of the above terms. The prov
 $y\[k\] = 0.2x\[k\] + 0.3x^3\[k-1\] + 0.7|x\[k-2\]x^2\[k-1\]| +0.5e^{x\[k-3\]x\[k-2\]} - \cos(y\[k-1\]x\[k-2\]) -0.4|x\[k-1\]y^2\[k-2\]| - y^3\[k-3\]$
 
 This is essentially a monomial expansion of IIR terms ($y[k-j]$ and $x[k-j]$) also passed through common non-linearities such as abs, cos and exp, yielding a heavily non-linear NARX system.  
-[Code for this example](Link "Standard Example")
+[Code for this example](https://github.com/Stee-T/rFOrLSR/tree/main/Examples/1%20-%20Linear%20in%20the%20Parameters "Standard Example")
 
 ### 2. Rational Example
 $y\[k\]=\frac{0.6|x\[k\]|-0.35x^3\[k\]-0.3x\[k-1\]y\[k-2\]+0.1|y\[k-1\]|}{1-0.4|x\[k\]|+0.3|x\[k-1\]x\[k\]|-0.2x^3\[k-1\]+ 0.3y\[k-1\]x\[k-2\]}$
 
 This demonstrates that (for NARX systems) rational non-linear models can be fitted by linearizing the terms: $y\[k\]=\frac{A}{1+B}\iff y\[k\](1+B)=A⟺y\[k\]=A-y\[k\]B$, $A$ and $B$ being linear-in-the-parameter systems such as system 1 in the above example.  
-[Code for this example](Link "Rational Example")
+[Code for this example](https://github.com/Stee-T/rFOrLSR/tree/main/Examples/2%20-%20Rational%20Fitting "Rational Example")
 
 ### 3. Expansion-in-an-expression Example
 $y = \text{sgn}(x)(1-\frac{1}{1+|x|A})$ with $A≔\Sigma_{j\in J}\theta _j |x|^j$ and $J\subseteq \mathbb{N}$
 
 
 This is a memoryless NX (Non-linear exogenous input) system aka a normal scalar function, depending only on $x$. This system shows that NARMAX expansions can be inserted into expressions to impose constraints or system properties (here quick convergence to $\text{sgn(x)}$ and low error around the origin) or obtain complex fitting. This specific expansion is designed to emulate tanh with another continuous rational function. The provided code also demonstrate how to chose the number of terms in such an expansion.   
-[Code for this example](Link "tanh Example")
+[Code for this example](https://github.com/Stee-T/rFOrLSR/tree/main/Examples/4%20-%20tanh "Sigmoid expansion example")
 
 <br/>
 
