@@ -1,11 +1,11 @@
 # Generalities
 <div align="justify">
 
-This GPU-accelerated Python package contains the machine learning algorithms described in my two papers "*Arborescent Orthogonal Least Squares Regression (AOrLSR)*" and "*Dictionary Morphing Orthogonal Least Squares Regression (DMOrLSR)*" (coming soon) both based on my "*Recursive Forward Orthogonal Least Squares Regression (rFOrLSR)*" to fit "*Non-Linear Auto-Regressive Moving-Average Exogenous input systems (NARMAX)*". So, now that we have covered all the fancy acronyms, we might get into some explanations. Otherwise jump straight into the [library examples](Link "Example folder").
+This GPU-accelerated Python package contains the machine learning algorithms described in my two papers "*Arborescent Orthogonal Least Squares Regression (AOrLSR)*" and "*Dictionary Morphing Orthogonal Least Squares Regression (DMOrLSR)*" (coming soon) both based on my "*Recursive Forward Orthogonal Least Squares Regression (rFOrLSR)*" to fit "*Non-Linear Auto-Regressive Moving-Average Exogenous input systems (NARMAX)*". So, now that we have covered all the fancy acronyms, we might get into some explanations. Otherwise jump straight into the [library examples](https://github.com/Stee-T/rFOrLSR/tree/main/Examples "Example folder").
 
 **Note 1:** The library currently only implements the arborescence part (see below) and is thus not finished, missing the dictionary morphing part. This means that currently only static regressors can be fitted. Thus, the dictionary terms need to be pre-defined and are not adapted to the system by the regression.
 
-**Note 2:** Github's Latex engine is unreliable, so please forgive that certain expressions (especially sums and underlines) are not rendered properly or not at all. All $x$ and $\chi$ in in matrix equations are of course vectors and should be underlined (check the readme.md if in doubt).
+**Note 2:** Github's Latex engine is unreliable, so please forgive that certain expressions (especially sums and underlines) are not rendered properly or not at all. All $x$ and $\chi$ in matrix equations are of course vectors and should be underlined (check the readme.md if in doubt).
 
 <br/>
 
