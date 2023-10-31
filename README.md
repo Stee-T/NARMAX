@@ -39,7 +39,7 @@ This demonstrates that (for NARX systems) rational non-linear models can be fitt
 $y = \text{sgn}(x)(1-\frac{1}{1+|x|A})$ with $A≔\Sigma_{j\in J}\theta _j |x|^j$ and $J\subseteq \mathbb{N}$
 
 
-This is a memoryless NX (Non-linear exogenous input) system aka a normal scalar function, depending only on $x$. This system shows that NARMAX expansions can be inserted into expressions to impose constraints or system properties (here quick convergence to $\text{sgn(x)}$ and low error around the origin) or obtain complex fitting. This specific expansion is designed to emulate tanh with another continuous rational function. The provided code also demonstrate how to chose the number of terms in such an expansion.   
+This is a memoryless NX (Non-linear exogenous input) system aka a normal scalar function, depending only on $x$. This system shows that NARMAX expansions can be inserted into expressions to impose constraints or system properties (here quick convergence to $\text{sgn(x)}$ and low error around the origin) or obtain complex fitting. This specific expansion is designed to emulate tanh with another continuous rational function. The provided code also demonstrate how to chose the number of terms in such an expansion and how to create a custom validation function.   
 [Code for this example](https://github.com/Stee-T/rFOrLSR/tree/main/Examples/4_tanh "Sigmoid expansion example")
 
 <br/>
