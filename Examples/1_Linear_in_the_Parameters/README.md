@@ -2,7 +2,13 @@
 
 # Example 1: Basics & Linear-in-the-parameter System
 
-This is the main example covering the basics of the library. It will show the necessary steps to construct a dictionary $D_C$ with all 3 signal constructors, how to run the arborescence and how to interpret the results.
+This example / tutorial illustrates
+- Library basics: imports, hyper-parameters and their meaning
+- Signal constructors: *Lagger*, *Expander*, *NonLinearizer*
+- Using the Default validation function and creating the required data and hyper-parameter dictionary
+- Running the arborescence
+- Interpreting the results
+
 
 ## 1. Imports
 The main dependency is PyTorch which is used to do matrix operations on the GPU. Make sure that CUDA or MPS (M1/M2 Macs) is installed and that your PyTorch installation recognizes it. The library will issue a warning if no GPU is usable, as the fitting will be much slower.
@@ -98,6 +104,7 @@ NonLinearities.append( rFOrLSR.NonLinearity( "cos", f = tor.cos ) )
 NonLinearities.append( rFOrLSR.NonLinearity( "exp", f = tor.exp ) )
 
 ```
+<br/>
 
 ## 3. Training Data (Candidate Regressor Dictionary $D_C$) Creation
 Once all hyper-parameters are set, the provided signal-CTors are used to create the candidate regressor dictionary $D_C$. Each signal-CTor of course also updates the regressor names. The *NonLinearizer* outputs a 3rd argument, which is for the morphing procedure, it will thus be explained in later tutorials.
@@ -107,6 +114,7 @@ y, RegMat, RegNames = rFOrLSR.CTors.Lagger( Data = ( x, y ), MaxLags = ( qx, qy 
 RegMat, RegNames = rFOrLSR.CTors.Expander( RegMat, RegNames, ExpansionOrder ) # Monomial expand the regressors
 RegMat, RegNames, _ = rFOrLSR.CTors.NonLinearizer( y, RegMat, RegNames, NonLinearities) # add the listed terms to the Regression matrix
 ```
+<br/>
 
 ##  4. Validation Data
 Since many models are created by the arborescence, a validation procedure chosing the best system is required. This basic example demonstrates the use of the provided `rFOrLSR.DefaultValidation` function with its required data.
@@ -135,6 +143,7 @@ for i in range( 5 ): # Fill the validation dict's data entry with randomly gener
   
   ValidationDict["Data"].append( ( x_val, y_val ) )
 ```
+<br/>
 
 ## 5. Running the Arborescence
 Now that the training data and the validation data are created, the arborescence can be run by first creating an `rFOrLSR.Arborescence` object then calling its `fit()` method.  
@@ -162,6 +171,7 @@ Arbo.fit()
 # Arbo.load( File ) # load pickle file
 # Arbo.fit() # resume fitting
 ```
+<br/>
 
 ## 6. Analysing the results
 Once the arborescence has been traversed, the results can be printed out and displayed by calling the `Arbo.PlotAndPrint()` method or obtained as vectors from the `Arbo.get_Results()` method.

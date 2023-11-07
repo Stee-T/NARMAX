@@ -4,9 +4,12 @@
 This GPU-accelerated Python package contains the machine learning algorithms described in my two papers "*Arborescent Orthogonal Least Squares Regression (AOrLSR)*" and "*Dictionary Morphing Orthogonal Least Squares Regression (DMOrLSR)*" (coming soon) both based on my "*Recursive Forward Orthogonal Least Squares Regression (rFOrLSR)*" to fit "*Non-Linear Auto-Regressive Moving-Average Exogenous input systems (NARMAX)*". So, now that we have covered all the fancy acronyms, we might get into some explanations.  
 Otherwise jump straight into the [library examples](https://github.com/Stee-T/rFOrLSR/tree/main/Examples "Example folder").
 
-**Note 1:** The library currently only implements the arborescence part (see below) and is thus not finished, missing the dictionary morphing part. This means that currently only static regressors can be fitted. Thus, the dictionary terms need to be pre-defined and are not adapted to the system by the regression.
+**Note 1 (unfinished library):** The library currently only implements the arborescence part (see below) and is thus not finished, missing the dictionary morphing part. This means that currently only static regressors can be fitted. Thus, the dictionary terms need to be pre-defined and are not adapted to the system by the regression.
 
-**Note 2:** Github's Latex engine is unreliable, so please forgive that certain expressions (especially sums and underlines) are not rendered properly or not at all. All $x$ and $\chi$ in matrix equations are of course vectors and should be underlined (check the readme.md if in doubt).
+**Note 2 (Github's poor LaTex):** Github's LaTex engine is unreliable, so please forgive that certain expressions (especially sums and underlines) are not rendered properly or not at all. All $x$ and $\chi$ in matrix equations are of course vectors and should be underlined (check the readme.md if in doubt).
+
+**Note 3 (rFOrLSR):** You might ask yourself "how am I even supposed to pronounce *rFOrLSR*"?  
+ Imagine you're a French pirate trying to pronounce "Airforce". Being French, you'll ignore the last letter in the word, making it "rFOrLS" and being a pirate, you'll say "*ARRRRRRRforce*" which fully suffices.
 
 <br/>
 
@@ -39,7 +42,7 @@ This demonstrates that (for NARX systems) rational non-linear models can be fitt
 $y = \text{sgn}(x)(1-\frac{1}{1+|x|A})$ with $A≔\Sigma_{j\in J}\theta _j |x|^j$ and $J\subseteq \mathbb{N}$
 
 
-This is a memoryless NX (Non-linear exogenous input) system aka a normal scalar function, depending only on $x$. This system shows that NARMAX expansions can be inserted into expressions to impose constraints or system properties (here quick convergence to $\text{sgn(x)}$ and low error around the origin) or obtain complex fitting. This specific expansion is designed to emulate tanh with another continuous rational function. The provided code also demonstrate how to chose the number of terms in such an expansion and how to create a custom validation function.   
+This is a memoryless NX (Non-linear exogenous input) system aka a normal scalar function, depending only on $x$. This system shows that NARMAX expansions can be inserted into expressions to impose constraints or system properties (here quick convergence to $\text{sgn(x)}$ and low error around the origin) or obtain complex fitting. This specific expansion is designed to emulate tanh with another continuous rational function. The provided code also demonstrates how to choose the number of terms in such an expansion and how to create a custom validation function.   
 [Code for this example](https://github.com/Stee-T/rFOrLSR/tree/main/Examples/4_tanh "Sigmoid expansion example")
 
 <br/>
@@ -47,7 +50,7 @@ This is a memoryless NX (Non-linear exogenous input) system aka a normal scalar 
 
 **The NARMAX fitting steps:**  
 
-1) **Expansion Type Selection:** As usual in machine learning, one must first chose an appropriate expansion type (FIR, IIR, Monomially-Expanded IIR, RBF, Wavelet, arbitrary non-linearities, etc.). As expected, the model quality strongly depends on how relevant the chosen expansion is. The advantage of this library's rFOrLSR is that any type of expansion and any mix of expansions is supported, as the rFOrLSR is based on vector matching methods.  
+1) **Expansion Type Selection:** As usual in machine learning, one must first choose an appropriate expansion type (FIR, IIR, Monomially-Expanded IIR, RBF, Wavelet, arbitrary non-linearities, etc.). As expected, the model quality strongly depends on how relevant the chosen expansion is. The advantage of this library's rFOrLSR is that any type of expansion and any mix of expansions is supported, as the rFOrLSR is based on vector matching methods.  
 This is achieved by creating a fitting "dictionary" $D_C \in \mathbb{R}^{p \times n_C}$ (Pytorch matrix) containing the candidate regressors $\underline{\varphi}_k \in \mathbb{R}^{p}$ stacked column-wise and passing it to the library. 
 
 2) **Model Structure Detection:** The first real challenge is to find the correct regressors from all those present in the user-defined dictionary $D_C$, as most system behaviors can be sufficiently well described with very few terms.  
@@ -62,7 +65,7 @@ To illustrate, the first system above contains a single cosine term which needs 
 As described above, the library makes optimal sparse least squares fitting of any vectors / regressors $\underline{\varphi}_k \in \mathbb{R}^{p}$ passed by the user for the given system response $\underline{y}\in \mathbb{R}^{p}$. All provided examples are with severely non-linear auto-regressive systems, however, the user can pass dictionaries containing any type of functions (multivariate, discontinuous, discrete, acausal, etc. - whatever that outputs vectors with numbers really). This is thus a very general mathematical framework supporting for example FIR/MA, IIR/AR, wavelet-, RBF, polynomial, etc. fitting.
 
 ## Installation & Usage
-**Installation:** The library is currently unfinished and has thus not yet been made available through pip install. This will be done soon when the morphing part is finished. Same for the docs, in the mean time, please refer to the examples (see NARMAX section above), which are representative of the average usage and well commented.
+**Installation:** The library is currently unfinished and has thus not yet been made available through pip install. This will be done soon when the morphing part is finished. Same for the docs, in the meantime, please refer to the examples (see NARMAX section above), which are representative of the average usage and well commented.
 
 **Usage:** Currently, the library folder can be downloaded and copy-pasted in the same folder as the script calling it. The import is as usual for python packages.
 
@@ -141,7 +144,7 @@ Examples include oscillations where the decay / frequency needs to be varied, ch
 # More about the algorithms
 
 ## Recursive Forward Orthogonal Least Squares Regression - rFOrLSR
-The rFOrLSR (described in the first section of the AOrLSR paper) is a recursive matrix form of the classical FOrLSR (Forward Orthogonal Least Squares Regression) algorithm. Thus, the double for-loop inside the FOrLSR is replaced by a single matrix operation, which is recursively updated. The matrix-form allows the large-scale BLAS-like or GPU-based optimizations offered by this library, while the recursivity flattens the FOrLSR’s complexity from quadratic in model length $n_r$ ( $O(n_r^2)$ ) to linear ( $O(n_r)$ ). Then, the remaining FOrLSR procedure is rearranged and vectorized, in addition to allowing to efficiently impose regressors (which is not a native FOrLSR feature). These optimizations greatly reduce its computational cost, allowing use it as node processing procedure in large search trees like the proposed arborescence.
+The rFOrLSR (described in the first section of the AOrLSR paper) is a recursive matrix form of the classical FOrLSR (Forward Orthogonal Least Squares Regression) algorithm. Thus, the double for-loop inside the FOrLSR is replaced by a single matrix operation, which is recursively updated. The matrix-form allows the large-scale BLAS-like or GPU-based optimizations offered by this library, while the recursion flattens the FOrLSR’s complexity from quadratic in model length $n_r$ ( $O(n_r^2)$ ) to linear ( $O(n_r)$ ). Then, the remaining FOrLSR procedure is rearranged and vectorized, in addition to allowing to efficiently impose regressors (which is not a native FOrLSR feature). These optimizations greatly reduce its computational cost, allowing use it as node processing procedure in large search trees like the proposed arborescence.
 
 The (r)FOrLSR is a greedy algorithm selecting iteratively the regressors the most similar to the desired system output $\underline{y}$ to form the NARMAX model. After each regressor is added, to avoid describing the same system output information (aka $\underline{y}$ variance) repeatedly, the information is removed (via orthogonalization) from the remaining regressors in the dictionary of candidates $D_C$.  
 The (r)FOrLSR is thus a greedy algorithm, since at each iteration, it takes the locally best choice, maximizing the increase in explained output variance without considering the global search space, which could contain shorter and/or lower validation error models. When a suboptimal choice is made, the following regressors are often chosen to compensate for that error, leading to poor models. For this reason, an arborescence spanning a large search space is proposed by my papers/library, see below.

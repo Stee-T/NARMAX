@@ -214,12 +214,12 @@ def NonLinearizer( y, Data, RegNames, Functions, MakeRational = None ):
         DataList.append( - y.view( -1, 1 ) * DataList[func] ) # 1/ done via multiplication with -y
         M += [ 0 ] * nRegs # tag all rational terms as unmorphable at the moment
         
-        RatNames = [None] * nRegs # Init empty list of right length
+        RatNames = [ None ] * nRegs # Init empty list of right length
         # this is ambiguous with terms which are really 1/(...) but yeah whatever
         if ( Functions[func].get_Name() == "id" ): # equivalent to func == 0
-          for col in range( len( RatNames ) ): RatNames[col] = "1/(" + NameList[0][col] + ")" # 1/(Reg) for identity
+          for col in range( len( RatNames ) ): RatNames[col] = "~/(" + NameList[0][col] + ")" # 1/(Reg) for identity
         else:
-          for col in range( len( RatNames ) ): RatNames[col] = "1/(" + Functions[func].get_Name() + "(" + NameList[0][col] + "))" # 1/(func(Reg)) for functions
+          for col in range( len( RatNames ) ): RatNames[col] = "~/(" + Functions[func].get_Name() + "(" + NameList[0][col] + "))" # 1/(func(Reg)) for functions
         
         NameList.append( RatNames ) # apply new column names
 
