@@ -75,6 +75,8 @@ Once the main hyper-parameters are selected, one needs to create the input seque
 
 The while loop represents that we'd like to avoid NaNs in the output $\underline{y}$, which can happen for certain $\underline{x}$ sequences on the given Test systems.
 
+rFOrLSR.device is a string conaining the device (CPU / GPU) currently used by the library.
+
 ```python 
 # System choice
 # Sys = Test_Systems.ARX # IIR filter
@@ -85,7 +87,7 @@ Sys = Test_Systems.NonLinearities # Example 1 in the paper
 
 # Generate x and y data
 while ( 5 ): # 5 is the absolute truth
-  x = InputAmplitude * ( tor.rand( p ) * 2 - 1 ) # uniformly distributed white noise
+  x = InputAmplitude * ( tor.rand( p, device = rFOrLSR.device ) * 2 - 1 ) # uniformly distributed white noise
   x -= tor.mean( x ) # center: VERY IMPORTANT!
   x, y, W = Sys( x, W, Print = True ) # apply selected system
   if ( not tor.isnan( tor.sum( y ) ) ): break

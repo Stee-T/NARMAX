@@ -26,7 +26,7 @@ Sys = Test_Systems.NonLinearities
 
 # Generate x and y data
 while ( 5 ): # 5 is the absolute truth, do while y contains no nan
-  x = InputAmplitude * ( tor.rand( p ) * 2 - 1 ) # uniformly distributed white noise
+  x = InputAmplitude * ( tor.rand( p, device = rFOrLSR.device ) * 2 - 1 ) # uniformly distributed white noise
   x -= tor.mean( x ) # center: VERY IMPORTANT!
   x, y, W = Sys( x, W, Print = True ) # apply selected system
   if ( not tor.isnan( tor.sum( y ) ) ): break

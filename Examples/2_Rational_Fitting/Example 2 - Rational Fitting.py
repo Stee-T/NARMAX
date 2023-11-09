@@ -22,7 +22,7 @@ import numpy as np
 Seed = 252 # use a fixed seed to reproduce results
 print ( "\nSeed: ", Seed, "\n" )
 RNG = np.random.default_rng( seed = Seed )
-x = tor.Tensor ( ( 2 * InputAmplitude ) * ( RNG.random( p ) - 0.5 ) ) # uniformly distributed white noise
+x = tor.tensor( ( 2 * InputAmplitude ) * ( RNG.random( p ) - 0.5 ) ) # uniformly distributed white noise
 x -= tor.mean( x ) # center
 x, y, W = Sys( x, W, Print = True ) # apply selected system
 if ( tor.isnan( tor.sum( y ) ) ): raise AssertionError( "Yields NaNs, which we don't like" )
