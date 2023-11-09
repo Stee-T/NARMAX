@@ -15,7 +15,7 @@ import dill # memory dumps
 import tqdm # progress bars
 import timeit # time measurements for Back-ups
 
-HF.Set_Tensortype_And_Device() # force 64 bits, on GPU if available
+device = HF.Set_Tensortype_And_Device() # force 64 bits, on GPU if available
 Identity = NonLinearity( "id", lambda x: x ) # pre-define object for user
 
 

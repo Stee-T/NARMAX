@@ -17,7 +17,7 @@ import numpy as np # needed for the duplicate elimination
 # ##################################################################################### Helper Functions ################################################################################
 
 def Set_Tensortype_And_Device():
-  '''Set the default dtype and device for torch tensors '''
+  '''Set the default dtype and device for torch tensors. Returns the device string for further use.'''
   if ( tor.cuda.is_available() ):           Device = "cuda" # force new tensors to be on GPU
   elif ( tor.backends.mps.is_available() ): Device = "mps" # M1/M2 Macs
   else:
@@ -26,6 +26,8 @@ def Set_Tensortype_And_Device():
   
   tor.set_default_device( Device )
   tor.set_default_dtype( tor.float64 ) # force new tensors to be 64-bit floats irrespective of CPU/GPU/M1/M2
+
+  return ( Device )
   
 
 # *********************************************************************************** FindMinInt ****************************************************************************************
