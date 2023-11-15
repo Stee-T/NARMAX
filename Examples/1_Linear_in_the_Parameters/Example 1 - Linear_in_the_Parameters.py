@@ -38,9 +38,9 @@ NonLinearities.append( rFOrLSR.NonLinearity( "cos", f = tor.cos ) )
 NonLinearities.append( rFOrLSR.NonLinearity( "exp", f = tor.exp ) )
 
 # ---------------------------------------------------- 3. Training Data
-y, RegMat, RegNames = rFOrLSR.CTors.Lagger( Data = ( x, y ), MaxLags = ( qx, qy ) ) # Create the delayed signal terms
+y, RegMat, RegNames = rFOrLSR.CTors.Lagger( Data = ( x, y ), Lags = ( qx, qy ) ) # Create the delayed signal terms
 RegMat, RegNames = rFOrLSR.CTors.Expander( RegMat, RegNames, ExpansionOrder ) # Monomial expand the regressors
-RegMat, RegNames, _ = rFOrLSR.CTors.NonLinearizer( y, RegMat, RegNames, NonLinearities) # add the listed terms to the Regression matrix
+RegMat, RegNames, _ = rFOrLSR.CTors.NonLinearizer( y, RegMat, RegNames, NonLinearities ) # add the listed terms to the Regression matrix
 
 
 # ---------------------------------------------------- 4. Validation Data

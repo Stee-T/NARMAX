@@ -26,64 +26,98 @@ def Combinations( N, k ):
 
 
 # ************************************************************************************ Regression matrix CTor ********************************************************************************
-def Lagger( Data, MaxLags ):
-  '''Function returning a matrix containing all polynomial terms up to the given na, nb and if noise given nc cut to contain only swung in states.
+def Lagger( Data, Lags, RegNames = None):
+  '''Function returning a matrix containing all passed regressors to the respectively given lag.
+  Attention: If no RegNames are passed, the regressors are assumed to be x, y[, e]. Also y[k] (if present) will not be in RegMat but separate.
   
-  Note: x should be centered before sending it through the system. y and e should not be centered before being passed to this function.
+  Note: x should be centered before sending it through the system, other regressors shouldn't be centered before being passed to this function.
 
   ### Input:
-  - `Data ( x, y [,e] )`: ( 2/3D Tuple of (p,)-shaped Tensor ) ) containing the input
-  - `MaxLags ( nb, na [,nc] )`: ( 2/3D Tuple of ints ) ) containing the maximum lags of each terms
-  - `Func`: ( None/ list of str ) allowing to have the function in the variable name before performing the poly expansion per signal in Data
+  - `Data`: ( iterable of (p,)-shaped Tensor ) ) containing the input
+  - `MaxLags`: ( iterable of  (ints or iterables ) ) ) containing the maximum lags of each terms (int) or the lags of each regressor (iterable of ints)
+  - `RegNames`: ( iterable of strings ) containing the regressor names
   
   ### Output:
   - `y`: (torch.tensor) containing the cut and centered system output
   - `Regressors`: ( torch.tensor ) where each column is a regressor over the swung-in dataset lengh ( p-q )
-  - `RegressorNames`: ( np.array ) containing the regressor names
+  - `OutNames`: ( np.array ) containing the updated regressor names
   '''
   
-  # Bullshit prevention
-  if ( len( Data ) != len( MaxLags ) ):         raise AssertionError( "The numbers of signals and maximum lags don't correspond" )
+  # ------------------------------------------------------------------------------------------- A) # Bullshit prevention --------------------------------------------------------------------------------------
+  if ( len( Data ) != len( Lags ) ):         raise AssertionError( "The numbers of regressors and lags don't correspond" )
+  
+  if ( RegNames is not None ):
+    if ( len( Data ) != len( RegNames ) ):     raise AssertionError( "The numbers of regressors and RegNames don't correspond" )
+
+  for i in range( len( Data ) ):
+    if ( not tor.isfinite( Data[i] ).all() ):   raise AssertionError( f"Regressor{ RegNames[i] } contains inf or nans. The to-be-fitted system is unstable in general or for this particular sequence. Try a new one" )
   
   for i in range( 1, len( Data ) ): 
-    if ( len( Data[0] ) != len( Data[i] ) ):    raise AssertionError( "All Signals must have the same lenght" )
-    if ( not tor.isfinite( Data[i] ).all() ):   raise AssertionError( "Passed data contains inf or nans. The to be fitted system is unstable in general or for this particular sequence. Try a new one" )
+    if ( len( Data[0] ) != len( Data[i] ) ):        raise AssertionError( "All regressors must have the same lenght" )
 
-  for i in range( len( MaxLags ) ):
-    if ( not isinstance( MaxLags[i], int ) ):   raise AssertionError( "All MaxLags elements must be integers" )
+  for i in range( len( Lags ) ):
+    if ( isinstance( Lags[i], int ) ):
+      if ( Lags[i] <= 0 ):                           raise AssertionError( f"Inetger Lags elements must be >= 0, which is not the case for the { i }-th element" )
+
+    elif ( isinstance( Lags[i], list ) ): # if list verify that all elements are integers
+      for j in range( len( Lags[i] ) ):
+        if ( not isinstance( Lags[i][j], int ) ):   raise AssertionError( f"All Lags-sublist elements must be integers, which is not the case for Lags[{ i }][{ j }]" )
+        if ( Lags[i][j] < 0 ):                      raise AssertionError( f"All Lags-sublist elements must be integers >= 0, which is not the case for Lags[{ i }][{ j }]" )
+    
+    else:                                           raise AssertionError( f"All MaxLags elements must be integers or Lists, , which is not the case for Lags[{ i }]" )
   
-  # ------------------------------------------------------------------------------------------- A) Initialization --------------------------------------------------------------------------------------
-  q = max( MaxLags ) # detect maximum lag
-  p = Data[0].view( -1, 1 ).shape[0] # number of samples in the signals
-  nSignals = len( MaxLags ) # Used to determine if ( x, y ) or ( x, y, e ) tuple is passed
-  nSimpleTerms = np.sum( MaxLags ) + nSignals - 1 # + 1 due to x[k] and if included +1 for e[k]
-  RegMat = tor.full( ( p-q, nSimpleTerms ), tor.nan ) # Regressor matrix big enough for all simple and optionally combined swung-in terms
-  RegNames = [] # Regressor Names
+  # ------------------------------------------------------------------------------------------- B) Initialization --------------------------------------------------------------------------------------
+  if ( RegNames is None ):
+    if   ( len( Data ) == 2 ): RegNames = [ "x", "y" ]
+    elif ( len( Data ) == 3 ): RegNames = [ "x", "y", "e" ]
+    else: raise AssertionError( "No regressor names were passed and len( Data ) > 3. Thus x, y[, e] can't be assumed and RegNames must be passed" )
+
+  q = 0 # Maximum lag to trim all regressors to
+  for lag in Lags:
+    if ( isinstance( lag, int ) ): q = max( q, lag )
+    else:                          q = max( q, max( lag ) ) # iterable can contain whatever
+
+  p = Data[0].view( -1, 1 ).shape[0] # number of samples in the regressors, all guaranteed to be the same
+
+  RegMat = [] # Regressor matrix big enough for all simple and optionally combined swung-in terms
+  OutNames = [] # Regressor RegNames
   
-  # ------------------------------------------------------------------------------------------- B) Delayed-copy constructors ---------------------------------------------------------------------------
-  # Simple terms ( exclude y[k], not being part of the poly expansion to preserve system causality ), thus if qy = 0, no y terms are created
-  for col in range( 1, MaxLags[1] + 1 ): # Add the y[k-i] terms, starting at 1 to exclude y[k] term
-    RegMat[:, col-1] = Data[1].view( -1 )[ q - col : p - col ] # flatten and take needed slice
-    RegNames.append( f"y[k-{ col }]" )
+  # ------------------------------------------------------------------------------------------- C) Delayed-copy constructors ---------------------------------------------------------------------------
+  for reg in range( len( Data ) ):
 
-  for col in range( MaxLags[0] + 1 ): # Add the x[k-i] terms, +1 for x[k]
-    RegMat[:, MaxLags[1] + col] = Data[0].view( -1 )[ q - col : p - col ]
-    RegNames.append( f"x[k-{ col }]" )
-  RegNames[ MaxLags[1] ] = "x[k]" # overwrite x[k-0], sits at MaxLags[1]=n_a, since zero-based
- 
-  if ( nSignals == 3 ): # Same procedure for the noise terms
-    FirstEk = MaxLags[0] + MaxLags[1] + 1 # first noise term being e[k], sits at MaxLags[0]+[1]+1=na+nb+1, since zero-based
-    for col in range( MaxLags[2] + 1 ):
-      RegMat[:, FirstEk + col] = Data[2].view( -1 )[ q - col : p - col ]
-      RegNames.append( f"e[k-{ col }]" ) # Add the e[k-i] terms, +1 for e[k]
-    RegNames[FirstEk] = "e[k]" # overwrite e[k-0]
+    if ( isinstance( Lags[reg], int ) ): LagList = [ i for i in range( Lags[reg] + 1 ) ] # upperbound passed, so take all lags, +1 to include the passed Maxlag
+    else:                                LagList = Lags[reg] # pre-determined list
 
+    for lag in LagList: 
+      RegMat.append( Data[reg].view( -1 )[ q - lag : p - lag ] ) # flatten and take needed slice
 
-  return ( Data[1].view( -1 )[q:p], RegMat, np.array( RegNames ) ) # Data[1][q:p] is the cut y vector
+      if ( lag == 0 ): OutNames.append( f"{ RegNames[ reg ] }[k]" ) # delayed name
+      else:            OutNames.append( f"{ RegNames[ reg ] }[k-{ lag }]" ) # delayed name
+
+  # ------------------------------------------------------------------------------------------- D) y[k] handling ---------------------------------------------------------------------------
+  y = None
+
+  yPos = -1
+  for i in range( len( RegNames ) ): # use for loop since RegNames is an arbitrary container and thus not guaranteed to have any particular member function
+    if ( RegNames[i] == "y" ): yPos = i; break
+
+  if ( yPos != -1 ): # a y was passed, so don't return the default None
+    
+    # If Lags[yPos] == int, then y[k] exists, since lags <= 0 are illegal, else it depends on Lags[yPos]'s content
+    for i in range( len( OutNames ) ):
+      if ( OutNames[i] == "y[k]" ): # see if y[k] exists and separate it
+        y = RegMat[i].view( -1 )
+        RegMat.pop( i )
+        OutNames.pop( i )
+        break
+    
+    if ( y is None ): y = Data[yPos].view( -1 )[ q : p ] # same as above but lag = 0
+
+  return ( y, tor.column_stack( RegMat ), np.array( OutNames ) )
 
 
 # **************************************************************************************** Monomial Expansion *********************************************************************************************
-def Expander( Data, Names, ExpansionOrder, IteractionOnly = False ):
+def Expander( Data, RegNames, ExpansionOrder, IteractionOnly = False ):
   ''' Creates a Monomial expansion from the passed Data and column names on the GPU.
 
   Note: This function is just a combinatorial CTor. Expressions of the type f( phi[k-i]*phi[k-j] ) are generated by applying f( • ) on the output ( NonLinearizer CTor ),
@@ -91,27 +125,27 @@ def Expander( Data, Names, ExpansionOrder, IteractionOnly = False ):
 
   ### Inputs:
   - `Data`: ((p, nC) pytorch Tensor) containing columnwise the regressors to be expanded
-  - `Names`: ((nC,) Iterable) containing the column names
+  - `RegNames`: ((nC,) Iterable) containing the column names
   - `ExpansionOrder`: (int) Monomial expansion Order , dictating maximally how many terms are multiplied with each other in each combination
   - `IteractionOnly`: (bool) if True, only composite terms are generated like (x[k] * x[k-1]) and no powers of a single term like x[k]^2
 
   ### Outputs:
   - `RegMat`: ((p, nRegs) pytorch Tensor) containing the expanded regressors
-  - `Names`: ((nRegs,) Iterable) containing the expanded column names
+  - `OutNames`: ((nRegs,) Iterable) containing the expanded column names
   
   '''
-  # Inspired from https://github.com/scikit-learn/scikit-learn/blob/36958fb24/sklearn/preprocessing/_polynomial.py#L30
   
   if ( ( ExpansionOrder < 1 ) or ( not isinstance( ExpansionOrder, int ) ) ): raise ValueError( "ExpansionOrder should be an int >= 1" )
-  if ( ExpansionOrder == 1 ): return ( Data, Names ) # Nothing happens for 1-order polynomial expansion
+  if ( ExpansionOrder == 1 ): return ( Data, RegNames ) # Nothing happens for 1-order polynomial expansion
 
   if ( Data.ndim != 2 ): raise ValueError( "Data should be 2-dimensional with regressors as columns" )
-  if ( Data.shape[1] != len( Names ) ): raise ValueError( "Number of names does not match number of columns in the Data" )
+  if ( Data.shape[1] != len( RegNames ) ): raise ValueError( "Number of names does not match number of columns in the Data" )
 
   # ------------------------------------------------------------------------------- A) Regressor Computation ---------------------------------------------------------------
   # Compute the total number of Regressors and pre-allocate memory
   if ( IteractionOnly ): nRegs = np.sum( [ Combinations(Data.shape[1], o) for o in range( 1, ExpansionOrder + 1 ) ] )
-  else: nRegs = Combinations( Data.shape[1] + ExpansionOrder, ExpansionOrder ) - 1
+  else:                  nRegs = Combinations( Data.shape[1] + ExpansionOrder, ExpansionOrder ) - 1
+
   RegMat = tor.full( ( Data.shape[0], nRegs ), np.nan )
 
   # degree 1 Expansion terms (no changes)
@@ -132,14 +166,14 @@ def Expander( Data, Names, ExpansionOrder, IteractionOnly = False ):
       if ( next_col <= currentCol ): break # don't overshoot
       
       # RegMat[:, start:end] are terms of degree d - 1 that exclude feature feature_idx.
-      RegMat[:, currentCol:next_col] = RegMat[:, start:end] * Data[:, feature_idx : feature_idx + 1] # elementwise multiplication
+      RegMat[:, currentCol : next_col] = RegMat[:, start:end] * Data[:, feature_idx : feature_idx + 1] # elementwise multiplication
       currentCol = next_col
 
     new_index.append( currentCol )
     index = new_index
 
-  # ------------------------------------------------------------------------------- B) Names construction ---------------------------------------------------------------
-  RegNames = [None] * nRegs # Pre-allocate memory for speed
+  # ------------------------------------------------------------------------------- B) RegNames construction ---------------------------------------------------------------
+  OutNames = [None] * nRegs # Pre-allocate memory for speed
 
   Comb = it.combinations if IteractionOnly else it.combinations_with_replacement # chose correct combinations function
   iter = it.chain.from_iterable( Comb( range( Data.shape[1] ), i ) for i in range( 1, ExpansionOrder + 1 ) ) # no need for [] since itertools take variable number of arguments
@@ -150,11 +184,11 @@ def Expander( Data, Names, ExpansionOrder, IteractionOnly = False ):
     IndexSet, PowerSet = np.unique( idx_tuple, return_counts = True ) # remove duplicates and count them
 
     for idx in range( len( IndexSet ) ):
-      Str += f"{ Names[ IndexSet[idx] ] } " if ( PowerSet[idx] == 1 ) else f"{ Names[ IndexSet[idx] ] }^{ PowerSet[idx] } "
+      Str += f"{ RegNames[ IndexSet[idx] ] } " if ( PowerSet[idx] == 1 ) else f"{ RegNames[ IndexSet[idx] ] }^{ PowerSet[idx] } "
     
-    RegNames[counter] = Str[:-1] # Cut last space
+    OutNames[counter] = Str[:-1] # Cut last space
   
-  return ( RegMat, RegNames )
+  return ( RegMat, OutNames )
 
 
 # ************************************************************************************************ Regressor Matrix Transform ********************************************************************************
@@ -179,7 +213,7 @@ def NonLinearizer( y, Data, RegNames, Functions, MakeRational = None ):
   if ( not isinstance( Data, tor.Tensor ) ):        raise AssertionError( "The Input data must be a torch.Tensor" )
   if ( not isinstance( Functions, list ) ):         raise AssertionError( "The 'Functions'argument name must be a list of function pointers" )
   
-  if (Functions[0].get_Name() != "id"):             raise AssertionError( "The first function in the Functions list must be 'id' per convention" )
+  if ( Functions[0].get_Name() != "id" ):             raise AssertionError( "The first function in the Functions list must be 'id' per convention" )
 
   # Length tests
   if ( MakeRational is not None ): # check first since None has no length
@@ -197,13 +231,13 @@ def NonLinearizer( y, Data, RegNames, Functions, MakeRational = None ):
   # A) Set to list to easily append then concatenate data
   nRegs = Data.shape[1]
   DataList = [ Data ]
-  NameList = [ RegNames ]
+  OutNames = [ RegNames ]
   M = [0] * nRegs # Morphing meta data containing the index of the applied non-linearity (id for all un-processed terms)
 
   # B) Compute the transformations and append to the list to finally horizontally concatenate into a single matrix  
   for func in range( 1, len( Functions ) ): # start at 1 to ignore the identity function, skips the loop if Func only contains identity
     DataList.append( Functions[func].get_f()( DataList[0] ) ) # apply the function on the entire passed RegMat
-    NameList.append( [ Functions[func].get_Name() + "(" + col + ")" for col in NameList[0] ] ) # Create the list of new names and apply directly
+    OutNames.append( [ Functions[func].get_Name() + "(" + col + ")" for col in OutNames[0] ] ) # Create the list of new names and apply directly
     M += [ func ] * nRegs # tag all regressors to have been processed with that function
   
   # ---------------------------------------------------------------------------------------------- B) Rational Functions -------------------------------------------------------------------------------------
@@ -217,13 +251,13 @@ def NonLinearizer( y, Data, RegNames, Functions, MakeRational = None ):
         RatNames = [ None ] * nRegs # Init empty list of right length
         # this is ambiguous with terms which are really 1/(...) but yeah whatever
         if ( Functions[func].get_Name() == "id" ): # equivalent to func == 0
-          for col in range( len( RatNames ) ): RatNames[col] = "~/(" + NameList[0][col] + ")" # 1/(Reg) for identity
+          for col in range( len( RatNames ) ): RatNames[col] = "~/(" + OutNames[0][col] + ")" # 1/(Reg) for identity
         else:
-          for col in range( len( RatNames ) ): RatNames[col] = "~/(" + Functions[func].get_Name() + "(" + NameList[0][col] + "))" # 1/(func(Reg)) for functions
+          for col in range( len( RatNames ) ): RatNames[col] = "~/(" + Functions[func].get_Name() + "(" + OutNames[0][col] + "))" # 1/(func(Reg)) for functions
         
-        NameList.append( RatNames ) # apply new column names
+        OutNames.append( RatNames ) # apply new column names
 
-  return ( tor.hstack( DataList ), np.concatenate( NameList ), M ) # Concatenate the list of segments into a single matrix
+  return ( tor.hstack( DataList ), np.concatenate( OutNames ), M ) # Concatenate the list of segments into a single matrix
 
 
 ####################################################################################### Ultra Orthogonal fitting Stuff ###########################################################################

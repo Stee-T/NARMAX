@@ -205,7 +205,7 @@ def DefaultValidation( theta, L, ERR, ValData, MorphDict, DcFilterIdx = None ):
   qx = ValData["MaxLags"][0]; qy = ValData["MaxLags"][1] # swung in states for x and y
   
   for Sig in range( len( ValData["Data"] ) ): # iterate over all passed Data tuples
-    y, RegMat, RegNames = CTors.Lagger( Data = ( ValData["Data"][Sig][0], ValData["Data"][Sig][1] ), MaxLags = ( qx, qy ) ) # Create the delayed signal regressors
+    y, RegMat, RegNames = CTors.Lagger( Data = ( ValData["Data"][Sig][0], ValData["Data"][Sig][1] ), Lags = ( qx, qy ) ) # Create the delayed signal regressors
     RegMat, RegNames = CTors.Expander( RegMat, RegNames, ValData["ExpansionOrder"] ) # Monomial expand the regressors
     RegMat, _, _ = CTors.NonLinearizer( y, RegMat, RegNames, ValData["NonLinearities"], ValData["MakeRational"] ) # add the listed regressors to the Regression matrix
 
@@ -952,7 +952,7 @@ class Arborescence:
 
     Ax[1].plot( Error.cpu(), "#00aaffff", marker = '.', markersize = 5 ) # force slightly lighter blue than default blue for compatibility with dark mode
     Ax[1].set_xlim( [0, len( self.y )] )
-    Ax[1].set_title( f"{ len( self.L ) } Terms yielding MAE: { MeanAbsErrorStr }%. Max dev.: { MaxDeviationStr }%. MAD: { MedianAbsDerivationStr }%" )
+    Ax[1].set_title( f"{ len( self.theta ) } Terms yielding MAE: { MeanAbsErrorStr }%. Max dev.: { MaxDeviationStr }%. MAD: { MedianAbsDerivationStr }%" )
     Ax[1].legend( ["$y[k]-\hat{y}[k]$"] )
     Ax[1].grid( which = 'both', alpha = 0.5 )
     Fig.tight_layout() # prevents the plot from clipping ticks
@@ -990,7 +990,7 @@ class Arborescence:
     plt.subplots_adjust( hspace = 0.001 )
     
     # print summary to console
-    print( Imposed.shape[1], "Terms yielding an Mean absolute Error (MAE) of", MeanAbsErrorStr,"% and a maximal deviation of", MaxDeviationStr +
+    print( Imposed.shape[1], "Terms yielding an Mean absolute Error (MAE) of", MeanAbsErrorStr + "% and a maximal deviation of", MaxDeviationStr +
           "% and a Median Absolute Deviation (MAD) of", MedianAbsDerivationStr )
     
     if ( PrintRegressor ): # print the regressors in a readable manner

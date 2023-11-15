@@ -182,11 +182,9 @@ def RatNonLinSystem( x, W = None, Print = True ): # Rational system used in the 
   y = tor.zeros( len( x ) ) # system output, 0 to emulate the initialization state
 
   for k in range( MaxLag, len( x ) ): # maximum lag is 2
-    # y[k] = ( 0.6*tor.abs( x[k] ) - 0.35*x[k]**3 - 0.2*x[k-1]**2 + 0.1*tor.abs( y[k-1] )  ) / ( 1 - 0.4*tor.abs( x[k] ) + 0.3*tor.abs( x[k-1]*x[k] ) - 0.2*x[k-1]**3 + 0.3*y[k-1]*x[k-2] ) # OLD Paper
     y[k] = ( 0.6*tor.abs( x[k] ) - 0.35*x[k]**3 - 0.3*x[k-1]*y[k-2] + 0.1*tor.abs( y[k-1] )  ) / ( 1 - 0.4*tor.abs( x[k] ) + 0.3*tor.abs( x[k-1]*x[k] ) - 0.2*x[k-1]**3 + 0.3*y[k-1]*x[k-2] ) # With mixed terms
     if ( W is not None ): y[k] += W[k] # Additive Noise
   
-  # if ( Print ): print("y[k] = ( 0.6*tor.abs( x[k] ) - 0.35*x[k]**3 - 0.2*x[k-1]**2 + 0.1*tor.abs( y[k-1] )  ) / ( 1 - 0.4*tor.abs( x[k] ) + 0.3*tor.abs( x[k-1]*x[k] ) - 0.2*x[k-1]**3 + 0.3*y[k-1]*x[k-2] )") # paper version
   if ( Print ): print("System: y[k] = ( 0.6*abs( x[k] ) - 0.35*x[k]**3 - 0.3*x[k-1]*y[k-2] + 0.1*abs( y[k-1] )  ) / ( 1 - 0.4*abs( x[k] ) + 0.3*abs( x[k-1]*x[k] ) - 0.2*x[k-1]**3 + 0.3*y[k-1]*x[k-2] )")
   if ( W is not None ): W = W[ MaxLag : ]
   
