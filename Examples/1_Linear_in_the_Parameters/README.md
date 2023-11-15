@@ -269,7 +269,7 @@ Recognized regressors:
 ```
 
 ## Figure 1
-![Figure1](https://github.com/Stee-T/rFOrLSR/blob/main/Examples/1%20-%20Linear%20in%20the%20Parameters/Figure_1.png)
+![Figure1](https://github.com/Stee-T/rFOrLSR/blob/main/Examples/1_Linear_in_the_Parameters/Figure_1.png)
 
 **Top Graph:** Overlays the actual system response $y\[k\]$ with the estimated system response $\hat{y}\[k\]$. In the ideal case (like here) where the fitted system is correctly retrieved and there is no noise, the two curves  overlap. The estimation is on top of the system output for more visibility.
 
@@ -288,7 +288,7 @@ Further research is needed to make those graphs contain more relevant informatio
 
 So now that I've crushed your regressor importance estimation dreams, enjoy the nice-looking graphs :)
 
-![Figure2](https://github.com/Stee-T/rFOrLSR/blob/main/Examples/1%20-%20Linear%20in%20the%20Parameters/Figure_2.png)
+![Figure2](https://github.com/Stee-T/rFOrLSR/blob/main/Examples/1_Linear_in_the_Parameters/Figure_2.png)
 
 **Top Graph:** 
 Contains the ERR of the regressors in the order imposed by the arborescence order (see warning above).
