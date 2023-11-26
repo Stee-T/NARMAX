@@ -22,3 +22,9 @@ Is a short demonstration of how to use the imposed regressor dictionary. This ex
 Demonstrates how to generate embedded expansions (advanced linearization and order determination) and how to create a custom dictionary and validation function.
 
 **Fitted system**: $y = \text{sgn}(x)(1-\frac{1}{1+|x|A})$ with $A≔\Sigma_{j\in J}\theta _j |x|^j$ and $J\subseteq \mathbb{N}$.
+
+
+# Example 5
+Demonstrates how to fit MISO (Multiple Input Single Output) systems
+
+**Fitted system**: # TODO
