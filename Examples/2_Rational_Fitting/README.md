@@ -72,21 +72,21 @@ System: y[k] = ( 0.6*abs( x[k] ) - 0.35*x[k]**3 - 0.3*x[k-1]*y[k-2] + 0.1*abs( y
 Performing root regression
 Shortest encountered sequence (root): 29
 
-Arborescence Level 1: 100%|██████████████████| 29/29 [00:01<00:00, 19.24 rFOrLSR/s]
+Arborescence Level 1: 100%|████████████████████████| 29/29 [00:01<00:00, 19.24 rFOrLSR/s]
 Shortest encountered sequence: 13
 
-Arborescence Level 2: 100%|████████████████| 670/670 [00:19<00:00, 38.16 rFOrLSR/s]
+Arborescence Level 2: 100%|██████████████████████| 670/670 [00:19<00:00, 38.16 rFOrLSR/s]
 Shortest encountered sequence: 9
 
-Arborescence Level 3: 100%|████████████| 14265/14265 [03:15<00:00, 86.25 rFOrLSR/s]
+Arborescence Level 3: 100%|██████████████████| 14265/14265 [03:15<00:00, 86.25 rFOrLSR/s]
 Shortest encountered sequence: 9
 
-Arborescence Level 4: 100%|█████████| 280983/280983 [20:09<00:00, 287.43 rFOrLSR/s]
+Arborescence Level 4: 100%|███████████████| 280983/280983 [20:09<00:00, 287.43 rFOrLSR/s]
 Finished Arborescence traversal.
 Shortest encountered sequence: 8
 
 Starting Validation procedure.
-Validating: 100%|██████████████| 37349/37349 [00:00<00:00, 765434.50 Regressions/s]
+Validating: 100%|████████████████████| 37349/37349 [00:00<00:00, 765434.50 Regressions/s]
 
 Validation done on 1 different Regressions. Best validation error: 1.376945153063429e-15
 Out of 295948 only 70642 regressions were computed, of which 33293 were OOIT - aborted.

@@ -86,13 +86,16 @@ Example: Set of two terms with 3rd order expansion: $\[\underline{x}_1,\ \underl
 Note that this is limited to elementwise functions, other fancy things must currently be done by hand.  
 Example: $\underline{x}→\[\ \underline{x}, f_1(\underline{x}), f_2(\underline{x}), \frac{1}{f_3(\underline{x})},...\ \]$
 
-* **Oscillator:** (Coming soon)  
+* **SmoothedDeriver:** (already implemented but not compatible with the updated API)
+Constructor for derivatives of arbitrary order with arbitrarily strong smoothing. This can be either used to generate derivative regressors (see differential equations) or for Ultra-Orthogonal Least Squares fitting in dedicated Sobolev spaces. Idea: Concatenating the regressor and their derivatives reduces overfitting as there is more information on the regressors as is classically done in solving of differential equations (see fitting in Sobolev spaces, etc).
+
+* **Oscillator:** (Coming soon)
 Constructor for common oscillations like cos, sin with options for different frequencies, phases and amplitude decays.
 
-* **RBF:** (Coming soon)  
+* **RBF:** (Coming soon)
 Constructor for common Radial Basis Functions
 
-* **Wavelet:** (Coming soon)  
+* **Wavelet:** (Coming soon)
 Constructor for common wavelet functions
 
 * **Input signal Generators** (Coming soon)  

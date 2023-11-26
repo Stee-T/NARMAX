@@ -45,9 +45,10 @@ RegMat, RegNames, _ = rFOrLSR.CTors.NonLinearizer( y, RegMat, RegNames, NonLinea
 
 # ---------------------------------------------------- 4. Validation Data
 ValidationDict = { # contains essentially everything passed to the CTors to reconstruct the signal
+  "y": [],
   "Data": [],
   "DsData": None, # No impopsed terms in this example
-  "MaxLags": (qx,qy),
+  "Lags": (qx,qy),
   "ExpansionOrder": ExpansionOrder,
   "NonLinearities": NonLinearities,
   "MakeRational": None, 
@@ -60,11 +61,12 @@ for i in range( 5 ): # Fill the validation dict's data entry with randomly gener
     x_val, y_val, W = Sys( x_val, W, Print = False ) # _val to avoid overwriting the training y
     if ( not tor.isnan( tor.sum( y_val ) ) ): break # Remain in the loop until no NaN
   
+  ValidationDict["y"].append( y_val )
   ValidationDict["Data"].append( ( x_val, y_val ) )
 
 
 # ---------------------------------------------------- 5. Running the Arborescence
-File = "Some/Valid/Path/FileName.pkl"
+# File = "Some/Valid/Path/FileName.pkl"
 
 Arbo = rFOrLSR.Arborescence( y,
                              Ds = None, DsNames = None, # Ds & Regressor names, being dictionary of selected regressors
@@ -73,8 +75,8 @@ Arbo = rFOrLSR.Arborescence( y,
                              MaxDepth = ArboDepth, # Maximal number of levels
                              ValFunc = rFOrLSR.DefaultValidation, ValData = ValidationDict, # Validation function and dictionary
                              Verbose = False, # Print the current state of the FOrLSR (only meaningful for regressions with many terms)
-                             FileName = File, # Path and File to save the Backups into
-                             SaveFrequency = 10, # Save frequency in minutes
+                            #  FileName = File, # Path and File to save the Backups into
+                            #  SaveFrequency = 10, # Save frequency in minutes
                            )
 
 Arbo.fit()
@@ -87,6 +89,6 @@ Arbo.fit()
 Figs, Axs = Arbo.PlotAndPrint() # returns both figures and axes for further processing, as as the zoom-in below
 Axs[0][0].set_xlim( [0, 500] ) # Force a zoom-in
 
-theta, L, ERR, _, _ = Arbo.get_Results()
+theta, L, ERR, _, RegMat, RegNames = Arbo.get_Results()
 
 plt.show()

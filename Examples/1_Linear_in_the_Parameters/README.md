@@ -121,19 +121,20 @@ RegMat, RegNames, _ = rFOrLSR.CTors.NonLinearizer( y, RegMat, RegNames, NonLinea
 ##  4. Validation Data
 Since many models are created by the arborescence, a validation procedure chosing the best system is required. This basic example demonstrates the use of the provided `rFOrLSR.DefaultValidation` function with its required data.
 
-**DefaultValidation:** The the provided `rFOrLSR.DefaultValidation` is designed to imitate step 3. Thus, all 3 CTors are called with their arguments contained in the `ValidationDict` dictionary. signal-CTors are bypassed by setting their arguments to the respective identities, being (0,0) for the *Lagger*, 0 for the ExpansionOrder and the [ rFOrLSR.Identity ] for the NonLinearizer with additionally None for the *MakeRational* argument (which is explained in the next tutorial).  
+**DefaultValidation:** The the provided `rFOrLSR.DefaultValidation` is designed to imitate step 3. Thus, all 3 CTors are called with their arguments contained in the `ValidationDict` dictionary. Signal-CTors are bypassed by setting their arguments to the respective identities, being (0,0) for the *Lagger*, 0 for the ExpansionOrder and the [ rFOrLSR.Identity ] for the NonLinearizer with additionally None for the *MakeRational* argument (which is explained in the next tutorial).  
 The code generates 5 validation sequences to test the solutions on 5 different input sequences.
 
 **Custom Validation Function and Data:** This will be demonstrated in a further tutorial. The arborescence expects a function pointer and a dictionary, so under mild formal conditions (fixed number of arguments, etc.), the user can use arbitrary validation procedures.
 
 ```python 
-ValidationDict = { # contains everything required by the signal-CTors 
-  "Data": [], # must be iterable
-  "DsData": None, # No imposed terms in this example
-  "MaxLags": (qx,qy),
+ValidationDict = { # contains essentially everything passed to the CTors to reconstruct the signal
+  "y": [],
+  "Data": [],
+  "DsData": None, # No impopsed terms in this example
+  "Lags": (qx,qy),
   "ExpansionOrder": ExpansionOrder,
   "NonLinearities": NonLinearities,
-  "MakeRational": None, # No rational regressors
+  "MakeRational": None, 
 }
 
 for i in range( 5 ): # Fill the validation dict's data entry with randomly generated validation data
@@ -143,6 +144,7 @@ for i in range( 5 ): # Fill the validation dict's data entry with randomly gener
     x_val, y_val, W = Sys( x_val, W, Print = False ) # _val to avoid overwriting the training y
     if ( not tor.isnan( tor.sum( y_val ) ) ): break # Remain in the loop until no NaN
   
+  ValidationDict["y"].append( y_val )
   ValidationDict["Data"].append( ( x_val, y_val ) )
 ```
 <br/>
@@ -181,15 +183,15 @@ Once the arborescence has been traversed, the results can be printed out and dis
 **PlotAndPrint:** Generates two plots and (optionally) prints the regression results in the console.
 The code also demonstrates how to force a zoom-in by setting the returned axes limits.
 
-**get_Results:** Returns the regression results in a tuple containing the regression parameters $\underline{\hat{\theta}}$, the index-set $L$ (which doesn't contain the imposed regressors) and the ERR vector.
+**get_Results / fit:** Both functions return the regression results in a tuple containing the regression parameters $\underline{ \hat{ \theta } }$, the index-set $L$ (which doesn't contain the imposed regressors) and the ERR vector. In addtion, if the arborescence was run with morphing instructions (not the case in this tutorial), a Morphing-meta Data dictionary is returned as 4th return. Finally, the updated $D_C$ and DcNames are returned as 5th and 6th return. Updating $D_C$ consists in filtering out redundant regressors (necessary for a well functioning rFOrLSR) and potentially expandin the dictionary with new morphed regressors.
 
-**Note:** The Arborescence doesn't return an object containing a callable model, since a) the user can pass any regressor in the form of a vector (including acausal ones for dynamic systems) and b) the morphing procedure has the potential to generate arbitrary terms.
+**Note (callable model):** The Arborescence doesn't return an object containing a callable model, since a) the user can pass any regressor in the form of a vector (including acausal ones for dynamic systems) and b) the morphing procedure has the potential to generate arbitrary terms.
 
 ```python 
 Figs, Axs = Arbo.PlotAndPrint() # returns both figures and axes for further processing, as as the zoom-in below
 Axs[0][0].set_xlim( [0, 500] ) # Force a zoom-in
 
-theta, L, ERR, _, _ = Arbo.get_Results()
+theta, L, ERR, _, RegMat, RegNames = Arbo.get_Results()
 
 plt.show()
 ```
@@ -211,16 +213,16 @@ System: y[k] = 0.2x[k] + 0.3x[k-1]^3 + 0.7|x[k-2]*x[k-1]^2| + 0.5exp(x[k-3]*x[k-
 Performing root regression
 Shortest encountered sequence (root): 10 
 
-Arborescence Level 1: 100%|████████████████████████████████████| 10/10 [00:00<00:00, 30.19 rFOrLSR/s] 
+Arborescence Level 1: 100%|██████████████████████████████████████████| 10/10 [00:00<00:00, 30.19 rFOrLSR/s] 
 Shortest encountered sequence: 7
 
-Arborescence Level 2: 100%|████████████████████████████████████| 85/85 [00:01<00:00, 65.74 rFOrLSR/s] 
+Arborescence Level 2: 100%|██████████████████████████████████████████| 85/85 [00:01<00:00, 65.74 rFOrLSR/s] 
 Shortest encountered sequence: 7
 
-Arborescence Level 3: 100%|████████████████████████████████████| 590/590 [00:03<00:00, 156.58 rFOrLSR/s]
+Arborescence Level 3: 100%|██████████████████████████████████████████| 590/590 [00:03<00:00, 156.58 rFOrLSR/s]
 Shortest encountered sequence: 7
 
-Arborescence Level 4: 100%|████████████████████████████████████| 3473/3473 [00:08<00:00, 423.79 rFOrLSR/s] 
+Arborescence Level 4: 100%|██████████████████████████████████████████| 3473/3473 [00:08<00:00, 423.79 rFOrLSR/s] 
 Finished Arborescence traversal. Shortest encountered sequence: 7
 ```
 
@@ -228,7 +230,7 @@ Finished Arborescence traversal. Shortest encountered sequence: 7
 
 ```
 Starting Validation procedure.
-Validating: 100%|████████████████████████████████████| 165/165 [00:00<00:00, 1815.08 Regressions/s] 
+Validating: 100%|██████████████████████████████████████████| 165/165 [00:00<00:00, 1815.08 Regressions/s] 
 
 Validation done on 1 different Regressions. Best validation error: 1.244266372737191e-15
 ```

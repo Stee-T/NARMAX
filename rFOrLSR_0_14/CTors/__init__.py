@@ -34,12 +34,12 @@ def Lagger( Data, Lags, RegNames = None):
 
   ### Input:
   - `Data`: ( iterable of (p,)-shaped Tensor ) ) containing the input
-  - `MaxLags`: ( iterable of  (ints or iterables ) ) ) containing the maximum lags of each terms (int) or the lags of each regressor (iterable of ints)
+  - `Lags`: ( iterable of  (ints or iterables ) ) ) containing the maximum lags of each terms (int) or the lags of each regressor (iterable of ints)
   - `RegNames`: ( iterable of strings ) containing the regressor names
   
   ### Output:
-  - `y`: (torch.tensor) containing the cut and centered system output
-  - `Regressors`: ( torch.tensor ) where each column is a regressor over the swung-in dataset lengh ( p-q )
+  - `y`: (1D-torch.tensor) containing the cut and centered system output
+  - `RegMat`: ( 2D-torch.tensor ) where each column is a regressor over the swung-in dataset lengh ( p-q )
   - `OutNames`: ( np.array ) containing the updated regressor names
   '''
   

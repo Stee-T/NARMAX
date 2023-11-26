@@ -104,7 +104,7 @@ def MaxLagPlotter( x, y, MaxLags = ( 15, 15 ), MaxOrder = 5, VarianceAcceptThres
         Grid[ na, nb ] = 1.0 # if both previous regressor lists are already sufficient to achive full precision, don't recompute unnecessarily everything
       
       else:
-        y_cut, RegMat, RegNames = CTors.Lagger( ( x, y ), ( nb, na ) ) # construct linear regressor matrix, ignore RegNames return
+        y_cut, RegMat, RegNames = CTors.Lagger( Data = ( x, y ), Lags = ( nb, na ) ) # construct linear regressor matrix, ignore RegNames return
         RegMat, RegNames = CTors.Expander( RegMat, RegNames, ExpansionOrder = ModelOrder )
         
         Grid[na, nb] = MiniFOrLSR( y_cut - y_cut.mean(), RegMat - RegMat.mean( axis = 0, keepdims = True ) ) # store the ERR only
@@ -167,9 +167,10 @@ def DefaultValidation( theta, L, ERR, ValData, MorphDict, DcFilterIdx = None ):
   - `ERR`: ( (nr,)-shaped float nd-array ) containing the regression's ERR ( not used here but placeholder to adhere to AOrLSR standard )
   
   - `ValData`: ( dict ) containing the validation data to be passed to Dc's Ctors:
-    → `ValData["Data"]`: ( list of 2D-tuples of float nd-arrays ) containing x and y
+    → `ValData["y"]`: ( list of float torch.Tensors ) containing the system responses
+    → `ValData["Data"]`: ( list of iterables of float torch.Tensors ) containing the data to be passed to the standard CTors ( Lagger, Expander, NonLinearizer )
     → `ValData["DsData"]`: ( list of float Torch.Tensors or None ) containing all imposed regressors column wise
-    → `ValData["MaxLags"]`: ( 2D tuple of float ) containing the respective maximum delays for x then y terms
+    → `ValData["Lags"]`: ( 2D tuple of float ) containing the respective maximum delays for the passed Data
     → `ValData["ExpansionOrder"]`: ( int ) containing the monomial expansion's maximal summed power
     → `ValData["NonLinearities"]`: ( list of pointer to functions ) containing the regression's transformations to be passed to RegressorTransform
     → `ValData["MakeRational"]`: ( list of bool ) containing information about which functions are to be made rational
@@ -189,59 +190,102 @@ def DefaultValidation( theta, L, ERR, ValData, MorphDict, DcFilterIdx = None ):
   # --------------------------------------------------------------------  Bullshit prevention -----------------------------------------------------------------------
   if ( not isinstance( ValData, dict ) ): raise AssertionError( "The passed ValData datastructure is not a dictionary as expected" )
   
-  for var in ["Data", "DsData", "MaxLags", "ExpansionOrder", "NonLinearities", "MakeRational"]:
+  for var in ["y", "Data", "DsData", "Lags", "ExpansionOrder", "NonLinearities", "MakeRational"]:
     if ( var not in ValData.keys() ): raise AssertionError( f"The validation datastructure contains no '{ var }' entry" )
   
-  if ( not isinstance( ValData["Data"], list ) ):  raise AssertionError( "ValData's 'Data' entry is expected to be a list" )
-  for ( x, y ) in ValData["Data"]: # iterate over all passed Data tuples
-    if ( ( not isinstance( x, tor.Tensor ) ) or ( not isinstance( y, tor.Tensor ) ) ): raise AssertionError( "ValData's 'Data' entry is expected to be a list of 2D-tuples of float torch.Tensors" )
+  # Dirty conversion but simplifies the code a lot
+  if ( ValData["DsData"] == [] ): ValData["DsData"] = None
+  if ( ValData["Data"] == [] ):   ValData["Data"]   = None
+
+
+  if ( not isinstance( ValData["y"], list ) ): raise AssertionError( "ValData's 'y' entry is expected to be a list of float torch.Tensors" )
+
+  if ( ValData["Data"] is not None ):
+    if ( not isinstance( ValData["Data"], list ) ):         raise AssertionError( "ValData's 'Data' entry is expected to be a list" )
+    if ( len ( ValData["Data"] ) != len ( ValData["y"] ) ): raise AssertionError( "ValData's 'Data' and 'y' entries should have the same length" )
+
+    for val in ValData["Data"]: # iterate over all passed Data tuples
+      for reg in val: # Data entries contain unknown number of regressors in the MISO
+        if ( not isinstance( reg, tor.Tensor ) ): raise AssertionError( "ValData's 'Data' entry is expected to be a list of 2D-tuples of float torch.Tensors" )
 
   if ( not isinstance( ValData["NonLinearities"], list ) ): raise AssertionError( "ValData's 'NonLinearities' entry is expected to be a list of NonLinearity objects" )
   for func in ValData["NonLinearities"]: # iterate over all passed NonLinearities
     if ( not isinstance( func, NonLinearity ) ): raise AssertionError( "ValData's 'NonLinearities' entry is expected to be a list of NonLinearity objects" )
   
-  # --------------------------------------------------------------------  Validation computation loop -----------------------------------------------------------------------
+  if ( ValData["DsData"] is not None):
+    if ( len( ValData["DsData"] ) != len( ValData["y"] ) ): raise AssertionError( "ValData's 'Data' and 'y' lists should have the same length" )
+
+    for data in ValData["DsData"]: # iterate over all passed Data tuples
+      if ( not isinstance( data[0], tor.Tensor ) ): raise AssertionError( "ValData's 'DsData' entry is expected to be a list of (torch.Tensor (for y), torch.Tensor (for Ds)) or None" )
+      if ( not isinstance( data[1], tor.Tensor ) ): raise AssertionError( "ValData's 'DsData' entry is expected to be a list of (torch.Tensor (for y), torch.Tensor (for Ds)) or None" )
+
+    for val in range ( len( ValData["DsData"] ) ):  # iterate over all passed Data tuples
+      if ( ValData["y"][val].shape[0] != ValData["DsData"][val].shape[0] ): raise AssertionError( f"ValData's 'DsData' { val }-th entry has not the same length as teh { val }-th 'y' entry" )
+          
+  # -------------------------------------------------------------------------------  Validation computation loop -----------------------------------------------------------------------
   Error = 0 # total relative error
-  qx = ValData["MaxLags"][0]; qy = ValData["MaxLags"][1] # swung in states for x and y
-  
-  for Sig in range( len( ValData["Data"] ) ): # iterate over all passed Data tuples
-    y, RegMat, RegNames = CTors.Lagger( Data = ( ValData["Data"][Sig][0], ValData["Data"][Sig][1] ), Lags = ( qx, qy ) ) # Create the delayed signal regressors
-    RegMat, RegNames = CTors.Expander( RegMat, RegNames, ValData["ExpansionOrder"] ) # Monomial expand the regressors
-    RegMat, _, _ = CTors.NonLinearizer( y, RegMat, RegNames, ValData["NonLinearities"], ValData["MakeRational"] ) # add the listed regressors to the Regression matrix
 
-    if ( DcFilterIdx is not None ): RegMat = RegMat[:, DcFilterIdx] # Filter out same regressors as for the regression
+  # Estuimate the number of validations
+  nValidations = 0
+  if ( ValData["Data"] is not None ): nValidations = len( ValData["Data"] )
+  if ( ValData["DsData"] is not None ):
+    if ( ( nValidations != 0 ) and ( len( ValData["DsData"] ) != nValidations ) ): raise AssertionError( "ValData's 'DsData' entry is not the same length as 'Data'" )
+    nValidations = len( ValData["DsData"] )
+  if ( nValidations == 0 ): raise AssertionError( "No validation data was passed, as Data and DsData are both None or empty lists" )
 
-    # Centering
-    y -= tor.mean( y )
-    Means = tor.mean( RegMat, axis = 0, keepdims = True ) # Store the means ( needed by the Morpher )
-    RegMat -= Means # Center the regressors by subtracting their respecitve ( = columnwise ) means
 
-    nC = RegMat.shape[1] # No added regressors to dict. nC needed to detect if morphed term or not
+  for val in range( nValidations ): # iterate over all passed Data tuples    
+    # ----------------------------------------------------------------------------------- Handle Ds -----------------------------------------------------------------------------------
+    if ( ValData["DsData"] is not None ):
+      nS = ValData["DsData"][val].shape[1] # number of cols in Validation Ds
+      yHat = ValData["DsData"][val] @ theta[ : nS ] # becomes a ( p, 1 )-shaped Tensor
+    else: nS = 0; yHat = None # no Ds
 
-    yHat = tor.zeros( RegMat.shape[0] ) # the p of the validation
+    # ----------------------------------------------------------------------------------- Handle Dc -----------------------------------------------------------------------------------
+    if ( ValData["Data"] is not None ):
 
-    if ( ( ValData["DsData"] is not None ) and ( ValData["DsData"] != [] ) ):
-      nS = ValData["DsData"][Sig].shape[1] # number of cols in Validation Ds
-      yHat = ValData["DsData"][Sig] @ theta[ : nS ] # becomes a ( p, 1 )-shaped Tensor
-    else: nS = 0
+      y, RegMat, RegNames = CTors.Lagger( Data = ValData["Data"][val], Lags = ValData["Lags"] ) # Create the delayed signal regressors
 
-    for reg in range( len( L ) ): # iterate over all L and check if morphed
-      if ( L[reg] >= nC ): # morphed regressor since index higher ( or equal since 0 based ) than original dictionary size
-        
-        # TODO adapt to Pytorch and to new morphign API
-        nMorphed = L[reg] - nC # number of the morphed term in the chronological list of creation
-        LM = MorphDict["MorphData"][nMorphed][2] # alias for clarity
-        f = MorphDict["fPtrs"][ MorphDict["MorphData"][nMorphed][1] ] # alias for clarity
-        Xl = RegMat[:, LM] + Means[:, LM]
-        fT = f( Xl @ MorphDict["MorphData"][nMorphed][-1] ); fT -= tor.mean( fT ) # MorphData[reg][-1]
-        yHat += theta[ nS + reg ] * fT
+      if ( not tor.allclose( y, ValData["y"][val] ) ): raise AssertionError( "ValData['y'] and the y resulting from CTors.Lagger are not the same" )
 
-      else: yHat += theta[ nS + reg ] * RegMat[ :, L[reg] ] # normal, non-morphed regressor
+      RegMat, RegNames = CTors.Expander( RegMat, RegNames, ValData["ExpansionOrder"] ) # Monomial expand the regressors
+      RegMat, _, _ = CTors.NonLinearizer( y, RegMat, RegNames, ValData["NonLinearities"], ValData["MakeRational"] ) # add the listed regressors to the Regression matrix
+
+      if ( DcFilterIdx is not None ): RegMat = RegMat[:, DcFilterIdx] # Filter out same regressors as for the regression
+
+      if ( yHat is None ): yHat = tor.zeros( RegMat.shape[0] ) # no DsData passed
+      elif ( ValData["DsData"][val].shape[0] != yHat.shape[0] ): raise AssertionError( "ValData['DsData'] and the resulting Dc are not of the same length" )
+      
+      # Centering
+      Means = tor.mean( RegMat, axis = 0, keepdims = True ) # Store the means ( needed by the Morpher )
+      RegMat -= Means # Center the regressors by subtracting their respecitve ( = columnwise ) means
+
+      nC = RegMat.shape[1] # No added regressors to dict. nC needed to detect if morphed term or not
+
+      for reg in range( len( L ) ): # iterate over all L and check if morphed
+        if ( L[reg] >= nC ): raise AssertionError( "Morphing currently not supported" ) # morphed reg since index higher (or == since 0 based) than original Dc size
+          
+          # TODO adapt to Pytorch and to new morphing API, use ValData["y"][val] and center if y needed!
+          # nMorphed = L[reg] - nC # number of the morphed term in the chronological list of creation
+          # LM = MorphDict["MorphData"][nMorphed][2] # alias for clarity
+          # f = MorphDict["fPtrs"][ MorphDict["MorphData"][nMorphed][1] ] # alias for clarity
+          # Xl = RegMat[:, LM] + Means[:, LM]
+          # fT = f( Xl @ MorphDict["MorphData"][nMorphed][-1] ); fT -= tor.mean( fT ) # MorphData[reg][-1]
+          # yHat += theta[ nS + reg ] * fT
+
+        else: yHat += theta[ nS + reg ] * RegMat[ :, L[reg] ] # normal, non-morphed regressor
+
+    # handle y elegantly
+    if ( ValData["y"][val].shape[0] != yHat.shape[0] ):
+      if ( not tor.allclose( y, ValData["y"][val][ : -yHat.shape[0] ] ) ): # cut the front part of y which corresponds to the maximum delay
+        raise AssertionError( f"ValData['y'][{ val }] was cut to fit the resulting estimate h_Hat's length, however the values differ. Please check that y variable" )
+      y = ValData["y"][val][ : -yHat.shape[0] ]; y -= tor.mean( y )
     
-    
+    else: y = ValData["y"][val] - tor.mean( ValData["y"][val] ) # User passed the correct size
+
     Error += tor.mean( tor.abs( y - yHat ) / tor.mean( tor.abs( y ) ) ) # relative MAE
     
-  return ( Error / len( ValData["Data"] ) ) # norm by the number of signals ( not necessary for AOrLSR but printed for the user )
+  return ( Error / nValidations ) # norm by the number of validation ( not necessary for AOrLSR but printed for the user )
 
 
 # ####################################################################################################### AOrLSR Class ############################################################################################
@@ -383,6 +427,8 @@ class Arborescence:
       if ( tor.isnan( tor.sum( self.Ds ) ) ):         raise AssertionError( "Your Regressor Matrix Ds contains NaNs, Bruh. We don't like that here" )
       if ( len( self.DsNames ) != self.Ds.shape[1] ): raise TypeError( "DsNames has not the same number of elements (columns) as Ds" )
       self.Ds -= tor.mean( Ds, axis = 0, keepdims = True ) # Columnwise centering
+      self.Ds, self.DsNames = HF.RemoveDuplicates( self.Ds, self.DsNames )[:2]
+    
     self.nS = self.Ds.shape[1] # number of columns ( zero if above if is true )
 
 
@@ -724,12 +770,13 @@ class Arborescence:
     - `SaveFrequency`: (int) frequency in seconds of saving the Arborescence content ( default: 0 for no saving)
     
     ### Output:
-    (returns the validate function)
+    (returns the validation/get_Results function)
     - `theta`: ( (nr,)-sized float nd-array ) containing the estimated regression coefficients
     - `L`: ( (nr,)-sized string nd-array ) containing the regressors indices
     - `ERR`: ( (nr,)-sized float nd-array ) containing the regression's ERR
     - `MorphDict`: The generated morphing dictionary containing morphing meta-data
-    - `Dc`: The updated regressor dictionary (only different if morphing activated)
+    - `Dc`: The updated regressor dictionary (duplicate-filtered and potentially morphed)
+    - `DcNames`: The updated regressor names (duplicate-filtered and potentially morphed)
     '''
 
     if ( self.y is None ): raise AssertionError( "y is None meaning that an uninitialized Arborescence is being loaded" )
@@ -759,7 +806,7 @@ class Arborescence:
       self.MinLen = [ len( L ), len( L ) ] # list so that the MinLen per level is stored, twice since once for root then for first level
       self.MaxDepth = min( ( self.MaxDepth, self.MinLen[-1] ) ) # update to implement ADTT
       self.nTermsNext = 0 # number of nodes in the next level, zero since unknown here
-      print( "Shortest encountered sequence (root):", self.MinLen[-1], '\n' )
+      print( "Shortest encountered sequence (root):", self.MinLen[-1] + self.nS, '\n' )
 
       for ImposedReg in L: self.Q.put( np.array( [ ImposedReg ], dtype = self.INT_TYPE ) ) # append all imposed regressors to the Queue as one element arrays
       self.nTermsCurrent = len( L ) # update current level number of nodes
@@ -818,7 +865,7 @@ class Arborescence:
       
       if ( len( LI ) < len( self.Q.peek() ) ): # reached last node in level?
         ProgressBar.close() # close previous one to avoid glitches before creating new one below ( if not next level )
-        print( "Shortest encountered sequence:", self.MinLen[-1], '\n' )
+        print( "Shortest encountered sequence:", self.MinLen[-1] + self.nS, '\n' )
 
         # Upon new level, keys of current lenght are no longer needed, since LI is longer and thus no requests of that length will ever be made again
         self.LG.DeleteAllOfSize( len( LI ) )
@@ -834,7 +881,7 @@ class Arborescence:
     
     ProgressBar.close() # Avoids glitches
     
-    print( "Finished Arborescence traversal. Shortest encountered sequence:", self.MinLen[-1], '\n' )
+    print( "Finished Arborescence traversal.\nShortest encountered sequence:", self.MinLen[-1] + self.nS, '\n' )
     
     if ( self.SaveFrequency > 0 ): self.MemoryDump( ProgressBar.n ) 
     return ( self.validate() ) # call validation member function itself calling the user vaildation function
@@ -849,7 +896,8 @@ class Arborescence:
     - `L`: ( (nr,)-sized string nd-array ) containing the regressors indices
     - `ERR`: ( (nr,)-sized float nd-array ) containing the regression's ERR
     - `MorphDict`: The generated morphing dictionary containing morphing meta-data
-    - `Dc`: The updated regressor dictionary containing the regressors columnwise
+    - `Dc`: The updated regressor dictionary (duplicate-filtered and potentially morphed)
+    - `DcNames`: The updated regressor names (duplicate-filtered and potentially morphed)
     
     '''
     print( "Starting Validation procedure." )
@@ -875,7 +923,7 @@ class Arborescence:
     
     print( f"Out of { self.TotalNodes } only { self.NotSkipped} regressions were computed, of which { self.AbortedRegs } were OOIT - aborted.\n" )
 
-    return ( self.theta.cpu().numpy(), self.L, self.ERR, self.MorphDict, self.Dc )
+    return ( self.get_Results() )
 
 
   # *************************************************************************** Helper function displaying the regression results ***********************************************************************
@@ -887,11 +935,12 @@ class Arborescence:
     - `L`: ( ( nr, )-sized int64 nd-arary ) containing the selected regressors indices
     - `ERR`: ( (nr,)-sized float nd-array ) containing the regression's ERR
     - `MorphDict`: (dict) The generated morphing dictionary containing morphing meta-data
-    - `Dc`: (torch.tensor) The updated regressor dictionary
+    - `Dc`: The updated regressor dictionary (duplicate-filtered and potentially morphed)
+    - `DcNames`: The updated regressor names (duplicate-filtered and potentially morphed)
     '''
 
     if ( self.theta is None ): raise AssertionError( "No regression results available, thus the fitting hasn't been finished. To get (intermediate) results, use Arbo.validate()" )
-    return ( self.theta.cpu().numpy(), self.L, self.ERR, self.MorphDict, self.Dc ) # same as the fit() function
+    return ( self.theta.cpu().numpy(), self.L, self.ERR, self.MorphDict, self.Dc, self.DcNames )
   
 
   # *************************************************************************** Helper function changing the Arbo depth if possible ***********************************************************************
