@@ -240,14 +240,15 @@ Metrics based on the absolute value and the median are used rather than their cl
 
 The metrics are given in percentage, as the error is normed by $\max(|\underline{y}|)$ to make it independent of $\underline{y}$'s amplitude.
 
-- **Mean Absolute Error (MAE):** $\Sigma_{k=1}^p |y[k] - \hat{y}[k]|$  
+- **Mean Absolute Error (MAE):** $\text{MAE} := \frac{\Sigma_{k=1}^p |y[k] - \hat{y}[k]|}{p \cdot \max(|\underline{y}|)} \cdot 100$  
 More representative than the MSE (mean squared error), since no squaring is performed, see above.  
 This is also what the `rFOrLSR.DefaultValidation` computes. The norming is however done with $\Sigma_{k=1}^p |y[k]|$ instead of $\max(|\underline{y}|)$.
 
-- **Maximal Deviation (MD):** $\max(|\underline{y} - \underline{\hat{y}}|)$.  
+- **Maximal Deviation (MD):** $\text{MD} := \frac{\max(|\underline{y} - \underline{\hat{y}}|)}{\max(|\underline{y}|)} \cdot 100$.  
 Largest error for the given input sequence $\underline{x}$.
 
-- **Median Absolute Deviation (MAD):** Similar to the classical standard deviation, only that the absolute value is used instead of squares and the median is subtracted from each sample instead of the mean.
+- **Median Absolute Deviation (MAD):**  $\text{MAD}:=\text{med}(\underline{e} - \text{med(\underline{e})} )\cdot 100$  with $\underline{e} := \frac{|y[k] - \hat{y}[k]|}{\max(|\underline{y}|)}$  and "med" the median.  
+Similar to the classical standard deviation, only that the absolute value is used instead of squares and the median is subtracted from each sample instead of the mean.
 
 - **No passed argument validation metric:** If no validation data is passed to the arborescence, 1 - sum(ERR) is used as validation error for each regression. this corresponds to the remaining unexplained variance left in $\underline{y}$ by the model.
 

@@ -982,8 +982,8 @@ class Arborescence:
     Error = ( self.y - yHat ) / yNorm # divide by max abs to norm with the max amplitude
     
     # Metrics
-    MedianAbsDeviation = tor.median( tor.abs( Error - tor.median( Error ) ) ).item() # Outlier stable ( median + abs instead of mean + ()² ) variance-type of metric
     AbsError = tor.abs( Error )
+    MedianAbsDeviation = 100 * tor.median( tor.abs( Error - tor.median( AbsError ) ) ).item() # Outlier stable ( median + abs instead of mean + ()² ) variance-type of metric
     MeanAbsErrorPercent = 100 * tor.mean( AbsError ).item()
     
     # String formatting
@@ -994,8 +994,8 @@ class Arborescence:
 
     # A) Ground thruth and fitting error plot
     Fig, Ax = plt.subplots( 2, sharex = True )
-    Ax[0].plot( ( self.y / yNorm ).cpu(), "#00aaffff", marker = '.', markersize = 5 ) # force slightly lighter blue than default blue for compatibility with dark mode
-    Ax[0].plot( ( yHat / yNorm ).cpu(), "tab:orange", marker = '.', markersize = 5 ) # force default orange
+    Ax[0].plot( self.y.cpu(), "#00aaffff", marker = '.', markersize = 5 ) # force slightly lighter blue than default blue for compatibility with dark mode
+    Ax[0].plot( yHat.cpu(), "tab:orange", marker = '.', markersize = 5 ) # force default orange
     Ax[0].legend( ["System Output y[k]", "Estilmation $\hat{y}$[k]"] )
     Ax[0].grid( which = 'both', alpha = 0.5 )
 
@@ -1012,9 +1012,9 @@ class Arborescence:
     # Arg Sort ERR and impose same order on L
     MAE = [] # list containing the MAE values from the models progressively build up
     Order = np.flip( np.argsort( self.ERR ) )
-    ERRtemp = self.ERR[Order]; Sortedtheta = self.theta[ list( Order ) ]; RegNames = RegNames[Order] # impose same order on all datastructures
+    ERRtemp = self.ERR[ Order ]; Sortedtheta = self.theta[ list( Order ) ]; RegNames = RegNames[Order] # impose same order on all datastructures
     if ( self.Dc is not None ):
-      Ltemp = self.L[Order]; # L is an empty array if no Dc is passed
+      Ltemp = self.L[ Order ]; # L is an empty array if no Dc is passed
       Imposed = tor.column_stack( ( self.Ds, self.Dc[:, Ltemp] ) ) # invalid indexation if Dc is empty or None
     else: Imposed = self.Ds
 
