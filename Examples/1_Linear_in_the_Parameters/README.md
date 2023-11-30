@@ -238,14 +238,14 @@ Validation done on 1 different Regressions. Best validation error: 1.24426637273
 **Model metrics:**
 Metrics based on the absolute value and the median are used rather than their classical counter-parts with squares and means (MSE and variance). This is a lot more representative, since there no squaring, which reduces numbers < 1 towards zero and enlarges numbers > 1. Thus, small errors are not ignored and outliers aren't amplified. Similarly, the median is much more robust to outliers and distribution-skewness than the mean.
 
-The metrics are given in percentage, as the error is normed by $\max(|\underline{y}|)$ to make it independent of $\underline{y}$'s amplitude.
+The metrics are given in percentage, as the error is normed by $\max(|\underline{y}|)$ to make it independent of $\underline{y}$'s amplitude, then multiplied by 100.
 
 - **Mean Absolute Error (MAE):** $\text{MAE} := \frac{\Sigma_{k=1}^p |y[k] - \hat{y}[k]|}{p \cdot \max(|\underline{y}|)} \cdot 100$  
 More representative than the MSE (mean squared error), since no squaring is performed, see above.  
-This is also what the `rFOrLSR.DefaultValidation` computes. The norming is however done with $\Sigma_{k=1}^p |y[k]|$ instead of $\max(|\underline{y}|)$.
+This is also what the `rFOrLSR.DefaultValidation` computes. There the norming is however done with $\Sigma_{k=1}^p |y[k]|$ instead of $\max(|\underline{y}|)$.
 
 - **Maximal Deviation (MD):** $\text{MD} := \frac{\max(|\underline{y} - \underline{\hat{y}}|)}{\max(|\underline{y}|)} \cdot 100$.  
-Largest error for the given input sequence $\underline{x}$.
+Largest relative error for the given input sequence $\underline{x}$.
 
 - **Median Absolute Deviation (MAD):**  $\text{MAD}:=\text{med}(\underline{e} - \text{med(\underline{e})} )\cdot 100$  with $\underline{e} := \frac{|y[k] - \hat{y}[k]|}{\max(|\underline{y}|)}$  and "med" the median.  
 Similar to the classical standard deviation, only that the absolute value is used instead of squares and the median is subtracted from each sample instead of the mean.

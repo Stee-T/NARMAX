@@ -985,11 +985,12 @@ class Arborescence:
     AbsError = tor.abs( Error )
     MedianAbsDeviation = 100 * tor.median( tor.abs( Error - tor.median( AbsError ) ) ).item() # Outlier stable ( median + abs instead of mean + ()² ) variance-type of metric
     MeanAbsErrorPercent = 100 * tor.mean( AbsError ).item()
-    
+    MaxAbsError = 100 * tor.max( AbsError )
+
     # String formatting
     MeanAbsErrorStr = '{:.3e}'.format( MeanAbsErrorPercent ) if ( MeanAbsErrorPercent < 0.001 ) else str( round( MeanAbsErrorPercent, 3 ) )
-    MaxDeviationStr = '{:.3e}'.format( 100 * tor.max( AbsError ) ) if ( 100 * tor.max( AbsError ) < 0.001 ) else str( tor.round( 100 * tor.max( AbsError ), decimals = 3 ).item() ) # max is stored in array so cheap
-    MedianAbsDerivationStr = '{:.4e}'.format( 100 * MedianAbsDeviation ) if ( 100 * MedianAbsDeviation < 0.001 ) else str( round( 100 * MedianAbsDeviation, 3 ) )
+    MaxDeviationStr = '{:.3e}'.format( MaxAbsError ) if ( MaxAbsError < 0.001 ) else str( tor.round( MaxAbsError, decimals = 3 ).item() ) # max is stored in array so cheap
+    MedianAbsDerivationStr = '{:.4e}'.format( MedianAbsDeviation ) if ( MedianAbsDeviation < 0.001 ) else str( round( MedianAbsDeviation, 3 ) )
     
 
     # A) Ground thruth and fitting error plot
