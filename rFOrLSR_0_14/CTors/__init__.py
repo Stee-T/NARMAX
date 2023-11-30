@@ -50,7 +50,7 @@ def Lagger( Data, Lags, RegNames = None):
     if ( len( Data ) != len( RegNames ) ):     raise AssertionError( "The numbers of regressors and RegNames don't correspond" )
 
   for i in range( len( Data ) ):
-    if ( not tor.isfinite( Data[i] ).all() ):   raise AssertionError( f"Regressor{ RegNames[i] } contains inf or nans. The to-be-fitted system is unstable in general or for this particular sequence. Try a new one" )
+    if ( not tor.isfinite( Data[i] ).all() ):   raise AssertionError( f"Data[{ i }] contains inf or nans. The to-be-fitted system is unstable in general or for this particular sequence. Try a new one" )
   
   for i in range( 1, len( Data ) ): 
     if ( len( Data[0] ) != len( Data[i] ) ):        raise AssertionError( "All regressors must have the same lenght" )
