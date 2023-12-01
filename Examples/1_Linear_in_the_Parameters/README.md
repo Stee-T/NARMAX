@@ -183,9 +183,15 @@ Once the arborescence has been traversed, the results can be printed out and dis
 **PlotAndPrint:** Generates two plots and (optionally) prints the regression results in the console.
 The code also demonstrates how to force a zoom-in by setting the returned axes limits.
 
-**get_Results / fit:** Both functions return the regression results in a tuple containing the regression parameters $\underline{ \hat{ \theta } }$, the index-set $L$ (which doesn't contain the imposed regressors) and the ERR vector. In addtion, if the arborescence was run with morphing instructions (not the case in this tutorial), a Morphing-meta Data dictionary is returned as 4th return. Finally, the updated $D_C$ and DcNames are returned as 5th and 6th return. Updating $D_C$ consists in filtering out redundant regressors (necessary for a well functioning rFOrLSR) and potentially expandin the dictionary with new morphed regressors.
+**get_Results / fit:** Both functions return the regression results in a tuple containing the regression parameters $\underline{ \hat{ \theta } }$, the index-set $L$ (which doesn't contain the imposed regressors) and the ERR vector. In addtion, if the arborescence was run with morphing instructions (not the case in this tutorial), a Morphing-meta Data dictionary is returned as 4th return. Finally, the updated $D_C$ and DcNames are returned as 5th and 6th return. Updating $D_C$ (and the corresponding RegNames) consists in:  
+a) Filtering out redundant regressors (necessary for a well functioning rFOrLSR)  
+b) Centerting the regressors (necessary for a well functioning rFOrLSR)  
+c) Potentially expanding the dictionary with new morphed regressors.
 
-**Note (callable model):** The Arborescence doesn't return an object containing a callable model, since a) the user can pass any regressor in the form of a vector (including acausal ones for dynamic systems) and b) the morphing procedure has the potential to generate arbitrary terms.
+**Note (callable model):** The Arborescence doesn't return an object containing a callable model, since  
+a) the user can pass any regressor in the form of a vector (including acausal ones for dynamic systems)  
+b) the morphing procedure has the potential to generate arbitrary terms.  
+However for IIR filters, there are conversion functions in the rFOrLSR package returning the fitted filter coefficients $\underline{b}$ and $\underline{a}$.
 
 ```python 
 Figs, Axs = Arbo.PlotAndPrint() # returns both figures and axes for further processing, as as the zoom-in below
@@ -283,13 +289,13 @@ This graph's title contains the same statistics as described above in the consol
 **x-axis linking:** Both x-axes are linked, such that scrolling are mirrored in both graphs.
 
 ## Figure 2
-**Warning / Disclaimer:** This graph is legacy from the original rFOrLSR algorithm family, where the regressor order had a meaning, as they were selected in order of how much system output $\underline{y}$ variance they explained. Now, since the arborescence is spanned by imposing regressors in a pre-determined order, the regressor order becomes meaningless. This is problematic, since the ERR is order dependent. Thus, the regressors at the end of the list (depending on the arborescence depth) might not be the one with the least importance (contribution to the system output variance). The ERR graph is thus not to be used for model truncation.  
+**Warning / Disclaimer:** This graph is legacy from the original rFOrLSR algorithm family, where the regressor order had a meaning, as they were selected in order of how much system output $\underline{y}$ variance they explained. Now, since the arborescence is spanned by imposing regressors in a pre-determined order, the regressor order becomes meaningless. This is problematic, since the ERR is order dependent. Thus, the regressors at the end of the list (depending on the arborescence depth) might not be the one with the least importance (contribution to the system output variance). The ERR graph is thus not to be used for model truncation at the moment.  
 
 The bottom graph shouldn't be used for model truncation either, as the model coefficients $\hat{\underline{\theta}}$ must be re-estimated each time a regressor is eliminated. This is correctly done here, but as aforementioned, this analyses only this precise regressor ordering.  
 Correctly pruning a NARMAX model is non-trivial and will be covered in a further tutorial.  
-Further research is needed to make those graphs contain more relevant information.
+Further research is needed to make those graphs contain more relevant information, but I have a few ideas and it's on the TODO list :)
 
-So now that I've crushed your regressor importance estimation dreams, enjoy the nice-looking graphs :)
+You can still enjoy the nice-looking graphs though :)
 
 ![Figure2](https://github.com/Stee-T/rFOrLSR/blob/main/Examples/1_Linear_in_the_Parameters/Figure_2.png)
 
