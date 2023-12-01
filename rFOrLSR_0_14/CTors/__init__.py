@@ -68,9 +68,8 @@ def Lagger( Data, Lags, RegNames = None):
   
   # ------------------------------------------------------------------------------------------- B) Initialization --------------------------------------------------------------------------------------
   if ( RegNames is None ):
-    if   ( len( Data ) == 2 ): RegNames = [ "x", "y" ]
-    elif ( len( Data ) == 3 ): RegNames = [ "x", "y", "e" ]
-    else: raise AssertionError( "No regressor names were passed and len( Data ) > 3. Thus x, y[, e] can't be assumed and RegNames must be passed" )
+    if ( len( Data ) <= 3 ): RegNames = [ "x", "y", "e" ][ : len( Data ) ]
+    else:                    raise AssertionError( "No regressor names were passed and len( Data ) > 3. Thus x, y, e can't be assumed and RegNames must be passed" )
 
   q = 0 # Maximum lag to trim all regressors to
   for lag in Lags:
