@@ -775,7 +775,7 @@ class Arborescence:
     - `L`: ( (nr,)-sized string nd-array ) containing the regressors indices
     - `ERR`: ( (nr,)-sized float nd-array ) containing the regression's ERR
     - `MorphDict`: The generated morphing dictionary containing morphing meta-data
-    - `Dc`: The updated regressor dictionary (duplicate-filtered and potentially morphed)
+    - `Dc`: The updated regressor dictionary (duplicate-filtered and potentially morphed, mean-free)
     - `DcNames`: The updated regressor names (duplicate-filtered and potentially morphed)
     '''
 
@@ -896,7 +896,7 @@ class Arborescence:
     - `L`: ( (nr,)-sized string nd-array ) containing the regressors indices
     - `ERR`: ( (nr,)-sized float nd-array ) containing the regression's ERR
     - `MorphDict`: The generated morphing dictionary containing morphing meta-data
-    - `Dc`: The updated regressor dictionary (duplicate-filtered and potentially morphed)
+    - `Dc`: The updated regressor dictionary (duplicate-filtered and potentially morphed, mean-free)
     - `DcNames`: The updated regressor names (duplicate-filtered and potentially morphed)
     
     '''
@@ -935,7 +935,7 @@ class Arborescence:
     - `L`: ( ( nr, )-sized int64 nd-arary ) containing the selected regressors indices
     - `ERR`: ( (nr,)-sized float nd-array ) containing the regression's ERR
     - `MorphDict`: (dict) The generated morphing dictionary containing morphing meta-data
-    - `Dc`: The updated regressor dictionary (duplicate-filtered and potentially morphed)
+    - `Dc`: The updated regressor dictionary (duplicate-filtered and potentially morphed, mean-free)
     - `DcNames`: The updated regressor names (duplicate-filtered and potentially morphed)
     '''
 
