@@ -124,7 +124,7 @@ Since many models are created by the arborescence, a validation procedure chosin
 **DefaultValidation:** The the provided `rFOrLSR.DefaultValidation` is designed to imitate step 3. Thus, all 3 CTors are called with their arguments contained in the `ValidationDict` dictionary. Signal-CTors are bypassed by setting their arguments to the respective identities, being (0,0) for the *Lagger*, 0 for the ExpansionOrder and the [ rFOrLSR.Identity ] for the NonLinearizer with additionally None for the *MakeRational* argument (which is explained in the next tutorial).  
 The code generates 5 validation sequences to test the solutions on 5 different input sequences.
 
-**Custom Validation Function and Data:** This will be demonstrated in a further tutorial. The arborescence expects a function pointer and a dictionary, so under mild formal conditions (fixed number of arguments, etc.), the user can use arbitrary validation procedures.
+**Custom Validation Function and Data:** This will be demonstrated in a further tutorial. The arborescence expects a function pointer and a dictionary, so under mild formal conditions (fixed number of arguments, etc.), arbitrary validation procedures can be used.
 
 ```python 
 ValidationDict = { # contains essentially everything passed to the CTors to reconstruct the signal
