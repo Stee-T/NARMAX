@@ -130,7 +130,7 @@ def Expander( Data, RegNames, ExpansionOrder, IteractionOnly = False ):
 
   ### Outputs:
   - `RegMat`: ((p, nRegs) pytorch Tensor) containing the expanded regressors
-  - `OutNames`: ((nRegs,) Iterable) containing the expanded column names
+  - `OutNames`: ((nRegs,)-sized np.array) containing the expanded column names
   
   '''
   
@@ -187,7 +187,7 @@ def Expander( Data, RegNames, ExpansionOrder, IteractionOnly = False ):
     
     OutNames[counter] = Str[:-1] # Cut last space
   
-  return ( RegMat, OutNames )
+  return ( RegMat, np.array( OutNames ) )
 
 
 # ************************************************************************************************ Regressor Matrix Transform ********************************************************************************
