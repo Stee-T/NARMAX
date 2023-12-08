@@ -167,4 +167,8 @@ Fig.tight_layout()
 plt.show()
 ```
 
-TODO: add Links to previous and next tutorials at the bottom of each tutorial
+
+<br/>
+
+[Previous Tutorial: 3. Imposing Regressors & IIR fitting](https://github.com/Stee-T/rFOrLSR/tree/main/Examples/3_Only_Ds)  
+[Next Tutorial: 5. Multiple Input Systems](https://github.com/Stee-T/rFOrLSR/tree/main/Examples/5_MISO)

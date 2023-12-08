@@ -304,3 +304,7 @@ Contains the ERR of the regressors in the order imposed by the arborescence orde
 
 **Bottom Graph:** 
 Contains the MAE reduction of the regressors in the order imposed by the arborescence (see warning above) with the regression coefficients re-estimated for each additional regressor.
+
+<br/>
+
+[Next Tutorial: 2. Rational Fitting](https://github.com/Stee-T/rFOrLSR/tree/main/Examples/2_Rational_Fitting)
