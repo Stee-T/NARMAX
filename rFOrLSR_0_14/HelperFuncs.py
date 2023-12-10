@@ -14,10 +14,15 @@ The danger is unleashed only if you substantially disturb this place physically.
 import torch as tor # general operations
 import numpy as np # needed for the duplicate elimination
 
-# ##################################################################################### Helper Functions ################################################################################
 
+
+# ***************************************************************************** Set Tensortype And Device  ******************************************************************************
 def Set_Tensortype_And_Device():
-  '''Set the default dtype and device for torch tensors. Returns the device string for further use.'''
+  '''Set the default dtype and device for torch tensors. Returns the device string for further use.
+  
+  ### Outputs
+  - Device: String, either "cpu", "mps or "cuda"
+  '''
   if ( tor.cuda.is_available() ):           Device = "cuda" # force new tensors to be on GPU
   elif ( tor.backends.mps.is_available() ): Device = "mps" # M1/M2 Macs
   else:
@@ -29,6 +34,30 @@ def Set_Tensortype_And_Device():
 
   return ( Device )
   
+
+# *********************************************************************************** FindMinInt ****************************************************************************************
+def CutY( y, Lags ):
+  '''Function to trim the y vector data to the maximum lag in Lags. The front is cut as would do the Lagger CTor
+  
+  ### Inputs
+  - y: (1D torch tensor) containing the system output
+  - Lags: (int or iterable of ints) containing the maximum lags of each system input
+  
+  ### Outputs
+  - y: (1D torch tensor) cut to Maxlags
+  '''
+  
+  if ( isinstance( Lags, int ) ): Lags = ( Lags, )
+  if ( y.ndim != 1 ): raise ValueError( "y must be 1D" )
+  
+  q = 0 # Maximum lag to trim all regressors to
+  for lag in Lags:
+    if ( isinstance( lag, int ) ): q = max( q, lag )
+    else:                          q = max( q, max( lag ) ) # iterable can contain whatever
+
+  return ( y[ q : ] )
+
+
 
 # *********************************************************************************** FindMinInt ****************************************************************************************
 def FindMinInt( nCols ):
