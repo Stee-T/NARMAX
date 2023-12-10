@@ -219,3 +219,43 @@ def RationalNARMAX( x, W = None, Print = True ):
   if ( W is not None ): W = W[ MaxLag : ]
   
   return ( x[ MaxLag : ], y[ MaxLag : ], W )
+
+
+def ThreeInputMISO( x1, x2, x3, W = None, Print = False ):
+  '''y[k] = 0.2x1[k] + 0.3x2[k]^3 + 0.7|x3[k]| + 0.5x2[k-3]*x1[k-2] - 0.3y[k-1] * x2[k-2]^2 - 0.4|x3[k-1] * y[k-2]^2| - 0.4x1[k-1] * x2[k-1]^2
+  
+  ### Inputs:
+  - `x1`: ((p,)-shaped torch.Tensor) containing the first input sequence
+  - `x2`: ((p,)-shaped torch.Tensor) containing the second input sequence
+  - `x3`: ((p,)-shaped torch.Tensor) containing the third input sequence
+  - `W`: ((p,)-shaped torch.Tensor) containing the additive noise
+  - `Print`: (bool) containing whether to print the System equation
+
+  ### Outputs:
+  - `x1`: ((p-MaxLags,)-shaped torch.Tensor) containing the centered and cut first input sequence
+  - `x2`: ((p-MaxLags,)-shaped torch.Tensor) containing the centered and cut second input sequence
+  - `x3`: ((p-MaxLags,)-shaped torch.Tensor) containing the centered and cut third input sequence
+  - `y`: ((p-MaxLags,)-shaped torch.Tensor) containing the System response
+  - `W`: ((p-MaxLags,)-shaped torch.Tensor) containing the cut additive noise sequence
+  '''
+
+  InputCheck( x1, W, Print )
+  InputCheck( x2, W, Print )
+  InputCheck( x3, W, Print )
+
+  if ( ( x1.shape != x2.shape ) or ( x2.shape != x3.shape ) or ( x1.shape != x3.shape ) ): raise ValueError( 'x1, x2, x3 must have the same shape' )
+
+  MaxLag = 3
+  x1 -= tor.mean( x1 ) # necessary
+  x2 -= tor.mean( x2 ) # necessary
+  x3 -= tor.mean( x3 ) # necessary
+  y = tor.zeros( len( x1 ) ) # system output, 0 to emulate the initialization state
+
+  for k in range( MaxLag, len( x1 ) ): # maximum lag is 3
+    y[k] = 0.2*x1[k] + 0.3*x2[k]**3 + 0.7*tor.abs( x3[k] ) + 0.5*x2[k-3]*x1[k-2] - 0.3*y[k-1]*x2[k-2]**2 - 0.8*tor.abs( x3[k-1]*y[k-2] ) - 0.7*x1[k-1]*x2[k-1]**2 # AOrLSR benchmark version
+    if ( W is not None ): y[k] += W[k] # Additive Noise
+
+  if ( Print ): print( "System: y[k] = 0.2 x1[k] + 0.3 x2[k]^3 + 0.7|x3[k]| + 0.5 x2[k-3] x1[k-2] - 0.3 y[k-1] * x2[k-2]^2 - 0.8 | x3[k-1] * y[k-2] | - 0.7 x1[k-1] * x2[k-1]^2" )
+  
+  if ( W is not None ): W = W[ MaxLag : ]
+  return ( x1[ MaxLag : ], x2[ MaxLag : ], x3[ MaxLag : ], y[ MaxLag : ], W )
