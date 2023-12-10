@@ -25,10 +25,10 @@ def Combinations( N, k ):
 # ####################################################################################### CTors #############################################################################################
 
 
-# ************************************************************************************ Regression matrix CTor ********************************************************************************
+# ************************************************************************************ Lagger CTor ********************************************************************************
 def Lagger( Data, Lags, RegNames = None):
   '''Function returning a matrix containing all passed regressors to the respectively given lag.
-  Attention: If no RegNames are passed, the regressors are assumed to be x, y[, e]. Also y[k] (if present) will not be in RegMat but separate.
+  Attention: If no RegNames are passed, the regressors are assumed to be x, y, e. Also y[k] (if present) will not be in RegMat but separate.
   
   Note: x should be centered before sending it through the system, other regressors shouldn't be centered before being passed to this function.
 
