@@ -130,8 +130,9 @@ The code generates 5 validation sequences to test the solutions on 5 different i
 ValidationDict = { # contains essentially everything passed to the CTors to reconstruct the signal
   "y": [],
   "Data": [],
+  "InputVarNames": [ "x", "y" ], # variables in Data, Lags, etc
   "DsData": None, # No impopsed terms in this example
-  "Lags": (qx,qy),
+  "Lags": (qx, qy),
   "ExpansionOrder": ExpansionOrder,
   "NonLinearities": NonLinearities,
   "MakeRational": None, 
@@ -144,9 +145,13 @@ for i in range( 5 ): # Fill the validation dict's data entry with randomly gener
     x_val, y_val, W = Sys( x_val, W, Print = False ) # _val to avoid overwriting the training y
     if ( not tor.isnan( tor.sum( y_val ) ) ): break # Remain in the loop until no NaN
   
-  ValidationDict["y"].append( y_val )
+  ValidationDict["y"].append( rFOrLSR.CutY( y_val, ValidationDict["Lags"] ) ) # Cuts the y to the right size (avois a warning)
   ValidationDict["Data"].append( ( x_val, y_val ) )
 ```
+
+**Note (FOrLSR.CutY):** The `y` term must be cut to the right size such that it has the same size as teh regressors coming out of the Lagger CTor. This is abstracted away from the user for convenience by the `rFOrLSR.CutY` function. It only performs a recursive maximum search (the elements of `Lags` can be containers if only particular lags are of interest) then cuts `y` via `y = y[ Lags[0] : ]`.  
+The default validation function performs this cut on its own but emits a warnign if not done by the user.
+
 <br/>
 
 ## 5. Running the Arborescence

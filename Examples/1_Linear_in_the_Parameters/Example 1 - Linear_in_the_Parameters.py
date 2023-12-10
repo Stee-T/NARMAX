@@ -47,6 +47,7 @@ RegMat, RegNames, _ = rFOrLSR.CTors.NonLinearizer( y, RegMat, RegNames, NonLinea
 ValidationDict = { # contains essentially everything passed to the CTors to reconstruct the signal
   "y": [],
   "Data": [],
+  "InputVarNames": [ "x", "y" ], # variables in Data, Lags, etc
   "DsData": None, # No impopsed terms in this example
   "Lags": (qx,qy),
   "ExpansionOrder": ExpansionOrder,
@@ -61,7 +62,7 @@ for i in range( 5 ): # Fill the validation dict's data entry with randomly gener
     x_val, y_val, W = Sys( x_val, W, Print = False ) # _val to avoid overwriting the training y
     if ( not tor.isnan( tor.sum( y_val ) ) ): break # Remain in the loop until no NaN
   
-  ValidationDict["y"].append( y_val )
+  ValidationDict["y"].append( rFOrLSR.CutY( y_val, ValidationDict["Lags"] ) ) # Cuts the y to the right size (avois a warning)
   ValidationDict["Data"].append( ( x_val, y_val ) )
 
 

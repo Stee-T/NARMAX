@@ -15,8 +15,11 @@ import dill # memory dumps
 import tqdm # progress bars
 import timeit # time measurements for Back-ups
 
+# Taking stuff in to the namespace
 device = HF.Set_Tensortype_And_Device() # force 64 bits, on GPU if available
 Identity = NonLinearity( "id", lambda x: x ) # pre-define object for user
+CutY = HF.CutY
+
 
 
 # ############################################################################ Variable Selection Procedure #############################################################################
@@ -169,6 +172,7 @@ def DefaultValidation( theta, L, ERR, ValData, MorphDict, DcFilterIdx = None ):
   - `ValData`: ( dict ) containing the validation data to be passed to Dc's Ctors:
     → `ValData["y"]`: ( list of float torch.Tensors ) containing the system responses
     → `ValData["Data"]`: ( list of iterables of float torch.Tensors ) containing the data to be passed to the standard CTors ( Lagger, Expander, NonLinearizer )
+    → `ValData["InputVarNames"]`: ( list of str ) containing the variable names as passed to Lagger, Expander, Nonlinearizer, so not all regressor names
     → `ValData["DsData"]`: ( list of float Torch.Tensors or None ) containing all imposed regressors column wise
     → `ValData["Lags"]`: ( 2D tuple of float ) containing the respective maximum delays for the passed Data
     → `ValData["ExpansionOrder"]`: ( int ) containing the monomial expansion's maximal summed power
@@ -190,7 +194,7 @@ def DefaultValidation( theta, L, ERR, ValData, MorphDict, DcFilterIdx = None ):
   # --------------------------------------------------------------------  Bullshit prevention -----------------------------------------------------------------------
   if ( not isinstance( ValData, dict ) ): raise AssertionError( "The passed ValData datastructure is not a dictionary as expected" )
   
-  for var in ["y", "Data", "DsData", "Lags", "ExpansionOrder", "NonLinearities", "MakeRational"]:
+  for var in ["y", "InputVarNames", "Data", "DsData", "Lags", "ExpansionOrder", "NonLinearities", "MakeRational"]:
     if ( var not in ValData.keys() ): raise AssertionError( f"The validation datastructure contains no '{ var }' entry" )
   
   # Dirty conversion but simplifies the code a lot
@@ -243,13 +247,14 @@ def DefaultValidation( theta, L, ERR, ValData, MorphDict, DcFilterIdx = None ):
 
     # ----------------------------------------------------------------------------------- Handle Dc -----------------------------------------------------------------------------------
     if ( ValData["Data"] is not None ):
+      # The user doesn't pass the RegNames for simplicity, thus we generate the needed amount fo names to avoid an error and y will then be None (also possible in the general case)
+      _, RegMat, RegNames = CTors.Lagger( Data = ValData["Data"][val], Lags = ValData["Lags"], RegNames = ValData["InputVarNames"] ) # Create the delayed signal regressors
 
-      y, RegMat, RegNames = CTors.Lagger( Data = ValData["Data"][val], Lags = ValData["Lags"] ) # Create the delayed signal regressors
-
-      if ( not tor.allclose( y, ValData["y"][val] ) ): raise AssertionError( "ValData['y'] and the y resulting from CTors.Lagger are not the same" )
+      if ( ValData["y"][val].shape[0] != RegMat.shape[0] ): # just print a warning and cut y to correct length
+        print( "\n\nWarning:\nValData['y'] and the resulting Dc are not of the same length (axis=0). This can lead to erroneous error estimations and suboptimal model selection.\n\n" )
 
       RegMat, RegNames = CTors.Expander( RegMat, RegNames, ValData["ExpansionOrder"] ) # Monomial expand the regressors
-      RegMat, _, _ = CTors.NonLinearizer( y, RegMat, RegNames, ValData["NonLinearities"], ValData["MakeRational"] ) # add the listed regressors to the Regression matrix
+      RegMat = CTors.NonLinearizer( ValData["y"][val][-RegMat.shape[0] : ], RegMat, RegNames, ValData["NonLinearities"], ValData["MakeRational"] )[0] # add the listed regressors to the Regression matrix
 
       if ( DcFilterIdx is not None ): RegMat = RegMat[:, DcFilterIdx] # Filter out same regressors as for the regression
 
@@ -275,17 +280,13 @@ def DefaultValidation( theta, L, ERR, ValData, MorphDict, DcFilterIdx = None ):
 
         else: yHat += theta[ nS + reg ] * RegMat[ :, L[reg] ] # normal, non-morphed regressor
 
-    # handle y elegantly
-    if ( ValData["y"][val].shape[0] != yHat.shape[0] ):
-      if ( not tor.allclose( y, ValData["y"][val][ : -yHat.shape[0] ] ) ): # cut the front part of y which corresponds to the maximum delay
-        raise AssertionError( f"ValData['y'][{ val }] was cut to fit the resulting estimate h_Hat's length, however the values differ. Please check that y variable" )
-      y = ValData["y"][val][ : -yHat.shape[0] ]; y -= tor.mean( y )
-    
-    else: y = ValData["y"][val] - tor.mean( ValData["y"][val] ) # User passed the correct size
+
+    if ( ValData["y"][val].shape[0] != yHat.shape[0] ): y = ValData["y"][val][ -yHat.shape[0] : ]; y -= tor.mean( y ) # cut and center
+    else:                                               y = ValData["y"][val] - tor.mean( ValData["y"][val] ) # User passed the correct size, just center
 
     Error += tor.mean( tor.abs( y - yHat ) / tor.mean( tor.abs( y ) ) ) # relative MAE
     
-  return ( Error / nValidations ) # norm by the number of validation ( not necessary for AOrLSR but printed for the user )
+  return ( Error.item() / nValidations ) # norm by the number of validation ( not necessary for AOrLSR but printed for the user )
 
 
 # ####################################################################################################### AOrLSR Class ############################################################################################
