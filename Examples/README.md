@@ -24,7 +24,10 @@ Demonstrates how to generate embedded expansions (advanced linearization and ord
 **Fitted system**: $y = \text{sgn}(x)(1-\frac{1}{1+|x|A})$ with $A≔\Sigma_{j\in J}\theta _j |x|^j$ and $J\subseteq \mathbb{N}$.
 
 
-# Example 5: Multiple Input Systems
-Demonstrates how to fit MISO (Multiple Input Single Output) systems
+# Example 5: Multiple Input Multiple Output System
+Demonstrates how to fit MIMO (Multiple Input Multiple Output) systems.
 
-**Fitted system**: # TODO
+**Fitted system**: $\left\{\begin{array}{ll}
+y_1\[k\] = 0.2 x_1\[k\]   + 0.3 x_2\[k\]^3 + 0.7 |x_3\[k\]| + 0.5 x_2\[k-3\] x_1\[k-2\] \\ - 0.3 y_2\[k-1\] x_2^2\[k-2\] - 0.8 |x_3\[k-1\] y_1\[k-2\]| - 0.7 x_1\[k-1\] x_2^2\[k-1\]\\ \\
+y_2\[k\] = 0.3 x_1\[k-1\] + 0.5 x_3^3\[k\] + 0.7 |y_1\[k-1\]| + 0.6 y_1\[k-3\] x_1\[k-2\] \\ - 0.4 y_1\[k-1\] x_3^2\[k-2\] - 0.9 |x_3\[k-1\] y_2\[k-2\]| - 0.7 x_3\[k-1\] x_2^2\[k-1\] \\
+\end{array}\right.$

@@ -212,7 +212,7 @@ def NonLinearizer( y, Data, RegNames, Functions, MakeRational = None ):
   if ( not isinstance( Data, tor.Tensor ) ):        raise AssertionError( "The Input data must be a torch.Tensor" )
   if ( not isinstance( Functions, list ) ):         raise AssertionError( "The 'Functions'argument name must be a list of function pointers" )
   
-  if ( Functions[0].get_Name() != "id" ):             raise AssertionError( "The first function in the Functions list must be 'id' per convention" )
+  if ( Functions[0].get_Name() != "id" ):           raise AssertionError( "The first function in the Functions list must be 'id' per convention" )
 
   # Length tests
   if ( MakeRational is not None ): # check first since None has no length
@@ -221,10 +221,15 @@ def NonLinearizer( y, Data, RegNames, Functions, MakeRational = None ):
   if ( ( len( Functions ) == 1 ) and MakeRational is None): # only contains id
     print( "WARNING: No transformations (Functions) or MakeRational instructions were passed, which is sus as this CTor will not do anything" )
 
-  y = y.view( -1 ) # flatten as security
-  if ( len( y ) != Data.shape[0] ):                 raise AssertionError( "y's length does not match the Regressors' length" )
+  if ( MakeRational == [] ): MakeRational = None # Must be here since MR = None is checked below
+
+  if ( y is not None ):
+    y = y.view( -1 ) # flatten as security
+    if ( len( y ) != Data.shape[0] ):               raise AssertionError( "y's length does not match the Regressors' length" )
   
-  if ( MakeRational == [] ): MakeRational = None
+  else: # y is None
+    if ( MakeRational is not None ):                raise AssertionError( "y must be passed if MakeRational is not None" )
+  
   # ---------------------------------------------------------------------------------------- A) Pre-Processing & B) Transformations ----------------------------------------------------------------------------
 
   # A) Set to list to easily append then concatenate data
@@ -241,7 +246,7 @@ def NonLinearizer( y, Data, RegNames, Functions, MakeRational = None ):
   
   # ---------------------------------------------------------------------------------------------- B) Rational Functions -------------------------------------------------------------------------------------
 
-  if ( MakeRational is not None ):
+  if ( MakeRational is not None ): # y is guaranteed to not be None at this stage
     for func in range( len( Functions ) ):
       if ( MakeRational[func] ): # if the function is to be made rational (contains bool)
         DataList.append( - y.view( -1, 1 ) * DataList[func] ) # 1/ done via multiplication with -y
