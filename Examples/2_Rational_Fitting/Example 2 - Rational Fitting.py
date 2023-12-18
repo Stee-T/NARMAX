@@ -34,7 +34,7 @@ NonLinearities.append( rFOrLSR.NonLinearity( "abs", f = tor.abs ) )
 MakeRational.append( True )
 
 # ---------------------------------------------------- 3. Training Data
-y, RegMat, RegNames = rFOrLSR.CTors.Lagger( Data = ( x, y ), Lags = ( qx, qy ) ) # Create the delayed signal terms
+y, RegMat, RegNames = rFOrLSR.CTors.Lagger( Data = ( x, y ), Lags = ( qx, qy ) ) # Create the delayed regressors
 RegMat, RegNames = rFOrLSR.CTors.Expander( RegMat, RegNames, ExpansionOrder ) # Monomial expand the regressors
 RegMat, RegNames, _ = rFOrLSR.CTors.NonLinearizer( y, RegMat, RegNames, NonLinearities, MakeRational = MakeRational ) # add the listed terms to the Regression matrix
 

@@ -38,13 +38,13 @@ NonLinearities.append( rFOrLSR.NonLinearity( "cos", f = tor.cos ) )
 NonLinearities.append( rFOrLSR.NonLinearity( "exp", f = tor.exp ) )
 
 # ---------------------------------------------------- 3. Training Data
-y, RegMat, RegNames = rFOrLSR.CTors.Lagger( Data = ( x, y ), Lags = ( qx, qy ) ) # Create the delayed signal terms
+y, RegMat, RegNames = rFOrLSR.CTors.Lagger( Data = ( x, y ), Lags = ( qx, qy ) ) # Create the delayed regressors
 RegMat, RegNames = rFOrLSR.CTors.Expander( RegMat, RegNames, ExpansionOrder ) # Monomial expand the regressors
 RegMat, RegNames, _ = rFOrLSR.CTors.NonLinearizer( y, RegMat, RegNames, NonLinearities ) # add the listed terms to the Regression matrix
 
 
 # ---------------------------------------------------- 4. Validation Data
-ValidationDict = { # contains essentially everything passed to the CTors to reconstruct the signal
+ValidationDict = { # contains essentially everything passed to the CTors to reconstruct the regressors
   "y": [],
   "Data": [],
   "InputVarNames": [ "x", "y" ], # variables in Data, Lags, etc

@@ -35,7 +35,7 @@ This code snippets demonstrates how to construct denominator regressors with onl
 
 The handling of non-linearities was explained in the [first example / tutorial](https://github.com/Stee-T/rFOrLSR/tree/main/Examples/1_Linear_in_the_Parameters "Basics and Linear-in-the-parameter system fitting Example"). The only addition is the Boolean iterable `MakeRational` containing a True / False for each non-linearity determining if it is to be made into a denominator regressor. This illustrates one of the reasons why the `NonLinearities` list needs to start with an Identity (object), as unprocessed regressors must have the option to be put in the denominator.
 
-Trivially, the `MakeRational` argument needs to be passed to the *NonLinearizer* signal-CTor and to the validation function to be applied during test and validation signal construction. 
+Trivially, the `MakeRational` argument needs to be passed to the *NonLinearizer* regressor-CTor and to the validation function to be applied during test and validation regressor construction. 
 
 ```python
 NonLinearities = [ rFOrLSR.Identity ] # List of NonLinearity objects, must start with identity
