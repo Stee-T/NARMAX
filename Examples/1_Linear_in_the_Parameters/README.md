@@ -37,7 +37,7 @@ Dictates the regressor (vector) length and influences linearily the fitting time
 **Signal amplitude:** TL;DR: More Input-signal $x$ amplitude/variance = better regressor recognition.  
 The rFOrLSR describes system behavior with the regressors passed via $D_C$, so the more "input space" is covered by the excitation signal $\underline{x}$, the better the rFOrLSR sees if a function is matching.
 The input amplitude has no influence on fitting time. In general, it should be chosen as large as possible (before the system saturates or becomes unstable) and should at least cover the range in which the system will be used.  
-To illustrate, for $\underline{x}\in[-0.4;0.4]^p$, $\cos(x)$ and $-0.5x^2+1$ are almost the same, while for $\underline{x}\in[-2.5;2.5]^p$ those functions look very different.
+To illustrate, for $\underline{x}\in\[-0.4;0.4\]^p$, $\cos(x)$ and $-0.5x^2+1$ are almost the same, while for $\underline{x}\in\[-2.5;2.5\]^p$ those functions look very different.
 
 **Tolerances $\rho_1, \rho_2$:** TL;DR: tolerance going towards zero = more precision, larger models, longer fitting times.  
 The arborescence takes two tolerances as input: $\rho_1$, being the root regression tolerance and $\rho_2$, being the tolerance for every other regression / arborescence node.  
@@ -50,7 +50,7 @@ To illustrate, in this example $q_x=4$ means that from the passed signal $\under
 
 **ExpansionOrder:** Monomial expansion order for the *Expander* regressor-CTor determining the upper bound of the sum of exponents of each generated term.  
 To illustrate, be a set of two regressors with 3rd order expansion: $\[\ \underline{x}_1,\ \underline{x}_2\ \]→\[\ \underline{x}_1,\ \underline{x}_2,\ \underline{x}_1^2,\ \underline{x}_2^2,\ \underline{x}_1\cdot\underline{x}_2,\ \underline{x}_1^3,\ \underline{x}_2^3,\ \underline{x}_1^2\cdot\underline{x}_2,\ \underline{x}_1\cdot\underline{x}_2^2\ \]$
-$\underline{x}_1$ is a correct expansion term, since $\underline{x}_1=\underline{x}_1^1\cdot \underline{x}_2^0$ and $1 + 0 \leq 3$. In general any monomial of exponent $n \leq$ ExpansionOrder is valid: $\underline{x}_a^n = \underline{x}_a^n \cdot \prod_{j\in J} \underline{x}_j^0$, as $n+\Sigma_{j\in J}0=n$.
+$\underline{x}_1$ is a correct expansion term, since $\underline{x}_1=\underline{x}_1^1\cdot \underline{x}_2^0$ and $1 + 0 \leq 3$. In general any monomial of exponent $n \leq$ ExpansionOrder is valid: $\underline{x}\_a^n = \underline{x}\_a^n \cdot \prod\_{j\in J} \underline{x}\_j^0$, as $n+\Sigma\_{j\in J}0=n$.
 Similarly, in this example $\underline{x}_1^2\cdot\underline{x}_2$, is valid since $2+1\leq3$.
 
 **ArboDepth:** TL;DR: More levels = shorter models, lower validation errors, longer fitting times.  
@@ -258,7 +258,7 @@ This is also what the `rFOrLSR.DefaultValidation` computes. There the norming is
 - **Maximal Deviation (MD):** $\text{MD} := \frac{\max(|\underline{y} - \underline{\hat{y}}|)}{\max(|\underline{y}|)} \cdot 100$.  
 Largest relative error for the given input sequence $\underline{x}$.
 
-- **Median Absolute Deviation (MAD):**  $\text{MAD}:=\text{med}(\underline{e} - \text{med(\underline{e})} )\cdot 100$  with $\underline{e} := \frac{|y[k] - \hat{y}[k]|}{\max(|\underline{y}|)}$  and "med" the median.  
+- **Median Absolute Deviation (MAD):**  $\text{MAD}:=\text{med}(\underline{e} - \text{med}(\underline{e}) )\cdot 100$  with $\underline{e} := \frac{|y\[k\] - \hat{y}\[k\]|}{\max(|\underline{y}|)}$  and "med" the median.  
 Similar to the classical standard deviation, only that the absolute value is used instead of squares and the median is subtracted from each sample instead of the mean.
 
 - **No passed argument validation metric:** If no validation data is passed to the arborescence, 1 - sum(ERR) is used as validation error for each regression. this corresponds to the remaining unexplained variance left in $\underline{y}$ by the model.
