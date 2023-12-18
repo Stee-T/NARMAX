@@ -46,7 +46,7 @@ This is a memoryless NX (Non-linear exogenous input) system aka a normal scalar 
 [Tutorial for this example](https://github.com/Stee-T/rFOrLSR/tree/main/Examples/4_tanh "Sigmoid expansion example")
 
 ### 4. MIMO & MISO Example
-$y_1\[k\] = 0.2 x_1\[k\]   + 0.3 x_2\[k\]^3 + 0.7 |x_3\[k\]| + 0.5 x_2\[k-3\] x_1\[k-2\] - 0.3 y_2\[k-1\] x_2^2\[k-2\] - 0.8 |x_3\[k-1\] y_1\[k-2\]| - 0.7 x_1\[k-1\] x_2^2\[k-1\]$
+$y_1\[k\] = 0.2 x_1\[k\] + 0.3 x_2^3\[k\] + 0.7 |x_3\[k\]| + 0.5 x_2\[k-3\] x_1\[k-2\] - 0.3 y_2\[k-1\] x_2^2\[k-2\] - 0.8 |x_3\[k-1\] y_1\[k-2\]| - 0.7 x_1\[k-1\] x_2^2\[k-1\]$
 $y_2\[k\] = 0.3 x_1\[k-1\] + 0.5 x_3^3\[k\] + 0.7 |y_1\[k-1\]| + 0.6 y_1\[k-3\] x_1\[k-2\] - 0.4 y_1\[k-1\] x_3^2\[k-2\] - 0.9 |x_3\[k-1\] y_2\[k-2\]| - 0.7 x_3\[k-1\] x_2^2\[k-1\]$
 
 This is a MIMO (Multiple Input Multiple Output) system / function with 3 input channels / variables and 2 output channels / variables, which is constituted by two MISO (Multiple Input Single Output) systems / functions: one per output. This demonstrates that the rFOrLSR can fit systems / functions with an arbitrary input and output dimensionality: $\mathbb{R}^n \rightarrow \mathbb{R}^m$ (in this example $\mathbb{R}^3 \rightarrow \mathbb{R}^2$).    
