@@ -118,7 +118,7 @@ def Sigmoid_Expansion_L_inf( theta, L, ERR, ValDic, MorphDict, DcFilterIdx = Non
     
     Error += tor.max( tor.abs( ValDic["y"][i] - yHat ) ) # maximum absolute error
     
-  return ( Error / len( ValDic["Data"] ) ) # norm by the number of signals ( not really necessary for AOrLSR but printed for the user )
+  return ( Error / len( ValDic["Data"] ) ) # norm by the number of validataion-sets ( not really necessary for AOrLSR but printed for the user )
 ```
 
 ## 3. Fitting
@@ -171,4 +171,4 @@ plt.show()
 <br/>
 
 [Previous Tutorial: 3. Imposing Regressors & IIR fitting](https://github.com/Stee-T/rFOrLSR/tree/main/Examples/3_Only_Ds)  
-[Next Tutorial: 5. Multiple Input Systems](https://github.com/Stee-T/rFOrLSR/tree/main/Examples/5_MISO)
+[Next Tutorial: 5. Multiple Input Systems](https://github.com/Stee-T/rFOrLSR/tree/main/Examples/5_MIMO)

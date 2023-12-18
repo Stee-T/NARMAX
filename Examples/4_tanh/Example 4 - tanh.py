@@ -57,7 +57,7 @@ def Sigmoid_Expansion_L_inf( theta, L, ERR, ValDic, MorphDict, DcFilterIdx = Non
 
     Error += tor.max( tor.abs( ValDic["y"][i] - yHat ) ) # maximum absolute error
     
-  return ( Error / len( ValDic["Data"] ) ) # norm by the number of signals ( not really necessary for AOrLSR but printed for the user )
+  return ( Error / len( ValDic["Data"] ) ) # norm by the number of validation-sets ( not really necessary for AOrLSR but printed for the user )
 
 
 # ######################################################################### Fitting #########################################################################
