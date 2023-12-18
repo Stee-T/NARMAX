@@ -2,7 +2,7 @@
 <div align="justify">
 
 This GPU-accelerated Python package contains the machine learning algorithms described in my two papers "*Arborescent Orthogonal Least Squares Regression (AOrLSR)*" and "*Dictionary Morphing Orthogonal Least Squares Regression (DMOrLSR)*" (coming soon) both based on my "*Recursive Forward Orthogonal Least Squares Regression (rFOrLSR)*" to fit "*Non-Linear Auto-Regressive Moving-Average Exogenous input systems (NARMAX)*". So, now that we have covered all the fancy acronyms, we might get into some explanations.  
-Otherwise jump straight into the [library examples](https://github.com/Stee-T/rFOrLSR/tree/main/Examples "Example folder").
+Otherwise jump straight into the [library examples/ tutorials](https://github.com/Stee-T/rFOrLSR/tree/main/Examples "Example folder").
 
 **Note 1 (unfinished library):** The library currently only implements the arborescence part (see below) and is thus not finished, missing the dictionary morphing part. This means that currently only static regressors can be fitted. Thus, the dictionary terms need to be pre-defined and are not adapted to the system by the regression.
 
@@ -46,10 +46,8 @@ This is a memoryless NX (Non-linear exogenous input) system aka a normal scalar 
 [Tutorial for this example](https://github.com/Stee-T/rFOrLSR/tree/main/Examples/4_tanh "Sigmoid expansion example")
 
 ### 4. MIMO & MISO Example
-$\left\{\begin{array}{ll}
-y_1\[k\] = 0.2 x_1\[k\]   + 0.3 x_2\[k\]^3 + 0.7 |x_3\[k\]| + 0.5 x_2\[k-3\] x_1\[k-2\] \\ - 0.3 y_2\[k-1\] x_2^2\[k-2\] - 0.8 |x_3\[k-1\] y_1\[k-2\]| - 0.7 x_1\[k-1\] x_2^2\[k-1\]\\ \\
-y_2\[k\] = 0.3 x_1\[k-1\] + 0.5 x_3^3\[k\] + 0.7 |y_1\[k-1\]| + 0.6 y_1\[k-3\] x_1\[k-2\] \\ - 0.4 y_1\[k-1\] x_3^2\[k-2\] - 0.9 |x_3\[k-1\] y_2\[k-2\]| - 0.7 x_3\[k-1\] x_2^2\[k-1\] \\
-\end{array}\right.$
+$y_1\[k\] = 0.2 x_1\[k\]   + 0.3 x_2\[k\]^3 + 0.7 |x_3\[k\]| + 0.5 x_2\[k-3\] x_1\[k-2\] - 0.3 y_2\[k-1\] x_2^2\[k-2\] - 0.8 |x_3\[k-1\] y_1\[k-2\]| - 0.7 x_1\[k-1\] x_2^2\[k-1\]$
+$y_2\[k\] = 0.3 x_1\[k-1\] + 0.5 x_3^3\[k\] + 0.7 |y_1\[k-1\]| + 0.6 y_1\[k-3\] x_1\[k-2\] - 0.4 y_1\[k-1\] x_3^2\[k-2\] - 0.9 |x_3\[k-1\] y_2\[k-2\]| - 0.7 x_3\[k-1\] x_2^2\[k-1\]$
 
 This is a MIMO (Multiple Input Multiple Output) system / function with 3 input channels / variables and 2 output channels / variables, which is constituted by two MISO (Multiple Input Single Output) systems / functions: one per output. This demonstrates that the rFOrLSR can fit systems / functions with an arbitrary input and output dimensionality: $\mathbb{R}^n \rightarrow \mathbb{R}^m$ (in this example $\mathbb{R}^3 \rightarrow \mathbb{R}^2$).    
 [Tutorial for this example](https://github.com/Stee-T/rFOrLSR/tree/main/Examples/5_MIMO "MIMO example")
@@ -80,8 +78,8 @@ As described above, the library makes optimal sparse least squares fitting of an
 
 ## Library content
 
-### Signal Constructors
-The signal CTors allow to easily generate regressors to be h-stacked in the dictionary $D_C$ passed to the arborescence. They cover the most common types of expansions like FIR/MA, IIR/AR, Power-series, oscillations, RBF, Wavelet, etc. Any mixture and any custom user function/regressor can be put in the dictionary to be used for fitting.
+### Regressor Constructors
+The Regressor-CTors allow to easily generate regressors to be horizontally stacked in the dictionary $D_C$ passed to the arborescence. They cover the most common types of expansions like FIR/MA, IIR/AR, Power-series, oscillations, Radial basis functions, Wavelet, etc. Any mixture and any custom user function/regressor can be put in the dictionary to be used for fitting.
 
 * **Lagger:** Creates delayed $\underline{x}, \underline{y}$ and optionally $\underline{e}$ terms up to the desired order.  
 This is the only CTor needed for linear FIR and IIR systems.  
@@ -106,7 +104,7 @@ Constructor for common Radial Basis Functions
 * **Wavelet:** (Coming soon)
 Constructor for common wavelet functions
 
-* **Input signal Generators** (Coming soon)  
+* **Input Signal Generators** (Coming soon)  
 Probably something facilitating the construction of input signals $\underline{x}$ like Maximum Length Sequences (MLS), multi-level sequences, etc.
 
 * Whatever anyone feels like contributing like Chirps or orthogonal bases for specific types of analysis :)
