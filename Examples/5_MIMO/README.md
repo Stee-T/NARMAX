@@ -28,7 +28,7 @@ The Regressor-CTors are designed to simplify the generation of regressors for si
 Lags = ( 3, 3, 3, [1, 2, 3], [1, 2, 3] ) # x1, x2, x3, y1, y2. Exclude y1[k] and y2[k]
 ```
 
-As stated in the comment, this data-structure tells the `Lagger` CTor to generate all lags from 0 up to and including 3 for the system inputs ($x_1, x_2, x_3$) but exclude the 0 lag for the outputs ($y_1, y_2$), thus not including the $\underline{y}_i[k], i\in \left\{1,2 \right\}$ vectors.
+As stated in the comment, this data-structure tells the `Lagger` CTor to generate all lags from 0 up to and including 3 for the system inputs ($x_1, x_2, x_3$) but exclude the 0 lag for the outputs ($y_1, y_2$), thus not including the $\underline{y}_i\[k\], i\in \left[1,2 \right]$ vectors.
 
 
 **Regressor Names:** In previous tutorials, the `Lagger` CTor was never explicitly told the regressor names. If a single regressor is passed, it assumes its name to be $x$, if two are passed it assumes $x,y$ and if three are passed it assumes $x, y, e$ ($e$ being the internal noise terms).
