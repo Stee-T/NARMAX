@@ -98,7 +98,7 @@ def MaxLagPlotter( x, y, MaxLags = ( 15, 15 ), MaxOrder = 5, VarianceAcceptThres
   Grid = np.full( ( MaxLags[1] + 1, MaxLags[0] + 1 ), np.nan ) # y's are rows and the x's columns to have a correct graph orientation, +1 due to x[k], y[k]
   ProgressBar = tqdm.tqdm( total = Grid.size ) # Initialise progressbar while declaring total number of iterations
 
-  # Unintuitively, it's the MiniFOrLSR which accounts for 99.99% of the time, not RegressorMatrix, so optimizing that out isn't of interest.
+  # Unintuitively, it's the MiniFOrLSR which accounts for 99.99% of the time, not both CTors, so optimizing that out isn't of interest.
   # Also y_cut has a different length at each iteration so it can't be stored
   for na in range( MaxLags[1] + 1 ): # iterate over y values, +1 to contain the end-of-range value
     for nb in range( MaxLags[0] + 1 ): # iterate over x values, +1 to contain the end-of-range value
@@ -1024,7 +1024,7 @@ class Arborescence:
       theta_TMP = self.rFOrLSR( self.y, Ds = Imposed[:, :i], OutputAll = True )[0] # only impose the regressors to get the new theta
       MAE.append( ( tor.mean( tor.abs( self.y - Imposed[:, :i] @ tor.Tensor( theta_TMP ) ) ) / yNorm ).item() )
     
-    Fig2, Ax2 = plt.subplots( 2 ) # 2 because the first Ax object is outputted by the function
+    Fig2, Ax2 = plt.subplots( 2, sharex = True ) # 2 because the first Ax object is outputted by the function
     Ax2[0].set_title( f"Top: All { len( ERRtemp ) } ERR in descending oder. Bottom: Model MAE evolution" )
     Ax2[0].stem( ERRtemp, linefmt = "#00aaffff" ) # force slightly lighter blue than default blue for compatibility with dark mode
     plt.setp( Ax2[0].get_xticklabels(), visible = False ) # desactivate the ticks
