@@ -57,7 +57,7 @@ def Lagger( Data, Lags, RegNames = None):
 
   for i in range( len( Lags ) ):
     if ( isinstance( Lags[i], int ) ):
-      if ( Lags[i] <= 0 ):                           raise AssertionError( f"Inetger Lags elements must be >= 0, which is not the case for the { i }-th element" )
+      if ( Lags[i] < 0 ):                           raise AssertionError( f"Integer Lags elements must be >= 0, which is not the case for the { i }-th element" )
 
     elif ( isinstance( Lags[i], list ) ): # if list verify that all elements are integers
       for j in range( len( Lags[i] ) ):
