@@ -998,13 +998,13 @@ class Arborescence:
     Fig, Ax = plt.subplots( 2, sharex = True )
     Ax[0].plot( self.y.cpu(), "#00aaffff", marker = '.', markersize = 5 ) # force slightly lighter blue than default blue for compatibility with dark mode
     Ax[0].plot( yHat.cpu(), "tab:orange", marker = '.', markersize = 5 ) # force default orange
-    Ax[0].legend( ["System Output y[k]", "Estilmation $\hat{y}$[k]"] )
+    Ax[0].legend( ["System Output y[k]", "Estilmation $\\hat{y}$[k]"] )
     Ax[0].grid( which = 'both', alpha = 0.5 )
 
     Ax[1].plot( Error.cpu(), "#00aaffff", marker = '.', markersize = 5 ) # force slightly lighter blue than default blue for compatibility with dark mode
     Ax[1].set_xlim( [0, len( self.y )] )
     Ax[1].set_title( f"{ len( self.theta ) } Terms yielding MAE: { MeanAbsErrorStr }%. Max dev.: { MaxDeviationStr }%. MAD: { MedianAbsDerivationStr }%" )
-    Ax[1].legend( ["$y[k]-\hat{y}[k]$"] )
+    Ax[1].legend( ["$y[k]-\\hat{y}[k]$"] )
     Ax[1].grid( which = 'both', alpha = 0.5 )
     Fig.tight_layout() # prevents the plot from clipping ticks
 
