@@ -112,7 +112,7 @@ Probably something facilitating the construction of input signals $\underline{x}
 
 ### Analysis tools
 
-* **(linear) IIR Analysis Tools:** the library contains functions to transform the rFOrLSR output into a standard $\underline{b}$, $\underline{a}$ coefficent form for further production use. Additionally, several convenience plotting funtions are provided such as magnitude and phase response and pole-zero plots.
+* **(linear) IIR Analysis Tools:** The library contains functions to transform the rFOrLSR output into a standard $\underline{b}$, $\underline{a}$ coefficent-form for further production use. Additionally, several convenience plotting funtions are provided such as magnitude and phase response, and pole-zero plots.
 
 * **MaxLagPlotter:** Tool designed to estimate the maximum lags and the expansion order CTor for $\underline{x}$ and $\underline{y}$ terms via polynomial NARMAXes.  
 Uses:
