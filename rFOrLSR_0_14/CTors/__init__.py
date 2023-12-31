@@ -8,22 +8,7 @@ import numpy as np
 import torch as tor
 import itertools as it
 
-# ####################################################################################### Helper Functions #############################################################################################
-def Combinations( N, k ):
-  '''From N chose k for positive values only'''
-  if ( k > N ): return ( 0 ) # property of the operator
-  if ( k < 0 or N < 0 ): raise ValueError( "N or k is negative, which is not supported" )
-
-  def factorial( n ):
-    fact = 1 # base case, guaranteed output even if looop not entered
-    for i in range( 2,int( n )+1 ): fact *= i # multiply upwards, +1 due to python indexing
-    return ( fact )
-
-  return ( int( factorial( N ) / ( factorial( k ) * factorial( N - k ) ) ) ) # N!/( k!*( N-k )! )
-
-
-# ####################################################################################### CTors #############################################################################################
-
+from .. import HelperFuncs as HF # import sibling module Helperfunctions
 
 # ************************************************************************************ Lagger CTor ********************************************************************************
 def Lagger( Data, Lags, RegNames = None):
@@ -142,8 +127,8 @@ def Expander( Data, RegNames, ExpansionOrder, IteractionOnly = False ):
 
   # ------------------------------------------------------------------------------- A) Regressor Computation ---------------------------------------------------------------
   # Compute the total number of Regressors and pre-allocate memory
-  if ( IteractionOnly ): nRegs = np.sum( [ Combinations(Data.shape[1], o) for o in range( 1, ExpansionOrder + 1 ) ] )
-  else:                  nRegs = Combinations( Data.shape[1] + ExpansionOrder, ExpansionOrder ) - 1
+  if ( IteractionOnly ): nRegs = np.sum( [ HF.Combinations(Data.shape[1], o) for o in range( 1, ExpansionOrder + 1 ) ] )
+  else:                  nRegs = HF.Combinations( Data.shape[1] + ExpansionOrder, ExpansionOrder ) - 1
 
   RegMat = tor.full( ( Data.shape[0], nRegs ), np.nan )
 

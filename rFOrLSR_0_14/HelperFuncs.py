@@ -14,8 +14,6 @@ The danger is unleashed only if you substantially disturb this place physically.
 import torch as tor # general operations
 import numpy as np # needed for the duplicate elimination
 
-
-
 # ***************************************************************************** Set Tensortype And Device  ******************************************************************************
 def Set_Tensortype_And_Device():
   '''Set the default dtype and device for torch tensors. Returns the device string for further use.
@@ -35,7 +33,21 @@ def Set_Tensortype_And_Device():
   return ( Device )
   
 
-# *********************************************************************************** FindMinInt ****************************************************************************************
+# *********************************************************************************** Combinations ****************************************************************************************
+def Combinations( N, k ):
+  '''From N chose k for positive values only'''
+  if ( k > N ): return ( 0 ) # property of the operator
+  if ( k < 0 or N < 0 ): raise ValueError( "N or k is negative, which is not supported" )
+
+  def factorial( n ):
+    fact = 1 # base case, guaranteed output even if looop not entered
+    for i in range( 2,int( n )+1 ): fact *= i # multiply upwards, +1 due to python indexing
+    return ( fact )
+
+  return ( int( factorial( N ) / ( factorial( k ) * factorial( N - k ) ) ) ) # N!/( k!*( N-k )! )
+
+
+# *********************************************************************************** CutY ****************************************************************************************
 def CutY( y, Lags ):
   '''Function to trim the y vector data to the maximum lag in Lags. The front is cut as would do the Lagger CTor
   

@@ -17,7 +17,6 @@ import itertools as it
 import scipy.optimize as spop # for the minimization via Trust Region Methods
 
 # Internal imports
-from .CTors import Combinations
 from . import HelperFuncs as HF
 
 
@@ -145,7 +144,7 @@ def GenVSGen( f, U, i0, Dc, order, Psi, Psi_n, y, m ):
   for O in range( order+1 ): # iterate over all lengths, start at 0 which adds no terms but just a coefficient
     Ksi = tor.tensor( list( it.product( *( ( tor.linspace( 0.3, 2, 13 ), ) + O * ( tor.linspace( -2.5, 2.5, 13 ), ) ) ) ) ).T # Generate the coefficient combination matrix
     if ( f == tor.exp ): Ksi /= 10 # avoids overflow
-    for t in tqdm.tqdm( it.combinations( UNoi0, O ), total = Combinations( len( UNoi0 ), O ), desc = "Current Term Morphing Order " + str( O ), leave = False ): # iterate over all combiantions of length O
+    for t in tqdm.tqdm( it.combinations( UNoi0, O ), total = HF.Combinations( len( UNoi0 ), O ), desc = "Current Term Morphing Order " + str( O ), leave = False ): # iterate over all combiantions of length O
       t = list( ( i0, *t ) ) # prepend the chi0's index to the tuple, transform to list to index the arrays
       F = f( ( Dc[:, t] + m[:,t] ) @ Ksi ) # Create matrix of selected regressors with all
       F -= tor.mean( F, axis = 0, keepdims = True ) # columnwise centering
