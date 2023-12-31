@@ -19,7 +19,7 @@ from .. import HelperFuncs as HF
 ################################################################################################################################################
 
 # ############################################################### FOrLSR to IIR #############################################################
-def FOrLSR2IIR( theta, L, RegNames ):
+def rFOrLSR2IIR( theta, L, RegNames ):
   """Converts the FOrLSR Output into a a,b IIR filter coefficient vectors.
   There is no guarantee on the order of the regressors so some matching is required. Additionally, y[k-j] terms are sign flipped (IIR convention).
   
