@@ -32,7 +32,7 @@ import rFOrLSR_0_14.Test as Test_Systems
 Once the imports are done, some arborescence and regressor-constructor hyperparameters must be chosen. This example uses the following parameters:
 
 **Dataset-size p:** TL;DR: More data = Better results, longer fitting times  
-Dictates the regressor (vector) length and influences linearily the fitting time. Good values depend on the system complexity, as for small linear systems, $p = 500$ often suffises, however for more complicated systems, larger values like $p = 2.5k$ or higher could become necessary. If your GPU is fresh, go for $p = 100k$, whatever really.
+Dictates the regressor (vector) length and influences linearily the fitting time. Good values depend on the system complexity, as for small linear systems, $p = 500$ or less often suffises, however, for more complicated systems, larger values like $p = 2.5k$ or higher could become necessary. If your GPU is fräshhh, go for $p = 100k$, whatever really.
 
 **Signal amplitude:** TL;DR: More Input-signal $x$ amplitude/variance = better regressor recognition.  
 The rFOrLSR describes system behavior with the regressors passed via $D_C$, so the more "input space" is covered by the excitation signal $\underline{x}$, the better the rFOrLSR sees if a function is matching.
@@ -56,7 +56,7 @@ Similarly, in this example $\underline{x}_1^2\cdot\underline{x}_2$, is valid sin
 **ArboDepth:** TL;DR: More levels = shorter models, lower validation errors, longer fitting times.  
 Maximum number of levels the arborescence can have.  
 The arborescence spans it levels by imposing progressively more regressors at the start of the regression which forces the rFOrLSR to explore more of the solution space.  
-To illustrate, At the root (level 0), no regressors are imposed, resulting in a fully free rFOrLSR search. At the first level, one tree branch is created for each regrerssor selected at the root to force the rFOrLSR to start with that regressor. At the second level, two regressors are taken from the parent node and imposed at the start, etc., etc.  
+To illustrate, at the root (level 0), no regressors are imposed, resulting in a fully free rFOrLSR search. At the first level, one tree branch is created for each regressor selected at the root to force the rFOrLSR to start with that regressor. At the second level, two regressors are taken from the parent node and imposed at the start, etc., etc.  
 **Note**: Following my *Arborescence Depth Truncation Theorem (ADTT)*, the `ArboDepth` parameter is a non-tight upper-bound, as the arborescence can judge that a smaller number of levels suffices. This is the case if (and only if) a model with fewer regressors than `ArboDepth` was encountered during the traversal, since then any longer model will be rejected by the validation procedure and thus doesn't need to be computed.
 
 

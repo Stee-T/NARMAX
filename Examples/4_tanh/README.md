@@ -170,5 +170,5 @@ plt.show()
 
 <br/>
 
-[Previous Tutorial: 3. Imposing Regressors & IIR fitting](https://github.com/Stee-T/rFOrLSR/tree/main/Examples/3_Only_Ds)  
+[Previous Tutorial: 3. Imposing Regressors & IIR fitting](https://github.com/Stee-T/rFOrLSR/tree/main/Examples/3_Only_Ds_and_IIR)  
 [Next Tutorial: 5. Multiple Input Systems](https://github.com/Stee-T/rFOrLSR/tree/main/Examples/5_MIMO)

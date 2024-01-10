@@ -1,4 +1,4 @@
-# Example 3: Imposing Regressors
+# Example 3: Imposing Regressors and IIR fitting
 This example / tutorial illustrates:
 - How to impose regressors via $D_S$ (*D*ictionary of *S*elected regressors)
 - The (linear) IIR (ARX) analysis tools: how to transform the regression results ($\theta, L$) into the $\underline{b}$, $\underline{a}$ coefficient-vectors and plot the resulting IIRs (magnitude, phase, poles/zeros)
@@ -59,7 +59,7 @@ The validation dataset is created as in previous examples / tutorials for the `r
 ``` python	
 DsValDict = { # contains essentially everything passed to the CTors to reconstruct the regressors
   "y": [],
-  "Data": None, # No free to chose from regrssors in this example
+  "Data": None, # No free to chose from regressors in this example
   "InputVarNames": [ "x", "y" ], # variables in Data, Lags, etc
   "DsData": [],
   "Lags": ( qx, qy ),

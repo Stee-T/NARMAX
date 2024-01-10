@@ -67,7 +67,7 @@ print( "\nDict-shape:", RegMat.shape, "\nqx =", qx, "; qy =", qy, "\nExpansionOr
 
 DsValDict = { # contains essentially everything passed to the CTors to reconstruct the regressors
   "y": [],
-  "Data": None, # No free to chose from regrssors in this example
+  "Data": None, # No free to chose from regressors in this example
   "InputVarNames": [ "x", "y" ], # variables in Data, Lags, etc
   "DsData": [],
   "Lags": ( qx, qy ),

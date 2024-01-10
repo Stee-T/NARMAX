@@ -115,4 +115,4 @@ Recognized regressors:
 <br/>
 
 [Previous Tutorial: 1. Linear in the Parameters](https://github.com/Stee-T/rFOrLSR/tree/main/Examples/1_Linear_in_the_Parameters)  
-[Next Tutorial: 3. Imposing Regressors & IIR systems](https://github.com/Stee-T/rFOrLSR/tree/main/Examples/3_Only_Ds)
+[Next Tutorial: 3. Imposing Regressors & IIR systems](https://github.com/Stee-T/rFOrLSR/tree/main/Examples/3_Only_Ds_and_IIR)
