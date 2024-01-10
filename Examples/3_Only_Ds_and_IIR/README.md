@@ -4,10 +4,11 @@ This example / tutorial illustrates:
 - The (linear) IIR (ARX) analysis tools: how to transform the regression results ($\theta, L$) into the $\underline{b}$, $\underline{a}$ coefficient-vectors and plot the resulting IIRs (magnitude, phase, poles/zeros)
 
 <br/>
+<div align="justify">
 
 # 1. Test Setting
 
-This example generates 5 random biquadratic peak filters and applies them in parallel to the input sequence to emulate a resonant linear system with 5 resonances. The resulting system is then fitted with the rFOrLSR as a single IIR filter, thus only linear regressors are used: $x\[k-j\], j \in \[k\]_{k = 0}^{q_x}$ and $y\[k-j\], j \in \[k\]_{k = 1}^{q_y}$ where the maximum delays / lags $q_x,\ q_y$ are set to be twice the chosen number of biquads.
+This example generates 5 random biquadratic peak filters and applies them in parallel to the input sequence to emulate a resonant linear system with 5 resonances. The resulting system is then fitted with the rFOrLSR as a single IIR filter, thus only linear regressors are used: $x\[k-j\], j \in \[k\]\_{k = 0}^{q\_x}$ and $y\[k-j\], j \in \[k\]\_{k = 1}^{q\_y}$ where the maximum delays / lags $q_x,\ q_y$ are set to be twice the chosen number of biquads.
 
 
 ``` python
@@ -44,13 +45,17 @@ x -= tor.mean( x ) # CENTER !!!
 y = Sys( x, Filters ) # Apply selected system
 ```
 
+<br/>
+
 # 2. Training Data
 
-Since this example fits a (linear), only lagged regressors are needed: $x\[k-j\], j \in \[k\]_{k = 0}^{q_x}$ and $y\[k-j\], j \in \[k\]_{k = 1}^{q_y}$.
+Since this example fits a (linear), only lagged regressors are needed: $x\[k-j\], j \in \[k\]\_{k = 0}^{q\_x}$ and $y\[k-j\], j \in \[k\]\_{k = 1}^{q\_y}$.
 
 ``` python	
 y, RegMat, RegNames = rFOrLSR.CTors.Lagger( Data = ( x, y ), Lags = ( qx, qy ) ) # Create the delayed regressors (cut to q to only have swung-in system)
-```	
+```
+
+<br/>
 
 # 3. Validation Data
 
@@ -77,6 +82,8 @@ for i in range( 5 ): # Fill the validation dict's data entry with randomly gener
   DsValDict["y"].append( y_val ) # cut version by Lagger
   DsValDict["DsData"].append( DsData )
 ```
+<br/>
+
 # 4. Fitting
 
 Since we're only imposing regressors: no `Dc`, no `DcNames`, no tolerances, no `MaxDepth` need to be passed as arguments.
@@ -88,7 +95,10 @@ Arbo = rFOrLSR.Arborescence( y,
                            )
 ```
 **Note (Root only):** Since this example only consists of imposed regressors, no arborescence is spanned, the root is constructed and the validation is performed. The arborescence is designed improve the term selection, but “no touchy” to whatever the user imposes. If a mixture of imposed and candidate regressors is passed ($D_S$ and $D_C$), then the arborescence will only optimize its $D_C$ selection.
-**Note (Tolerance):** When imposing regressors, the tolerances are not taken into account, in the sense that the regression not will stop mid-$D_S$ fitting if the threshold is reached. Imposed means imposed. All regressors imposed by the user will be in the regression. This also holds when using $D_S$ in conjunction with $D_C$ (not shown here), as the entire $D_S$ will be added to the regression, after which (if the error is above the threshold) regressors from $D_C$ are added to the regression. Here since only imposed regressors are used in the regression, the threshold is not taken into account and thus none are passed.
+
+**Note (Tolerance):** When imposing regressors, the tolerances are not taken into account, in the sense that the regression not will stop mid- $D_S$ fitting if the threshold is reached. Imposed means imposed. All regressors imposed by the user will be in the regression. This also holds when using $D_S$ in conjunction with $D_C$ (not shown here), as the entire $D_S$ will be added to the regression, after which (if the error is above the threshold) regressors from $D_C$ are added to the regression. Here since only imposed regressors are used in the regression, the threshold is not taken into account and thus none are passed.
+
+<br/>
 
 # 5. IIR Tools
 
@@ -134,11 +144,15 @@ The below figure shows the resulting magnitudes and phases and illustrates that 
 
 ![Figure3](https://github.com/Stee-T/rFOrLSR/blob/main/Examples/3_Only_Ds_and_IIR/Figure_3.png)
 
-**Note (Phase offsets):** In some cases, the fitted filter has a phase offset of exactly $\pm \pi$ radians (despite a correct magnitude response). It's a bit unclear to me why this  happens but this can trivially be compensated by multiplying the $\underline{b}$ and $\underline{a}$ vectors by -1 (except of course $a_0$). If anyone has an idea to why that happens, please let me know, IIRs are not my specialty :)
+**Note (Phase offsets):** In some cases, the fitted filter has a phase offset of exactly $\pm \pi$ radians (despite a correct magnitude response). It's a bit unclear to me why this happens but this can trivially be compensated by multiplying the $\underline{b}$ and $\underline{a}$ vectors by -1 (except of course $a_0$). If anyone has an idea to why that happens, please let me know, IIRs are not my specialty :)
 
 ## 5.c. Z-Plane Plot
 The Z-plane plot shows the poles and zeros around the unit circle of the passed filters in $\underline{b}$, $\underline{a}$ format.  
 The red crosses are the poles and the green circles are the zeros.
+
+``` python
+rFOrLSR.Tools.zPlanePlot( b_Ds, a_Ds, Title = 'Estimated' )
+```
 
 ![Figure4](https://github.com/Stee-T/rFOrLSR/blob/main/Examples/3_Only_Ds_and_IIR/Figure_4.png)
 
