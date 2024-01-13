@@ -1,5 +1,5 @@
-import rFOrLSR_0_14 as rFOrLSR
-import rFOrLSR_0_14.Test as Test_Systems
+import rFOrLSR as rFOrLSR
+import rFOrLSR.Test as Test_Systems
 
 import matplotlib.pyplot as plt
 plt.style.use( 'dark_background' ) # black graphs <3

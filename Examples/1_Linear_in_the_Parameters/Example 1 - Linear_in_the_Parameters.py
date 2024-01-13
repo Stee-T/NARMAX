@@ -5,8 +5,8 @@ import torch as tor
 import matplotlib.pyplot as plt
 plt.style.use( 'dark_background' ) # black graphs <3
 
-import rFOrLSR_0_14 as rFOrLSR
-import rFOrLSR_0_14.Test as Test_Systems
+import rFOrLSR
+import rFOrLSR.Test as Test_Systems
 
 # ---------------------------------------------------- 2. Hyper-parameters
 p = 2_500 # Dataset size

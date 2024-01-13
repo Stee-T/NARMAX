@@ -1,4 +1,4 @@
-import rFOrLSR_0_14 as rFOrLSR
+import rFOrLSR
 
 import matplotlib.pyplot as plt
 plt.style.use( 'dark_background' ) # black graphs <3
