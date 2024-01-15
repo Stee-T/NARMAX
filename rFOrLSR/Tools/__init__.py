@@ -363,8 +363,10 @@ def MaxLagPlotter( x, y, MaxLags = ( 15, 15 ), MaxOrder = 5, VarianceAcceptThres
 
   # ---------------------------------------------------------------------------------- D) Plot -------------------------------------------------------------------------------------------------
   if ( Plot ):
-    plt.pcolormesh( Grid, cmap = 'viridis', edgecolors = 'k', linewidth = 2, vmin = VarianceAcceptThreshold, vmax = 1 ) # Everything below the VarianceAcceptThreshold is not of interest
-    Ax = plt.gca()
+    Fig, Ax = plt.subplots() # force new figure
+    Im = Ax.pcolormesh( Grid, cmap = 'viridis', edgecolors = 'k', linewidth = 2,
+                       vmin = VarianceAcceptThreshold, vmax = 1, # Everything below the VarianceAcceptThreshold is not of interest
+                      )
 
     DotSize = 50
     Ax.scatter( Recommendations["Min_Y"][1],  Recommendations["Min_Y"][0],  color = 'r', s = DotSize ) # red
@@ -373,7 +375,7 @@ def MaxLagPlotter( x, y, MaxLags = ( 15, 15 ), MaxOrder = 5, VarianceAcceptThres
 
     Ax.set_ylabel( "y[k-i] terms" ); Ax.set_xlabel( "x[k-i] terms" )
     Ax.set_aspect( 'equal' )
-    plt.colorbar() # defaults to curernt Figure
     Ax.set_ylim( 0, MaxLags[1] + 1 ); Ax.set_xlim( 0, MaxLags[0] + 1 ) # Have both axis start at 0 in the bottom left corner (flips y-axis)
+    Fig.colorbar( Im ) # defaults to curernt Figure
   
   return ( ModelOrder, Recommendations, Grid )
