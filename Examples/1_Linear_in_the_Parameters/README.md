@@ -32,7 +32,7 @@ import rFOrLSR.Test as Test_Systems
 Once the imports are done, some arborescence and regressor-constructor hyperparameters must be chosen. This example uses the following parameters:
 
 **Dataset-size p:** TL;DR: More data = Better results, longer fitting times  
-Dictates the regressor (vector) length and influences linearily the fitting time. Good values depend on the system complexity, as for small linear systems, $p = 500$ or less often suffises, however, for more complicated systems, larger values like $p = 2.5k$ or higher could become necessary. If your GPU is fräshhh, go for $p = 100k$, whatever really.
+Dictates the regressor (vector) length and influences linearly the fitting time. Good values depend on the system complexity, as for small linear systems, $p = 500$ or less often suffice, however, for more complicated systems, larger values like $p = 2.5k$ or higher could become necessary. If your GPU is fräshhh, go for $p = 100k$, whatever really.
 
 **Signal amplitude:** TL;DR: More Input-signal $x$ amplitude/variance = better regressor recognition.  
 The rFOrLSR describes system behavior with the regressors passed via $D_C$, so the more "input space" is covered by the excitation signal $\underline{x}$, the better the rFOrLSR sees if a function is matching.
@@ -41,7 +41,7 @@ To illustrate, for $\underline{x}\in\[-0.4;0.4\]^p$, $\cos(x)$ and $-0.5x^2+1$ a
 
 **Tolerances $\rho_1, \rho_2$:** TL;DR: tolerance going towards zero = more precision, larger models, longer fitting times.  
 The arborescence takes two tolerances as input: $\rho_1$, being the root regression tolerance and $\rho_2$, being the tolerance for every other regression / arborescence node.  
-In simple terms, those thresholds represent what fraction (thus $[0; 1]$) of the system output $\underline{y}$'s variance remains unexplained by the model. Thus a tolerance of 0.1 means that 10% of the variance is unexplained by the model, a tolerance of 0.01 is 1%, etc. The computations are based on some unintuitive square correlation ratios.  
+In simple terms, those thresholds represent what fraction (thus $[0; 1]$) of the system output $\underline{y}$'s variance remains unexplained by the model. Thus, a tolerance of 0.1 means that 10% of the variance is unexplained by the model, a tolerance of 0.01 is 1%, etc. The computations are based on some unintuitive square correlation ratios.  
 As will be explained below, the arborescence fitting report contains more intuitive fitting statistics such as the MAE (mean absolute error), maximal deviation (MD), etc.  
 Using a different tolerance for the root (mostly closer to zero than desired for the model) allows to span a wider (more breadth) arborescence. Having a lower residual variance tolerance, the root node will use more regressors and thus generate more children nodes which will become branches.
 
@@ -119,7 +119,7 @@ RegMat, RegNames, _ = rFOrLSR.CTors.NonLinearizer( y, RegMat, RegNames, NonLinea
 <br/>
 
 ##  4. Validation Data
-Since many models are created by the arborescence, a validation procedure chosing the best system is required. This basic example demonstrates the use of the provided `rFOrLSR.DefaultValidation` function with its required data.
+Since many models are created by the arborescence, a validation procedure choosing the best system is required. This basic example demonstrates the use of the provided `rFOrLSR.DefaultValidation` function with its required data.
 
 **DefaultValidation:** The the provided `rFOrLSR.DefaultValidation` is designed to imitate step 3. Thus, all 3 CTors are called with their arguments contained in the `ValidationDict` dictionary. Regressor-CTors are bypassed by setting their arguments to the respective identities, being (0,0) for the *Lagger*, 0 for the ExpansionOrder and the [ rFOrLSR.Identity ] for the NonLinearizer with additionally None for the *MakeRational* argument (which is explained in the next tutorial).  
 The code generates 5 validation sequences to test the solutions on 5 different input sequences.
@@ -188,9 +188,9 @@ Once the arborescence has been traversed, the results can be printed out and dis
 **PlotAndPrint:** Generates two plots and (optionally) prints the regression results in the console.
 The code also demonstrates how to force a zoom-in by setting the returned axes limits.
 
-**get_Results / fit:** Both functions return the regression results in a tuple containing the regression parameters $\underline{ \hat{ \theta } }$, the index-set $L$ (which doesn't contain the imposed regressors) and the ERR vector. In addtion, if the arborescence was run with morphing instructions (not the case in this tutorial), a Morphing-meta Data dictionary is returned as 4th return. Finally, the updated $D_C$ and DcNames are returned as 5th and 6th return. Updating $D_C$ (and the corresponding RegNames) consists in:  
-a) Filtering out redundant regressors (necessary for a well functioning rFOrLSR)  
-b) Centerting the regressors (necessary for a well functioning rFOrLSR)  
+**get_Results / fit:** Both functions return the regression results in a tuple containing the regression parameters $\underline{ \hat{ \theta } }$, the index-set $L$ (which doesn't contain the imposed regressors) and the ERR vector. In addition, if the arborescence was run with morphing instructions (not the case in this tutorial), a Morphing-meta Data dictionary is returned as 4th return. Finally, the updated $D_C$ and DcNames are returned as 5th and 6th return. Updating $D_C$ (and the corresponding RegNames) consists in:  
+a) Filtering out redundant regressors (necessary for a well-functioning rFOrLSR)  
+b) Centering the regressors (necessary for a well-functioning rFOrLSR)  
 c) Potentially expanding the dictionary with new morphed regressors.
 
 **Note (callable model):** The Arborescence doesn't return an object containing a callable model, since  
@@ -207,7 +207,7 @@ theta, L, ERR, _, RegMat, RegNames = Arbo.get_Results()
 plt.show()
 ```
 
-## Console Output
+### Console Output
 **Note:** Your results when running the script might differ, since the random input sequence $\underline{x}$ has some influence on the search space. However, the resulting model should be the same up to rounding errors.
 
 First, the test systems print their regressors for ease of testing. This is followed by the usual arborescence information. We see that the root doesn't find the correct / optimal system but that the arborescence finds it during the first level. Each progress-bar displays the number of regressions to compute and the current progress in time.
@@ -282,7 +282,7 @@ Recognized regressors:
 -0.39999999999999986 abs(y[k-2]^2 x[k-1])
 ```
 
-## Figure 1
+### Figure 1
 ![Figure1](https://github.com/Stee-T/rFOrLSR/blob/main/Examples/1_Linear_in_the_Parameters/Figure_1.png)
 
 **Top Graph:** Overlays the actual system response $y\[k\]$ with the estimated system response $\hat{y}\[k\]$. In the ideal case (like here) where the fitted system is correctly retrieved and there is no noise, the two curves  overlap. The estimation is on top of the system output for more visibility.
@@ -293,7 +293,7 @@ This graph's title contains the same statistics as described above in the consol
 
 **x-axis linking:** Both x-axes are linked, such that scrolling are mirrored in both graphs.
 
-## Figure 2
+### Figure 2
 **Warning / Disclaimer:** This graph is legacy from the original rFOrLSR algorithm family, where the regressor order had a meaning, as they were selected in order of how much system output $\underline{y}$ variance they explained. Now, since the arborescence is spanned by imposing regressors in a pre-determined order, the regressor order becomes meaningless. This is problematic, since the ERR is order dependent. Thus, the regressors at the end of the list (depending on the arborescence depth) might not be the one with the least importance (contribution to the system output variance). The ERR graph is thus not to be used for model truncation at the moment.  
 
 The bottom graph shouldn't be used for model truncation either, as the model coefficients $\hat{\underline{\theta}}$ must be re-estimated each time a regressor is eliminated. This is correctly done here, but as aforementioned, this analyses only this precise regressor ordering.  
