@@ -1,6 +1,10 @@
 # Generalities
 <div align="justify">
 
+***This library puts the "MAX" back into NARMAX.***  
+It doesn't just raise exceptions; it raises eyebrows and occasionally, the bar for what is assumed to be possible.
+
+
 This GPU-accelerated Python package contains the machine learning algorithms described in my two papers "*Arborescent Orthogonal Least Squares Regression (AOrLSR)*" and "*Dictionary Morphing Orthogonal Least Squares Regression (DMOrLSR)*" (coming soon) both based on my "*Recursive Forward Orthogonal Least Squares Regression (rFOrLSR)*" to fit "*Non-Linear Auto-Regressive Moving-Average Exogenous input systems (NARMAX)*". So, now that we have covered all the fancy acronyms, we might get into some explanations.  
 Otherwise jump straight into the [library examples/ tutorials](https://github.com/Stee-T/rFOrLSR/tree/main/Examples "Example folder").
 
@@ -59,10 +63,36 @@ This is a MIMO (Multiple Input Multiple Output) system / function with 3 input c
 1) **Expansion Type Selection:** As usual in machine learning, one must first choose an appropriate expansion type (FIR, IIR, Monomially-Expanded IIR, RBF, Wavelet, arbitrary non-linearities, etc.). As expected, the model quality strongly depends on how relevant the chosen expansion is. The advantage of this library's rFOrLSR is that any type of expansion and any mix of expansions is supported, as the rFOrLSR is based on vector matching methods.  
 This is achieved by creating a fitting "dictionary" $D_C \in \mathbb{R}^{p \times n_C}$ (Pytorch matrix) containing the candidate regressors $\underline{\varphi}_k \in \mathbb{R}^{p}$ stacked column-wise and passing it to the library. 
 
+
 2) **Model Structure Detection:** The first real challenge is to find the correct regressors from all those present in the user-defined dictionary $D_C$, as most system behaviors can be sufficiently well described with very few terms.  
 To illustrate, the first system above contains a single cosine term which needs to be retrieved from the set of cosines with relevant monomial expansions as arguments.  
 
 3) **Model Parameter Estimation:** Finally, once the correct expression terms are selected, their regression (= scaling) coefficients must be chosen. The rFOrLSR's optimization criterion is least squares.
+
+<br/>
+
+# NARMAX...why?
+This section is dedicated to all the people who asked me something along the lines of *"but AI is currently the thing, why not use neural networks like everyone else?"*.
+
+First of all, I'd like to point out that artificial neural networks (ANNs), including our friend ChatGPT, are some subclass of NARMAXes. LLMs based on Auto-regressive Transformers are certainly non-linear (N) and auto-regressive (AR), have some internal random states affecting the computations (MA) and take exogenous inputs (X) being whatever you ask them.
+
+Thus, this section is really about symbolic fitting vs black-box networks (which includes neural networks and other algorithm classes this library can fit such as RBF networks and to some extend Wavelet networks, etc.)
+
+**Interpretability:** Symbolic models often result in equations having a clear physical or at least mathematical interpretation. This is important in situations where understanding the underlying relationships between inputs and outputs is required, such as physics, biology, or engineering. Black-box  networks, however, do not provide easily interpretable models.  
+To illustrate, NARMAX models are used, amongst others, in the field of robotics, as they allow for example to determine a) which part of the system is affected by b) the input of which sensor c) at what time lag and d) how.
+
+**Prior Knowledge and constraints:** Symbolic models allow the incorporation of domain knowledge and constraints into the model structure.  
+To illustrate, if the system is known to be linear, only linear terms are added to the dictionary or if the system is oscilatory in nature one fills the dictionary with sine and cosine regressors.  
+My rFOrLSR even allows to impose regressors to further constraint the model and impose user knowledge.
+
+**Data Efficiency:** Symbolic models require very little data for training, which allows to fit them in scarce data scenarios or even keep them updated in real-time. This is a cleaer advantage when data acquisition is expensive (like for biological processes) or when computational resources for fitting are limited.
+To illustrate, many NARMAX papers fit their example models with a 500 floats dataset, whereas neural networks require many GB or TB of data.
+
+**Noise and Outliers Handling:** Symbolic models can be more robust to noise and outliers in the data. In particular, NARMAX systems including MA regressors can create a model of the noise structure to further stabilize the model and guarantee bias-free parameter estimation. Black-box networks can be sensitive to noisy data and can overfit to outliers, leading to poor generalization.
+
+**Computational Efficiency:** Symbolic models often comprise very few terms and are thus computationally cheap, which can be of interest for real-time applications or embedded systems.
+
+**Extrapolation / generalization:** Symbolic models may perform better in extrapolation tasks, where predictions need to be made beyond the training data's value range than black-box networks. Indeed, if the model contains the correct regressors, the correct or almost correct equation can be obtained. The fitting error would be very low and the model would perform well on unseen data and data ranges.
 
 <br/>
 
@@ -188,9 +218,28 @@ For comparison, classic expansions like Fourier and Laplace fit the entire given
 The morphing procedure comprises four steps. After the rFOrLSR regressor selection, the regressor is parsed to deduce the non-linearity $f$ and its argument ${\underline{\chi}}_0$. If the function is morphable, the procedure continues with a genetic vector-space generating algorithm (GenVSGen) determining how many and which supplementary arguments ${\underline{\chi}}\_j$ improve the fitting. Finally, an infinitesimal optimizer determines the optimal coefficients $\underline{\xi}$.
 Once the rFOrLSR has selected and morphed sufficiently many regressors to meet its precision threshold, the final infinitesimal optimizer adapts the regression coefficients $\underline{\hat{\theta}}$ and the respective function arguments $\underline{\xi}_j$.  
 
-The morphing works with closed-form solutions of the gradient and Hessian, such that no AutoGrad is needed, allowing many orders of magnitude faster fitting procedures on arbitrary (discontinuous, acausal, etc.) functions. 
+The morphing works with closed-form solutions of the gradient and Hessian, such that no AutoGrad is needed, allowing many orders of magnitude faster fitting procedures on arbitrary functions. 
 
 The morphing allows:  
 - Fitting much more complex expressions (= more expressive models)
 - Sparser fitting (= smaller resulting expressions for a desired error tolerance)
 - Lower error (= smaller mean squared error for same length expressions)
+
+<br/>
+
+# Contributions & Licensing
+
+## Contributions
+All contributions to the library are welcome: 
+- Regressor Constructors for whatever you happen to be fitting!
+- Unit Tests
+- Documentation and supplementary examples
+- Non-linear analysis tools
+
+Just submit a pull request and we'll chat!
+I'll be adding auto-formatting rules for linters in the future.
+
+## Licensing
+The rFOrLSR library is licensed under the [3-Clause BSD License](https://opensource.org/license/BSD-3-clause/) with Copyright (c) 2023-2024 to Stéphane J.P.S. Thunus.
+
+This library is thus open-source and free in all senses of the word: Free as in usable without any payment and free in the sense of "this is a free country and I do what I want", \*\**eagle screeching in the background as I wipe a tear of joy from my eyes shimmering from hope while the summer wind gently caresses my hair with soft whispers of boundless possibilities*\*\*.
