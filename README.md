@@ -94,6 +94,9 @@ To illustrate, many NARMAX papers fit their example models with a 500 floats dat
 
 **Extrapolation / generalization:** Symbolic models may perform better in extrapolation tasks, where predictions need to be made beyond the training data's value range than black-box networks. Indeed, if the model contains the correct regressors, the correct or almost correct equation can be obtained. The fitting error would be very low and the model would perform well on unseen data and data ranges.
 
+**Combinations:** Also, both (symbolic and blackbox) models re not exclusive. A small and efficient symbolic model can be put first in the processing chain to allow a drastic size reduction of the following neural network, which can fit the symbolic model's residuals.   
+To illustrate, a small symbolic model explaining 70% of the data variance, could allow to reduce the number of layers and neurons by X amount.
+
 <br/>
 
 # About the library
