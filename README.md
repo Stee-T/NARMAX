@@ -2,10 +2,10 @@
 <div align="justify">
 
 ***This library puts the "MAX" back into NARMAX.***  
-It doesn't just raises exceptions; it raises eyebrows and occasionally, the bar for what is assumed to be possible.
+It doesn't just raises exceptions; it raises eyebrows and occasionally, the bar for what is assumed to be possible...
 
 
-This GPU-accelerated Python package contains the machine learning algorithms described in my two papers "*Arborescent Orthogonal Least Squares Regression (AOrLSR)*" and "*Dictionary Morphing Orthogonal Least Squares Regression (DMOrLSR)*" (coming soon) both based on my "*Recursive Forward Orthogonal Least Squares Regression (rFOrLSR)*" to fit "*Non-Linear Auto-Regressive Moving-Average Exogenous input systems (NARMAX)*". So, now that we have covered all the fancy acronyms, we might get into some explanations.  
+Anyways, this GPU-accelerated Python package contains the machine learning algorithms described in my two papers "*[Arborescent Orthogonal Least Squares Regression](arborescent-orthogonal-least-squares-regression---aorlsr) (AOrLSR)*" and "*[Dictionary Morphing Orthogonal Least Squares Regression](dictionary-morphing-orthogonal-least-squares-regression---dmorlsr) (DMOrLSR)*" (coming soon) both based on my "*[Recursive Forward Orthogonal Least Squares Regression](recursive-forward-orthogonal-least-squares-regression---rforlsr) (rFOrLSR)*" to fit "*[Non-Linear Auto-Regressive Moving-Average Exogenous input systems](narmaxwho) (NARMAX)*". So, now that we have covered all the fancy acronyms, we might get into some explanations.  
 Otherwise jump straight into the [library examples/ tutorials](https://github.com/Stee-T/rFOrLSR/tree/main/Examples "Example folder").
 
 **Note 1 (unfinished library):** The library currently only implements the arborescence part (see below) and is thus not finished, missing the dictionary morphing part. This means that currently only static regressors can be fitted. Thus, the dictionary terms need to be pre-defined and are not adapted to the system by the regression. Also I'm currently doing research into further ameliorations and even more advanecd algorithms, which will all be included in progressive library updates.
