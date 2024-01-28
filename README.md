@@ -5,7 +5,7 @@
 It doesn't just raises exceptions; it raises eyebrows and occasionally, the bar for what is assumed to be possible...
 
 
-Anyways, this GPU-accelerated Python package contains the machine learning algorithms described in my two papers "*[Arborescent Orthogonal Least Squares Regression](arborescent-orthogonal-least-squares-regression-aorlsr) (AOrLSR)*" and "*[Dictionary Morphing Orthogonal Least Squares Regression](dictionary-morphing-orthogonal-least-squares-regression-dmorlsr) (DMOrLSR)*" (coming soon) both based on my "*[Recursive Forward Orthogonal Least Squares Regression](recursive-forward-orthogonal-least-squares-regression-rforlsr) (rFOrLSR)*" to fit "*[Non-Linear Auto-Regressive Moving-Average Exogenous input systems](narmaxwho) (NARMAX)*". So, now that we have covered all the fancy acronyms, we might get into some explanations.  
+Anyways, this GPU-accelerated Python package contains the machine learning algorithms described in my two papers "*[Arborescent Orthogonal Least Squares Regression](#arborescent-orthogonal-least-squares-regression---aorlsr) (AOrLSR)*" and "*[Dictionary Morphing Orthogonal Least Squares Regression](#dictionary-morphing-orthogonal-least-squares-regression---dmorlsr) (DMOrLSR)*" (coming soon) both based on my "*[Recursive Forward Orthogonal Least Squares Regression](#recursive-forward-orthogonal-least-squares-regression---rforlsr) (rFOrLSR)*" to fit "*[Non-Linear Auto-Regressive Moving-Average Exogenous input systems](#narmaxwho) (NARMAX)*". So, now that we have covered all the fancy acronyms, we might get into some explanations.  
 Otherwise jump straight into the [library examples/ tutorials](https://github.com/Stee-T/rFOrLSR/tree/main/Examples "Example folder").
 
 **Note 1 (unfinished library):** The library currently only implements the arborescence part (see below) and is thus not finished, missing the dictionary morphing part. This means that currently only static regressors can be fitted. Thus, the dictionary terms need to be pre-defined and are not adapted to the system by the regression. Also I'm currently doing research into further ameliorations and even more advanecd algorithms, which will all be included in progressive library updates.
@@ -58,7 +58,7 @@ This is a MIMO (Multiple Input Multiple Output) system / function with 3 input c
 
 <br/>
 
-**The NARMAX fitting steps:**  
+### **The NARMAX fitting steps:**  
 
 1) **Expansion Type Selection:** As usual in machine learning, one must first choose an appropriate expansion type (FIR, IIR, Monomially-Expanded IIR, RBF, Wavelet, arbitrary non-linearities, etc.). As expected, the model quality strongly depends on how relevant the chosen expansion is. The advantage of this library's rFOrLSR is that any type of expansion and any mix of expansions is supported, as the rFOrLSR is based on vector matching methods.  
 This is achieved by creating a fitting "dictionary" $D_C \in \mathbb{R}^{p \times n_C}$ (Pytorch matrix) containing the candidate regressors $\underline{\varphi}_k \in \mathbb{R}^{p}$ stacked column-wise and passing it to the library. 
