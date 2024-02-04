@@ -157,7 +157,7 @@ def Expander( Data, RegNames, ExpansionOrder, IteractionOnly = False ):
     index = new_index
 
   # ------------------------------------------------------------------------------- B) RegNames construction ---------------------------------------------------------------
-  OutNames = [None] * nRegs # Pre-allocate memory for speed
+  OutNames = [None] * nRegs # Pre-allocate memory for speed, use a list, since numpy requires to know the maximum string length in advance
 
   Comb = it.combinations if IteractionOnly else it.combinations_with_replacement # chose correct combinations function
   iter = it.chain.from_iterable( Comb( range( Data.shape[1] ), i ) for i in range( 1, ExpansionOrder + 1 ) ) # no need for [] since itertools take variable number of arguments

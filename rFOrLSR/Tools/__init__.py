@@ -244,85 +244,147 @@ def zPlanePlot( b, a = 1, Title = None ):
 ################################################################################################################################################
 
 # ############################################################################ Variable Selection Procedure #############################################################################
-def MaxLagPlotter( x, y, MaxLags = ( 15, 15 ), MaxOrder = 5, VarianceAcceptThreshold = 0.98, Plot = True ):
+def ComputeERR( y, Ds ):
+  ''' Imposed only part of the rFOrLSR, as only the ERR of imposed terms is computed and returned.
+  
+  ### Inputs:
+  - `y`: (1D torch.Tensor) containing the system output vector
+  - `Ds`: (2D torch.Tensor) containing the imposed terms
+
+  ### Outputs:
+  - `ERR`: (np.array of float) containing the error reduction ratio (ERR) of the imposed terms in the same order as Ds
+  '''
+
+  s2y = ( y @ y ).item() # mean free observation empiric variance
+  ERR = np.full( Ds.shape[1], 0.0, dtype = np.float64 ) # list of Error reduction ratios of all imposed regressors
+  Psi = tor.empty( ( len( y ), 0 ) ); Psi_n = tor.empty( ( len( y ), 0 ) ) # Create empty ( p, 0 )-sized matrices to simplify the code below
+
+  # First iteration treated separately since no orthogonalization and no entry in A, and requires some reshapes
+  Psi = Ds[:, 0, None] # unnormed orthogonal regressor matrix ( already centered ) reshaped as column
+  n_Omega = HF.Norm2( Psi ) # squared euclidean norm of Omega or fudge factor
+  Psi_n = Psi / n_Omega # normed orthogonal regressor matrix
+  ERR[0] = ( ( Psi_n.T @ y ).item() )**2 * n_Omega / s2y # W[-1]^2 * n_Omega/s2y ) as usual but without storing W
+  
+  for col in range( 1, Ds.shape[1] ): # iterate over columns, start after position 1
+    if ( np.sum( ERR[:col] ) >= 1 ): return ( ERR ) # R[1/2] early exit if max ERR reached, array is init with 1s
+    # Computations
+    Omega = Ds[:, col] - Psi_n @ ( Psi.T @ Ds[:, col] ) # orthogonalize only the current column ( no reshape needed )
+    n_Omega = HF.Norm2( Omega )  # squared euclidean norm of Omega or fudge factor
+    ERR[col] = ( ( Omega @ y ).item() / n_Omega )**2 * n_Omega / s2y # W[-1]^2 * n_Omega/s2y ) as usual but without storing W
+    
+    # Data storage, add current regressor
+    Psi = tor.column_stack( ( Psi, Omega ) ) # unnormed matrix
+    Psi_n = tor.column_stack( ( Psi_n, Omega / n_Omega ) ) # normed matrix
+  
+  return ( ERR ) # R[2/2]
+
+
+# ############################################################################ Expansion Order Estimator #############################################################################
+def ExpansionOrderEstimator( x, y, MaxLags = ( 15, 15 ), MaxOrder = 5, VarianceAcceptThreshold = 0.98, Plot = True ):
+  '''Variable selection function determining the required Monomial expansion order for y and x for rFOrLSR dictionary sparcification.
+  This function is NARMAX specific since lagged variables are checked using arbitrary-order polynomial NARX models rather than Taylor expansions.
+  
+  Note: For model order > 2, this function might be a lot slower than an Arbo with a large dictionary, so use only for analysis or for Dcs not fitting in memory.
+  
+  ### Inputs:
+  -`x`: (1D torch.Tensor) containing the system input vector
+  -`y`: (1D torch.Tensor) containing the system output vector
+  -`MaxLags`: (2D int Tuple) containing the maximum lags for n_b and n_a, defaults to 30 for both ( n_b, n_a )
+  -`MaxOrder`: (int > 0) Maximum approximation order used for the estimation
+  -`VarianceAcceptThreshold`: ( float ) the minimum explained variance of the NARMAX expansion to estimate the needed delays
+  
+  ### Output:
+  - `ModelOrder`: (int) The chosen expansion's order, to be passed as (monomial) ExpansionOrder parameter to RegressionMatrix ( Dictionary CTor )
+  - `ModelExplainedVariance`: ( (ModelOrder,)-shaped np.array of float) The chosen model's ERR sum (percentage of explained variance)
+  '''
+  
+  # Defensive programming:
+  if ( x.shape != y.shape ):                 raise AssertionError( "x and y must have the shape shape.Note that both are flattened for prcessing" )
+  if ( ( x.ndim != 1 ) or ( y.ndim != 1 ) ): raise AssertionError( "x or y is not a (p,)-shaped Tensor" )
+  if ( ( MaxOrder < 1 ) or ( not isinstance( MaxOrder, int ) ) ): raise AssertionError( "MaxOrder must be an int >= 1" )
+  
+  y = tor.ravel( y )
+  x = tor.ravel( x )
+
+  # ---------------------------------------------------------------------------- A) Model order evaluation ------------------------------------------------------------------------------
+  ModelExplainedVariance = [ 0 ] # Summed ERR of all models orders. Start at 0 to represent the 0th order model, being a constant. The optimal constant is the mean of y being 0
+  y_cut, RegMat, RegNames = CTors.Lagger( ( x, y ), MaxLags ) # Create the imposed lags
+  y_cut -= y_cut.mean()
+  ProgressBar = tqdm.tqdm( desc = "Currently analyzed expansion order", unit = "" ) # Initialise progressbar without giving the max to have a counter
+
+  # if less than Minvariance variance is explained, redo the analysis with a higher order model, since maxlag = max variance
+  for ModelOrder in range( 1, MaxOrder + 1 ): 
+    ProgressBar.update()
+    RegMatTMP = CTors.Expander( RegMat, RegNames, ExpansionOrder = ModelOrder )[0] # take only the RegMat and ignore RegNames
+
+    # ComputeERR returns an Array of ERR and stops upon the first ERR > 1 entry and fills the rest of the array with 0, so re-clip the sum since %
+    ModelErr = min( 1.0, np.sum( ComputeERR( y_cut, RegMatTMP - RegMatTMP.mean( axis = 0, keepdims = True ) ) ) )
+    ModelExplainedVariance.append( ModelErr )
+    
+    if ( ModelExplainedVariance[-1] >= VarianceAcceptThreshold ): break # do while condition, +1 since next iteration will exceed limit
+  
+  ProgressBar.close()
+  
+  if ( ModelExplainedVariance[-1] < VarianceAcceptThreshold ): # loop finished without reaching the threshold
+    print( "\nThe VarianceAcceptThreshold was not met, increase MaxOrder and/or MaxLags" )
+  else: print( "An order", ModelOrder, "model explaining", 100 * ModelExplainedVariance[-1], "% of the variance was selected.\n" )
+
+  ModelExplainedVariance = np.array( ModelExplainedVariance )
+
+  # --------------------------------------------------------------------------------- B) Plotting ------------------------------------------------------------------------------
+  if ( Plot ):
+    Fig, Ax = plt.subplots()
+    Ax.plot( 100 * ModelExplainedVariance )
+    Ax.set_xticks( np.arange( len( ModelExplainedVariance ) ) );
+    Ax.set_xticklabels( np.arange( len( ModelExplainedVariance ) ) )
+    Ax.grid( which = 'both', alpha = 0.15 )
+    Ax.axhline( y = 100 * VarianceAcceptThreshold, c = 'purple', linewidth = 1.5, linestyle = '--' )
+    Ax.legend( [ "Model Explained Variance", "User Variance Acceptance Threshold" ] )
+    Ax.set( title = f"Model Order Estimation using MaxLags: { MaxLags }", xlabel = "Model Expansion Order", ylabel = "Explained Variance [%]" )
+    Fig.tight_layout()
+
+  return ( ModelOrder, ModelExplainedVariance )
+
+
+# ############################################################################ Variable Selection Procedure #############################################################################
+def MaxLagsEstimator( x, y, ModelOrder, MaxLags = ( 15, 15 ), VarianceAcceptThreshold = 0.98, Plot = True ):
   '''Variable selection function determining the maximum lags for y and x for rFOrLSR dictionary sparcification.
   This function is NARMAX specific since lagged variables are checked using arbitrary-order polynomial NARX models rather than Taylor expansions.
   Everything in purple on the plot is below the VarianceAcceptThreshold.
   
   Note: For model order > 2, this function might be a lot slower than an Arbo with a large dictionary, so use only for analysis or for Dcs not fitting in memory.
+  Note: If any of the recommended lags contain the maximum lag as passed by the user, then the passed lags are not sufficient an a warning will be printed.
   
   ### Inputs:
-  -`x`: (1D torch.Tensor) containing the system input
-  -`y`: (1D torch.Tensor) containing the system output signal
-  -`MaxLags`: (2D int Tuple) containing the maximum lags for n_b and n_a, defaults to 30 for both ( n_b, n_a )
-  -`MaxOrder`: (int > 0) Maximum approximation order used for the estimation
+  -`x`: (1D torch.Tensor) containing the system input vector
+  -`y`: (1D torch.Tensor) containing the system output vector
+  -`ModelOrder`: (int > 0) Polynomial expansion order used for the estimation
+  -`MaxLags`: (2D int Tuple) containing the maximum lags for n_b and n_a (thus x, y), defaults to 15 for both
   -`VarianceAcceptThreshold`: ( float ) the minimum explained variance of the NARMAX expansion to estimate the needed delays
   -`Plot`: (bool) if True, the plot will be generated
   
   ### Output:
-  - `Modelorder`: (int) The chosen expansion's order, to be passed as (monomial) ExpansionOrder parameter to RegressionMatrix ( Dictionary CTor )
   - `Grid`: ( MaxLags[0], MaxLags[1] )-shaped np.array containing the ERR values displayed by the plot
   - `Recommendations`: (Dict) containing the optimal lags with the system with the minimal x & y, x, y lags.
   '''
   
-  # Bullshit prevention:
+  # Defensive programming:
   if ( x.shape != y.shape ):                 raise AssertionError( "x and y must have the shape shape.Note that both are flattened for prcessing" )
   if ( ( x.ndim != 1 ) or ( y.ndim != 1 ) ): raise AssertionError( "x or y is not a (p,)-shaped Tensor" )
-  if ( ( MaxOrder < 1 ) or ( not isinstance( MaxOrder, int ) ) ): raise AssertionError( "MaxOrder must be an int >= 1" )
+  if ( ( ModelOrder < 1 ) or ( not isinstance( ModelOrder, int ) ) ): raise AssertionError( "MaxOrder must be an int >= 1" )
   
-  # --------------------------------------------------------------------------------- Ds only FOrLSR ------------------------------------------------------------------------------
   y = tor.ravel( y )
   x = tor.ravel( x )
-
-  def MiniFOrLSR ( y, Ds ):
-    ''' Very minimal Version of FOrLSR, as only the ERR of imposed terms is necessary '''
-    s2y = ( y @ y ).item() # mean free observation empiric variance
-    ERR = [] # list of Error reduction ratios of all selected regressors ( Dc and Ds )
-    Psi = tor.empty( ( len( y ), 0 ) ); Psi_n = tor.empty( ( len( y ), 0 ) ) # Create empty ( p, 0 )-sized matrices to simplify the code below
-
-    # First iteration treated separately since no orthogonalization and no entry in A, and requires some reshapes
-    Psi = Ds[:, 0, None] # unnormed orthogonal regressor matrix ( already centered ) reshaped as column
-    n_Omega = HF.Norm2( Psi ) # squared euclidean norm of Omega or fudge factor
-    Psi_n = Psi / n_Omega # normed orthogonal regressor matrix
-    ERR.append( ( ( Psi_n.T @ y ).item() )**2 * n_Omega / s2y ) # W[-1]^2 * n_Omega/s2y ) as usual but without storing W
-    
-    for col in range( 1, Ds.shape[1] ): # iterate over columns, start after position 1
-      if ( np.sum( ERR ) >= 1 ): return ( 1.0 ) # R[1/2] early exit if max ERR reached
-      # Computations
-      Omega = Ds[:, col] - Psi_n @ ( Psi.T @ Ds[:, col] ) # orthogonalize only the current column ( no reshape needed )
-      n_Omega = HF.Norm2( Omega )  # squared euclidean norm of Omega or fudge factor
-      ERR.append( ( ( Omega @ y ).item() / n_Omega )**2 * n_Omega / s2y ) # W[-1]^2 * n_Omega/s2y ) as usual but without storing W
-      
-      # Data storage, add current regressor
-      Psi = tor.column_stack( ( Psi, Omega ) ) # unnormed matrix
-      Psi_n = tor.column_stack( ( Psi_n, Omega / n_Omega ) ) # normed matrix
-    
-    return ( np.sum( ERR ) ) # R[2/2]
-
-  # --------------------------------------------------------------------------------- A) Model order evaluation ------------------------------------------------------------------------------
-  ModelOrder = 0 # try linear model first, incremented in the while to 1
-  ModelExplainedVariance = 0 # Init to zero since not computed
-
-  print( "Estimating model order." )
-  while ( 5 ): # if less than Minvariance variance is explained, redo the analysis with a higher order model, since maxlag= max variance
-    ModelOrder += 1 # increase order
-    y_cut, RegMat, RegNames = CTors.Lagger( ( x, y ), MaxLags ) # construct linear regressor matrix, ignore RegNames return
-    RegMat, RegNames = CTors.Expander( RegMat, RegNames, ExpansionOrder = ModelOrder )
-
-    ModelExplainedVariance = MiniFOrLSR( y_cut - y_cut.mean(), RegMat - RegMat.mean( axis = 0, keepdims = True ) ) # pass y separately and exclude it in Ds, then sum of all ERRs
-    
-    if ( ( ModelOrder > MaxOrder + 1 ) or ( ModelExplainedVariance > VarianceAcceptThreshold ) ): break # do while condition, +1 since next iteration will exceed limit
-    
-  print( "\nA order", ModelOrder, "model explaining", 100 * ModelExplainedVariance, "% of the variance was selected. Computing the plot:" )
   
-  # --------------------------------------------------------------------------------- B) Model computation ------------------------------------------------------------------------------
+  # --------------------------------------------------------------------------------- A) Model computation ------------------------------------------------------------------------------
+  print( "\nComputing the Grid:" )
   Grid = np.full( ( MaxLags[1] + 1, MaxLags[0] + 1 ), np.nan ) # y's are rows and the x's columns to have a correct graph orientation, +1 due to x[k], y[k]
   ProgressBar = tqdm.tqdm( total = Grid.size ) # Initialise progressbar while declaring total number of iterations
 
-  # Unintuitively, it's the MiniFOrLSR which accounts for 99.99% of the time, not both CTors, so optimizing that out isn't of interest.
+  # Unintuitively, it's the ComputeERR which accounts for 99.99% of the time, not both CTors, so optimizing that out isn't of interest.
   # Also y_cut has a different length at each iteration so it can't be stored
-  for na in range( MaxLags[1] + 1 ): # iterate over y values, +1 to contain the end-of-range value
-    for nb in range( MaxLags[0] + 1 ): # iterate over x values, +1 to contain the end-of-range value
+  for na in range( MaxLags[1] + 1 ): # iterate over y lags, +1 to contain the end-of-range value
+    for nb in range( MaxLags[0] + 1 ): # iterate over x lags, +1 to contain the end-of-range value
       
       if ( ( Grid[ max( na-1, 0 ), nb] == 1.0 ) and ( Grid[ na, max( nb-1, 0 )] == 1.0 ) ): 
         Grid[ na, nb ] = 1.0 # if both previous regressor lists are already sufficient to achive full precision, don't recompute unnecessarily everything
@@ -331,51 +393,53 @@ def MaxLagPlotter( x, y, MaxLags = ( 15, 15 ), MaxOrder = 5, VarianceAcceptThres
         y_cut, RegMat, RegNames = CTors.Lagger( Data = ( x, y ), Lags = ( nb, na ) ) # construct linear regressor matrix, ignore RegNames return
         RegMat, RegNames = CTors.Expander( RegMat, RegNames, ExpansionOrder = ModelOrder )
         
-        Grid[na, nb] = MiniFOrLSR( y_cut - y_cut.mean(), RegMat - RegMat.mean( axis = 0, keepdims = True ) ) # store the ERR only
+        ERRArray = ComputeERR( y_cut - y_cut.mean(), RegMat - RegMat.mean( axis = 0, keepdims = True ) ) # Returns an Array of ERR (clipped to 1)
+        Grid[na, nb] = min( 1.0, np.sum( ERRArray ) ) # ComputeERR stops upon the first ERR > 1 entry and fills the rest of the array with 1, so re-clip the sum
 
       ProgressBar.update() # increase count
   ProgressBar.close() # Necessary
   
-  # --------------------------------------------------------------------------------- C) Lags recommendation -----------------------------------------------------------------------------------
-  Recommendations = { "Min_XY": (MaxLags[1], MaxLags[0]), # Position with the smallest x and y lags
-                      "Min_X":  (MaxLags[1], MaxLags[0]), # Position with the smallest x lag
-                      "Min_Y":  (MaxLags[1], MaxLags[0]), # Position with the smallest y lag
+  # --------------------------------------------------------------------------------- B) Lags recommendation -----------------------------------------------------------------------------------
+  Recommendations = { "Min_XY": ( MaxLags[0], MaxLags[1] ), # Position with the smallest x and y lags
+                      "Min_X":  ( MaxLags[0], MaxLags[1] ), # Position with the smallest x lag
+                      "Min_Y":  ( MaxLags[0], MaxLags[1] ), # Position with the smallest y lag
                     }
   
   BestIdx = np.inf
 
-  for na in range( MaxLags[1] + 1 ):
-    for nb in range( MaxLags[0] + 1 ):
-      
-      if ( Grid[ na, nb ] == 1.0 ): # valid solution
+  for na in range( MaxLags[1] + 1 ): # over y-lags
+    for nb in range( MaxLags[0] + 1 ): # over x-lags
+      if ( Grid[ na, nb ] > VarianceAcceptThreshold ): # valid solution
         if ( na + nb < BestIdx ): # Smallest a+b position. Taking <= would allow more y terms in, yielding less numereically stable solution systems
           BestIdx = na + nb
-          Recommendations["Min_XY"] = (na, nb)
+          Recommendations["Min_XY"] = ( nb, na ) # x-lags then y-lags
 
-  for na in range( MaxLags[1] + 1 ): # iterate over y values first, since we're looking for the smallest nb with the smallest na
-    BestIdx = np.argmax( Grid[ na, : ] == 1.0 ) # find the first nb == 1. Guaranteed to be max since results are clipped inside MiniFOrLSR
-    if ( BestIdx != 0 ): Recommendations["Min_Y"] = (na, BestIdx); break
+  for na in range( MaxLags[1] + 1 ): # iterate over y values (rows), since we're looking for the smallest nb with the smallest na
+    BestIdx = np.argmax( Grid[ na, : ] > VarianceAcceptThreshold ) # find first nb > VarianceAcceptThreshold.
+    if ( BestIdx != 0 ): Recommendations["Min_Y"] = ( BestIdx, na ); break
 
-  for nb in range( MaxLags[0] + 1 ): # iterate over x values first, since we're looking for the smallest na with the smallest nb
-    BestIdx = np.argmax( Grid[ : , nb ] == 1.0 ) # find the first na == 1. Guaranteed to be max since results are clipped inside MiniFOrLSR
-    if ( BestIdx != 0 ): Recommendations["Min_X"] = (BestIdx, nb); break
-        
+  for nb in range( MaxLags[0] + 1 ): # iterate over x values (columns), since we're looking for the smallest na with the smallest nb
+    BestIdx = np.argmax( Grid[ : , nb ] > VarianceAcceptThreshold ) # find the first na > VarianceAcceptThreshold.
+    if ( BestIdx != 0 ): Recommendations["Min_X"] = ( nb, BestIdx ); break
 
-  # ---------------------------------------------------------------------------------- D) Plot -------------------------------------------------------------------------------------------------
+
+  if ( np.max( Grid ) < VarianceAcceptThreshold ): print( "\nWARNING: The passed MaxLags don't suffise for the desired variance\n" )
+  # ---------------------------------------------------------------------------------- C) Plot ---------------------------------------------------------------------------------------
   if ( Plot ):
     Fig, Ax = plt.subplots() # force new figure
     Im = Ax.pcolormesh( Grid, cmap = 'viridis', edgecolors = 'k', linewidth = 2,
-                       vmin = VarianceAcceptThreshold, vmax = 1, # Everything below the VarianceAcceptThreshold is not of interest
+                        vmin = VarianceAcceptThreshold, vmax = np.max( Grid ), # Everything below the VarianceAcceptThreshold is not of interest → clip. vmax → to maximize colo-range
                       )
 
-    DotSize = 50
-    Ax.scatter( Recommendations["Min_Y"][1],  Recommendations["Min_Y"][0],  color = 'r', s = DotSize ) # red
-    Ax.scatter( Recommendations["Min_X"][1],  Recommendations["Min_X"][0],  color = 'b', s = DotSize ) # blue
-    Ax.scatter( Recommendations["Min_XY"][1], Recommendations["Min_XY"][0], color = 'k', s = DotSize ) # black, last to be on top if multiple at same spot
+    DotSize = 60
+    Ax.scatter( Recommendations["Min_Y"][0],  Recommendations["Min_Y"][1],  color = 'r', s = DotSize ) # red
+    Ax.scatter( Recommendations["Min_X"][0],  Recommendations["Min_X"][1],  color = 'r', s = DotSize ) # blue
+    Ax.scatter( Recommendations["Min_XY"][0], Recommendations["Min_XY"][1], color = 'r', s = DotSize ) # black, last to be on top if multiple at same spot
 
     Ax.set_ylabel( "y[k-i] terms" ); Ax.set_xlabel( "x[k-i] terms" )
     Ax.set_aspect( 'equal' )
     Ax.set_ylim( 0, MaxLags[1] + 1 ); Ax.set_xlim( 0, MaxLags[0] + 1 ) # Have both axis start at 0 in the bottom left corner (flips y-axis)
     Fig.colorbar( Im ) # defaults to curernt Figure
+    Fig.tight_layout()
   
-  return ( ModelOrder, Recommendations, Grid )
+  return ( Recommendations, Grid )
