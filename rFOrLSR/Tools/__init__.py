@@ -347,7 +347,7 @@ def ExpansionOrderEstimator( x, y, MaxLags = ( 15, 15 ), MaxOrder = 5, VarianceA
 
 
 # ############################################################################ Variable Selection Procedure #############################################################################
-def MaxLagsEstimator( x, y, ModelOrder, MaxLags = ( 15, 15 ), VarianceAcceptThreshold = 0.98, Plot = True ):
+def MaxLagsEstimator( x, y, ModelOrder, MaxLags = ( 15, 15 ), VarianceAcceptThreshold = 0.98, Plot = True, SaveFig = None ):
   '''Variable selection function determining the maximum lags for y and x for rFOrLSR dictionary sparcification.
   This function is NARMAX specific since lagged variables are checked using arbitrary-order polynomial NARX models rather than Taylor expansions.
   Everything in purple on the plot is below the VarianceAcceptThreshold.
@@ -362,6 +362,7 @@ def MaxLagsEstimator( x, y, ModelOrder, MaxLags = ( 15, 15 ), VarianceAcceptThre
   -`MaxLags`: (2D int Tuple) containing the maximum lags for n_b and n_a (thus x, y), defaults to 15 for both
   -`VarianceAcceptThreshold`: ( float ) the minimum explained variance of the NARMAX expansion to estimate the needed delays
   -`Plot`: (bool) if True, the plot will be generated
+  -`SaveFig`: (str) path to save the plot, only works if Plot = True
   
   ### Output:
   - `Grid`: ( MaxLags[0], MaxLags[1] )-shaped np.array containing the ERR values displayed by the plot
@@ -372,12 +373,15 @@ def MaxLagsEstimator( x, y, ModelOrder, MaxLags = ( 15, 15 ), VarianceAcceptThre
   if ( x.shape != y.shape ):                 raise AssertionError( "x and y must have the shape shape.Note that both are flattened for prcessing" )
   if ( ( x.ndim != 1 ) or ( y.ndim != 1 ) ): raise AssertionError( "x or y is not a (p,)-shaped Tensor" )
   if ( ( ModelOrder < 1 ) or ( not isinstance( ModelOrder, int ) ) ): raise AssertionError( "MaxOrder must be an int >= 1" )
+  if ( SaveFig is not None ):
+    if ( not Plot ): raise AssertionError( "SaveFig can only be used if Plot = True" )
+    SaveFig = SaveFig.replace( "\\", "/" ) # Security
   
   y = tor.ravel( y )
   x = tor.ravel( x )
   
   # --------------------------------------------------------------------------------- A) Model computation ------------------------------------------------------------------------------
-  print( "\nComputing the Grid:" )
+  print( f"\nComputing the Grid with maximum lags at ({ MaxLags[0] }, { MaxLags[1] }) and for a model order of { ModelOrder }:" )
   Grid = np.full( ( MaxLags[1] + 1, MaxLags[0] + 1 ), np.nan ) # y's are rows and the x's columns to have a correct graph orientation, +1 due to x[k], y[k]
   ProgressBar = tqdm.tqdm( total = Grid.size ) # Initialise progressbar while declaring total number of iterations
 
@@ -425,21 +429,32 @@ def MaxLagsEstimator( x, y, ModelOrder, MaxLags = ( 15, 15 ), VarianceAcceptThre
 
   if ( np.max( Grid ) < VarianceAcceptThreshold ): print( "\nWARNING: The passed MaxLags don't suffise for the desired variance\n" )
   # ---------------------------------------------------------------------------------- C) Plot ---------------------------------------------------------------------------------------
-  if ( Plot ):
+  if ( Plot ): # An 0.5 offset is added everywhere to have the labels and the dots in the middle of each square rather than left + below it.)
+    ColorBarMax = np.max( Grid )
+    if ( ColorBarMax <= VarianceAcceptThreshold ): ColorBarMax = 1 # if the variance isn't reached set the max to make everything purple (minimum)
+
     Fig, Ax = plt.subplots() # force new figure
     Im = Ax.pcolormesh( Grid, cmap = 'viridis', edgecolors = 'k', linewidth = 2,
-                        vmin = VarianceAcceptThreshold, vmax = np.max( Grid ), # Everything below the VarianceAcceptThreshold is not of interest → clip. vmax → to maximize colo-range
+                        vmin = VarianceAcceptThreshold, vmax = ColorBarMax, # Everything below the VarianceAcceptThreshold is not of interest → color clip.
                       )
 
     DotSize = 60
-    Ax.scatter( Recommendations["Min_Y"][0],  Recommendations["Min_Y"][1],  color = 'r', s = DotSize ) # red
-    Ax.scatter( Recommendations["Min_X"][0],  Recommendations["Min_X"][1],  color = 'r', s = DotSize ) # blue
-    Ax.scatter( Recommendations["Min_XY"][0], Recommendations["Min_XY"][1], color = 'r', s = DotSize ) # black, last to be on top if multiple at same spot
+    Ax.scatter( Recommendations["Min_Y"][0] + 0.5,  Recommendations["Min_Y"][1] + 0.5,  color = 'r', s = DotSize ) # red
+    Ax.scatter( Recommendations["Min_X"][0] + 0.5,  Recommendations["Min_X"][1] + 0.5,  color = 'r', s = DotSize ) # blue
+    Ax.scatter( Recommendations["Min_XY"][0] + 0.5, Recommendations["Min_XY"][1] + 0.5, color = 'r', s = DotSize ) # black, last to be on top if multiple at same spot
 
-    Ax.set_ylabel( "y[k-i] terms" ); Ax.set_xlabel( "x[k-i] terms" )
-    Ax.set_aspect( 'equal' )
-    Ax.set_ylim( 0, MaxLags[1] + 1 ); Ax.set_xlim( 0, MaxLags[0] + 1 ) # Have both axis start at 0 in the bottom left corner (flips y-axis)
+    Ax.set( title = f"Model Order: { ModelOrder }",
+            xlabel = "x[k-i] regressors",                    ylabel = "y[k-i] regressors",
+            xlim = ( 0, MaxLags[0] + 1 ),                    ylim = ( 0, MaxLags[1] + 1 ), # Start at 0 in the bottom left corner (flips y-axis compared to usual pclormesh)
+            xticks = ( 0.5 + np.arange( MaxLags[0] + 1 ) ),  yticks = ( 0.5 + np.arange( MaxLags[1] + 1 ) ), # Move to middle
+            xticklabels =  ( np.arange( MaxLags[0] + 1 ) ),  yticklabels =  ( np.arange( MaxLags[1] + 1 ) ), # Compensate
+            aspect = 'equal'
+          )
+    
     Fig.colorbar( Im ) # defaults to curernt Figure
     Fig.tight_layout()
+
+    if ( SaveFig is not None ): plt.savefig( SaveFig )
+  
   
   return ( Recommendations, Grid )
