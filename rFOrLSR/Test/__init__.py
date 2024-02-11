@@ -107,7 +107,7 @@ def iFOrLSR( x, W = None, Print = True ): # iFOrLSR paper example
 
 ## ######################################################################################## Non-Linearities ################################################################################
 def NonLinearities( x, W = None, Print = True ):
-  '''y[k] = 0.2x[k] + 0.3x[k-1]^3 + 0.7|x[k-2]*x[k-1]^2| + 0.5exp(x[k-3]*x[k-2]) - 0.5cos(y[k-1]*x[k-2]) + 0.2|x[k-1]*y[k-2]^2| - 0.1y[k-3]^3
+  '''y[k] = 0.3x[k] + 0.3x[k-1]^3 + 0.7|x[k-2]*x[k-1]^2| - 0.5exp(x[k-3]*x[k-2]) + 0.5cos(y[k-1]*x[k-2]) - 0.4|x[k-1]*y[k-2]^2| - 0.4y[k-3]^3
   
   ### Inputs:
   - `x`: ((p,)-shaped torch.Tensor) containing the input sequence
@@ -127,17 +127,17 @@ def NonLinearities( x, W = None, Print = True ):
   y = tor.zeros( len( x ) ) # system output, 0 to emulate the initialization state
 
   for k in range( MaxLag, len( x ) ): # maximum lag is 3
-    y[k] = 0.2*x[k] + 0.3*x[k-1]**3 + 0.7*tor.abs( x[k-2]*x[k-1]**2) + 0.5*tor.exp( x[k-3]*x[k-2] ) - 0.5*tor.cos( y[k-1] * x[k-2] ) - 0.4*tor.abs( x[k-1] * y[k-2]**2 ) - 0.4*y[k-3]**3 # AOrLSR benchmark version
+    y[k] = 0.3*x[k] + 0.3*x[k-1]**3 + 0.7*tor.abs( x[k-2]*x[k-1]**2) - 0.5*tor.exp( x[k-3]*x[k-2] ) + 0.5*tor.cos( y[k-1] * x[k-2] ) - 0.4*tor.abs( x[k-1] * y[k-2]**2 ) - 0.4*y[k-3]**3 # AOrLSR benchmark version
     if ( W is not None ): y[k] += W[k] # Additive Noise
   
-  if ( Print ): print("System: y[k] = 0.2x[k] + 0.3x[k-1]^3 + 0.7|x[k-2]*x[k-1]^2| + 0.5exp(x[k-3]*x[k-2]) - 0.5cos(y[k-1]*x[k-2]) + 0.2|x[k-1]*y[k-2]^2| - 0.1y[k-3]^3\n")
+  if ( Print ): print("System: y[k] = 0.3x[k] + 0.3x[k-1]^3 + 0.7|x[k-2]*x[k-1]^2| - 0.5exp(x[k-3]*x[k-2]) + 0.5cos(y[k-1]*x[k-2]) - 0.4|x[k-1]*y[k-2]^2| - 0.4y[k-3]^3\n")
   if ( W is not None ): W = W[ MaxLag : ]
   
   return ( x[ MaxLag : ], y[ MaxLag : ], W )
   
  
 ## ######################################################################################## Not In Dict ################################################################################
-def NotInDictionaty_Test( x, W = None, Print = True ): # Model with terms not in the dictionary
+def SevereNonLinearities( x, W = None, Print = True ): # Model with terms not in the dictionary
   '''y[k] = 0.5cos(0.2x[k] + 0.3x[k-1])^3 + 0.2exp(x[k-2]*x[k-1])**2 + 0.5|tanh(x[k-3]*x[k-2])| + 0.1|y[k-3]|^3
     
   ### Inputs:
@@ -220,7 +220,7 @@ def RationalNARMAX( x, W = None, Print = True ):
   y = tor.zeros( len( x ) ) # system output, 0 to emulate the initialization state
   
   for k in range( MaxLag, len( x ) ): # maximum lag is 3
-    y[k] = (2*x[k] - 0.4*tor.abs( x[k-1]**3) + x[k-2]*x[k-1]**2 + 0.5*tor.tan( x[k-3])) / (0.5*tor.cos(y[k-1]) + 2*y[k-2]**2) # those should never be zero
+    y[k] = (2*x[k] - 0.4*tor.abs( x[k-1]**3 ) + x[k-2]*x[k-1]**2 + 0.5*tor.tan( x[k-3] ) ) / ( 0.5*tor.cos( y[k-1] ) + 2*y[k-2]**2) # those should never be zero
     if ( W is not None ): y[k] += W[k] # Additive Noise
   
   if ( Print ): print("System: y[k] = \n(2x[k] -0.4|x[k-1]^3| + x[k-2]*x[k-1]^2 + 0.5sqrt(|x[k-3]|) /\n(0.5cos(y[k-1]) + 2y[k-2]^2)")
