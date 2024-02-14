@@ -11,7 +11,7 @@ class MultiKeyHashTable:
     '''Get an item from the Data list by its list index: self.MultiKeyHashTable[ index ] '''
     return ( self.Data[ index ] )
 
-  # --------------------------------------------------------- Same Start AOrLSR ---------------------------------------------------------
+  # --------------------------------------------------------- Same Start ---------------------------------------------------------
   def SameStart( self, Item ):
     ''' Getter retrieving an item from the Data list indirectly via the LookUpDict by checking if Item matches the start of any element.
     This is the check performed before node creations and during the rFOrLSR.
@@ -27,7 +27,7 @@ class MultiKeyHashTable:
     else: return ( [] ) # no matching term was found during the iteration
 
 
-  # --------------------------------------------------------- Same Start ------------------------------------------------------------
+  # --------------------------------------------------------- Add Data ------------------------------------------------------------
   def AddData( self, Item ):
     '''Add an item to the LG
     
