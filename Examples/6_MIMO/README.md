@@ -1,6 +1,6 @@
 <div align="justify">
 
-# Example 5: MIMO & MISO Systems
+# Example 6: MIMO & MISO Systems
 
 This example / tutorial illustrates:
 - Advanced use of the Lagger Regressor-CTor (Custom `MaxLags` and `RegNames` arguments)
@@ -104,5 +104,5 @@ Recognized regressors:
 0.30000000000000004 x1[k-1]
 ```
 
-[Previous Tutorial: 4. Sigmoid Expansion & Custom Validation](https://github.com/Stee-T/rFOrLSR/tree/main/Examples/4_tanh)  
-[Next Tutorial: 6. MaxLags](https://github.com/Stee-T/rFOrLSR/tree/main/Examples/5_MaxLags)
+[Previous Tutorial: 5. Sigmoid Expansion & Custom Validation](https://github.com/Stee-T/rFOrLSR/tree/main/Examples/5_tanh)  
+[Next Tutorial: 7. MaxLags](https://github.com/Stee-T/rFOrLSR/tree/main/Examples/7_MaxLags)

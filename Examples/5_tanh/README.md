@@ -1,6 +1,6 @@
 <div align="justify">
 
-# Example 4: Sigmoid Expansion & Custom Validation Function
+# Example 5: Sigmoid Expansion & Custom Validation Function
 
 **This example / tutorial illustrates:**
 - How to fit nested expressions by linearizing the regressors
@@ -170,5 +170,5 @@ plt.show()
 
 <br/>
 
-[Previous Tutorial: 3. Imposing Regressors & IIR fitting](https://github.com/Stee-T/rFOrLSR/tree/main/Examples/3_Only_Ds_and_IIR)  
-[Next Tutorial: 5. Multiple Input Systems](https://github.com/Stee-T/rFOrLSR/tree/main/Examples/5_MIMO)
+[Previous Tutorial: 4. Imposing Regressors & IIR fitting](https://github.com/Stee-T/rFOrLSR/tree/main/Examples/4_Only_Ds_and_IIR)  
+[Next Tutorial: 6. Multiple Input Systems](https://github.com/Stee-T/rFOrLSR/tree/main/Examples/6_MIMO)

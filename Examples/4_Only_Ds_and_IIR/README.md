@@ -1,4 +1,4 @@
-# Example 3: Imposing Regressors and IIR fitting
+# Example 4: Imposing Regressors and IIR fitting
 This example / tutorial illustrates:
 - How to impose regressors via $D_S$ (*D*ictionary of *S*elected regressors)
 - The (linear) IIR (ARX) analysis tools: how to transform the regression results ($\theta, L$) into the $\underline{b}$, $\underline{a}$ coefficient-vectors and plot the resulting IIRs (magnitude, phase, poles/zeros)
@@ -142,7 +142,7 @@ rFOrLSR.Tools.IIR_Spectrum( h_List = [ h_Original, h_Ds ], FilterNames = [ 'Orig
 ```
 The below figure shows the resulting magnitudes and phases and illustrates that the estimated filter perfectly overlaps with the original filter, denoting an excellent fit
 
-![Figure3](https://github.com/Stee-T/rFOrLSR/blob/main/Examples/3_Only_Ds_and_IIR/Figure_3.png)
+![Figure3](https://github.com/Stee-T/rFOrLSR/blob/main/Examples/4_Only_Ds_and_IIR/Figure_3.png)
 
 **Note (Phase offsets):** In some cases, the fitted filter has a phase offset of exactly $\pm \pi$ radians (despite a correct magnitude response). It's a bit unclear to me why this happens but this can trivially be compensated by multiplying the $\underline{b}$ and $\underline{a}$ vectors by -1 (except of course $a_0$). If anyone has an idea to why that happens, please let me know, IIRs are not my specialty :)
 
@@ -154,9 +154,9 @@ The red crosses are the poles and the green circles are the zeros.
 rFOrLSR.Tools.zPlanePlot( b_Ds, a_Ds, Title = 'Estimated' )
 ```
 
-![Figure4](https://github.com/Stee-T/rFOrLSR/blob/main/Examples/3_Only_Ds_and_IIR/Figure_4.png)
+![Figure4](https://github.com/Stee-T/rFOrLSR/blob/main/Examples/4_Only_Ds_and_IIR/Figure_4.png)
 
 <br/>
 
-[Previous Tutorial: 2. Rational Fitting](https://github.com/Stee-T/rFOrLSR/tree/main/Examples/2_Rational_Fitting)  
-[Next Tutorial: 4. Sigmoid Expansion & Custom Validation](https://github.com/Stee-T/rFOrLSR/tree/main/Examples/4_tanh)
+[Previous Tutorial: 3. Rational Fitting](https://github.com/Stee-T/rFOrLSR/tree/main/Examples/3_Rational_Fitting)  
+[Next Tutorial: 5. Sigmoid Expansion & Custom Validation](https://github.com/Stee-T/rFOrLSR/tree/main/Examples/5_tanh)

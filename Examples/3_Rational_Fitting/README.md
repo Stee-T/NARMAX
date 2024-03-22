@@ -1,6 +1,6 @@
 <div align="justify">
 
-# Example 2: Supplementary infos & Rational System
+# Example 3: Supplementary infos & Rational System
 This example / tutorial illustrates:
 - How to create reproductible arborescence runs.
 - How to use the NonLinearizer to create rational expansions.
@@ -114,5 +114,5 @@ Recognized regressors:
 
 <br/>
 
-[Previous Tutorial: 1. Linear in the Parameters](https://github.com/Stee-T/rFOrLSR/tree/main/Examples/1_Linear_in_the_Parameters)  
-[Next Tutorial: 3. Imposing Regressors & IIR systems](https://github.com/Stee-T/rFOrLSR/tree/main/Examples/3_Only_Ds_and_IIR)
+[Previous Tutorial: 2. The Symbolic Oscillator](https://github.com/Stee-T/rFOrLSR/tree/main/Examples/2_Symbolic_Oscillator)  
+[Next Tutorial: 4. Imposing Regressors & IIR systems](https://github.com/Stee-T/rFOrLSR/tree/main/Examples/4_Only_Ds_and_IIR)
