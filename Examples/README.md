@@ -8,9 +8,11 @@ Covers the basics of the library (functions, algorithm hyper-parameters, etc) an
 **Fitted system**: $y\[k\] = 0.2x\[k\] + 0.3x^3\[k-1\] + 0.7|x\[k-2\]x^2\[k-1\]| +0.5e^{x\[k-3\]x\[k-2\]} - \cos(y\[k-1\]x\[k-2\]) -0.4|x\[k-1\]y^2\[k-2\]| - y^3\[k-3\]$
 
 # Example 2: the Symbolic Oscillator
-Showcases the Symbolic Oscillator object `rFORLSR.SymbolicOscillator`, which allows to execute the NARMAX System (user-defined or as obtained by the arborescence object)and thus apply it on data.
+Showcases the Symbolic Oscillator object `rFORLSR.SymbolicOscillator`, which allows to execute the NARMAX System (user-defined or as obtained by the arborescence object) and thus apply it on data.
+In addition, the SymbolicOscillator object supports modulating the regression parameters and has a supplementary input allowing experimentation with additional regressors, DC-offset, additive noise, etc.
 
-**Executed system**: $ y\[k\] = W\[k\] + \frac{{\left( \theta_{0}\frac{{y\[k-1\]}}{{x_{2}\[k\]}} + \theta_{1}x_{1}^{2}\[k-1\] + \frac{{\theta_{2}}}{{\left| 0.2x_{1}\[k-1\] + 0.5x_{1}\[k-2\]x_{2}\[k\] - 0.2 \right|}} \right)}}{{\left( 1 + \theta_{3}x_{1}\[k-1\]x_{2}\[k-1\] + \theta_{4}x_{2}^{2}\[k-2\] + \theta_{5}\cos\left( 0.2x_{1}\[k-3\]x_{2}\[k-1\] - 0.1 \right) \right)}}$
+**Executed system**: $y\[k\] = W\[k\] + \frac{{\theta_0\frac{y\[k-1\]}{x_2\[k\]} + \theta_1 x_1^2\[k-1\] + \frac{\theta_2}{\text{abs}\left( 0.2x_1\[k-1\] + 0.5x_1\[k-2\]x_2\[k\] - 0.2 \right)} }}{1 + \theta_3 x_1\[k-1\]x_2\[k-1\] + \theta_4 x_2^2\[k-2\] + \theta_5\cos\left( 0.2x_1\[k-3\]x_2\[k-1\] - 0.1 \right) }$  
+This system has two inputs $x_1$ and $x_2$ in addition to an internal noise channel $W[k]$ and currently only a single output is supported (MISO system).
 
 # Example 3: Rational System
 Is a short demonstration of how to fit rational models with the provided signal-constructor. It also contains some supplementary information about the arborescence fitting, including how to reliably reproduce results.
