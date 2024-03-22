@@ -7,7 +7,7 @@ Covers the basics of the library (functions, algorithm hyper-parameters, etc) an
 
 **Fitted system**: $y\[k\] = 0.2x\[k\] + 0.3x^3\[k-1\] + 0.7|x\[k-2\]x^2\[k-1\]| +0.5e^{x\[k-3\]x\[k-2\]} - \cos(y\[k-1\]x\[k-2\]) -0.4|x\[k-1\]y^2\[k-2\]| - y^3\[k-3\]$
 
-# Example 2: the Symbolic Oscillator
+# Example 2: The Symbolic Oscillator
 Showcases the Symbolic Oscillator object `rFORLSR.SymbolicOscillator`, which allows to execute the NARMAX System (user-defined or as obtained by the arborescence object) and thus apply it on data.
 In addition, the SymbolicOscillator object supports modulating the regression parameters and has a supplementary input allowing experimentation with additional regressors, DC-offset, additive noise, etc.
 
