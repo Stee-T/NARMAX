@@ -1,7 +1,6 @@
-# Generalities
+# Putting the "MAX" back into NARMAX
 <div align="justify">
 
-***This library puts the "MAX" back into NARMAX.***  
 It doesn't just raises exceptions; it raises eyebrows and occasionally, the bar for what is assumed to be possible...
 
 
@@ -40,21 +39,21 @@ This is essentially a monomial expansion of IIR terms ($y[k-j]$ and $x[k-j]$) al
 $y\[k\]=\frac{0.6|x\[k\]|-0.35x^3\[k\]-0.3x\[k-1\]y\[k-2\]+0.1|y\[k-1\]|}{1-0.4|x\[k\]|+0.3|x\[k-1\]x\[k\]|-0.2x^3\[k-1\]+ 0.3y\[k-1\]x\[k-2\]}$
 
 This demonstrates that (for NARX systems) rational non-linear models can be fitted by linearizing the terms: $y\[k\]=\frac{A}{1+B}\iff y\[k\](1+B)=A⟺y\[k\]=A-y\[k\]B$, $A$ and $B$ being linear-in-the-parameter systems such as system 1 in the above example.  
-[Tutorial for this example](https://github.com/Stee-T/rFOrLSR/tree/main/Examples/2_Rational_Fitting "Rational Example")
+[Tutorial for this example](https://github.com/Stee-T/rFOrLSR/tree/main/Examples/3_Rational_Fitting "Rational Example")
 
 ### 3. Expansion-in-an-expression Example
 $y = \text{sgn}(x)(1-\frac{1}{1+|x|A})$ with $A≔\Sigma_{j\in J}\theta _j |x|^j$ and $J\subseteq \mathbb{N}$
 
 
 This is a memoryless NX (Non-linear exogenous input) system aka a normal scalar function, depending only on $x$. This system shows that NARMAX expansions can be inserted into expressions to impose constraints or system properties (here quick convergence to $\text{sgn(x)}$ and low error around the origin) or obtain complex fitting. This specific expansion is designed to emulate tanh with another continuous rational function. The provided code also demonstrates how to choose the number of terms in such an expansion and how to create a custom validation function.   
-[Tutorial for this example](https://github.com/Stee-T/rFOrLSR/tree/main/Examples/4_tanh "Sigmoid expansion example")
+[Tutorial for this example](https://github.com/Stee-T/rFOrLSR/tree/main/Examples/5_tanh "Sigmoid expansion example")
 
 ### 4. MIMO & MISO Example
 $y_1\[k\] = 0.2 x_1\[k\] + 0.3 x_2^3\[k\] + 0.7 |x_3\[k\]| + 0.5 x_2\[k-3\] x_1\[k-2\] - 0.3 y_2\[k-1\] x_2^2\[k-2\] - 0.8 |x_3\[k-1\] y_1\[k-2\]| - 0.7 x_1\[k-1\] x_2^2\[k-1\]$
 $y_2\[k\] = 0.3 x_1\[k-1\] + 0.5 x_3^3\[k\] + 0.7 |y_1\[k-1\]| + 0.6 y_1\[k-3\] x_1\[k-2\] - 0.4 y_1\[k-1\] x_3^2\[k-2\] - 0.9 |x_3\[k-1\] y_2\[k-2\]| - 0.7 x_3\[k-1\] x_2^2\[k-1\]$
 
 This is a MIMO (Multiple Input Multiple Output) system / function with 3 input channels / variables and 2 output channels / variables, which is constituted by two MISO (Multiple Input Single Output) systems / functions: one per output. This demonstrates that the rFOrLSR can fit systems / functions with an arbitrary input and output dimensionality: $\mathbb{R}^n \rightarrow \mathbb{R}^m$ (in this example $\mathbb{R}^3 \rightarrow \mathbb{R}^2$).    
-[Tutorial for this example](https://github.com/Stee-T/rFOrLSR/tree/main/Examples/5_MIMO "MIMO example")
+[Tutorial for this example](https://github.com/Stee-T/rFOrLSR/tree/main/Examples/6_MIMO "MIMO example")
 
 <br/>
 

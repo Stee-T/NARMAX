@@ -312,4 +312,4 @@ Contains the MAE reduction of the regressors in the order imposed by the arbores
 
 <br/>
 
-[Next Tutorial: 2. Rational Fitting](https://github.com/Stee-T/rFOrLSR/tree/main/Examples/2_Rational_Fitting)
+[Next Tutorial: 2. The Symbolic Oscillator](https://github.com/Stee-T/rFOrLSR/tree/main/Examples/2_Symbolic_Oscillator)  

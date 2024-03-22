@@ -2,13 +2,18 @@ import torch as tor
 import matplotlib.pyplot as plt
 import rFOrLSR
 
-# *************************************************** Data Generation **************************************************
+# --------------------------------------------------- 3. Data Generation
 p = 2_000 # dataset size 
 InputAmplitude = 1.5 # Set Noise amplitude
 
 x1 = ( 2 * InputAmplitude ) * ( tor.rand( p ) - 0.5 ) # Mean not subtracted, since no rFOrLSR
 x2 = ( 2 * InputAmplitude ) * ( tor.rand( p ) - 0.5 )
 
+def System( y, x1, x2, W, theta, StartIdx, EndIdx ):
+  for k in range( StartIdx, EndIdx ): # start at 2 since the biggest negative lag is k-2
+    y[k] = W[k] + ( ( theta[0]*y[k-1]/x2[k] + theta[1]*x1[k-1]**2 + theta[2]/tor.abs( 0.2*x1[k-1] + 0.5*x1[k-2]*x2[k] - 0.2 ) ) / # Numerator
+                    ( 1 + theta[3]*x1[k-1]*x2[k-1] + theta[4]*x2[k-2]**2 + theta[5]*tor.cos( 0.2*x1[k-3]*x2[k-1] - 0.1 ) )    ) # Denominator
+  return ( y )
 
 # Declare what we used to emulate
 Data = [ x1, x2 ] # Used Input Data
@@ -17,32 +22,26 @@ NonLinearities = [ rFOrLSR.Identity, rFOrLSR.NonLinearity( "abs", f = tor.abs ),
 Expressions = ["y[k-1]/x2[k]", "x1[k-1]^2", "1/abs( 0.2*x1[k-1] + 0.5*x1[k-2]*x2[k] - 0.2 )", # Num
                 "~/(x1[k-1]*x2[k-1])", "~/(x2[k-2]^2)", "~/cos( 0.2*x1[k-3]*x2[k-1] - 0.1 )" ] # Used Regressors (1 in deno is implicit)
 
-# ***************************************************** Processing *****************************************************
 ThirdBuffer = int( p / 3 )
 
 # Direct input to the system, allows to model input noise / supplementary regressors, DC-offset or whatever
 AdditionalInput = 0.2 * ( tor.rand( p ) - 0.5 )
 
-def System( y, x1, x2, W, theta, StartIdx, EndIdx ):
-  for k in range( StartIdx, EndIdx ): # start at 2 since the biggest negative lag is k-2
-    y[k] = W[k] + ( ( theta[0]*y[k-1]/x2[k] + theta[1]*x1[k-1]**2 + theta[2]/tor.abs( 0.2*x1[k-1] + 0.5*x1[k-2]*x2[k] - 0.2 ) ) / # Numerator
-                    ( 1 + theta[3]*x1[k-1]*x2[k-1] + theta[4]*x2[k-2]**2 + theta[5]*tor.cos( 0.2*x1[k-3]*x2[k-1] - 0.1 ) )    ) # Denominator
-  return ( y )
-
-# system / regression coefficients, change to emulate modulation
+# System / regression coefficients, change to emulate modulation
 theta = [ tor.tensor( [ 0.2,  -0.3,  1,   0.8, -0.3, 1 ] ),
           tor.tensor( [ 0.25, -0.25, 0.8, 0.9, -0.5, 0.95 ] ),
           tor.tensor( [ 0.3,  -0.4,  0.7, 0.7, -0.4, 0.9 ] )
         ] 
 
-# ----------------------------------------------------- y = Real System
+# ----------------------------------------------------- 2. Processing
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ y = Real System
 y = tor.zeros( p )
 for i in range( 3 ):
   StartIdx = (i * ThirdBuffer) if ( i > 0 ) else 3 # avoids index error in System
   EndIdx = (i+1) * ThirdBuffer
   y = System( y, x1, x2, AdditionalInput, theta[i], StartIdx, EndIdx )
 
-# ----------------------------------------------------- yHat = Symbolic Oscillator
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ yHat = Symbolic Oscillator
 yHat = tor.zeros( p )
 NARMAX = rFOrLSR.SymbolicOscillator( InputVarNames, NonLinearities, Expressions, theta[0] )
 
@@ -56,7 +55,7 @@ for i in range( 3 ):
   # NARMAX.set_theta( theta[i] ) # would also work if separating the system update from the processing is desired
 
 
-# ***************************************************** Testing *****************************************************
+# ------------------------------------------------- 3. Testing
 Fig, Ax = plt.subplots()
 Diff = (y - yHat)[20:] # cut the start since the system init of the foor loops in incomplete
 Ax.plot( Diff.cpu().numpy() ) 
