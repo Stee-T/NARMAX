@@ -21,7 +21,7 @@ def Set_Tensortype_And_Device():
   ### Outputs
   - Device: String, either "cpu", "mps or "cuda"
   '''
-  if ( tor.cuda.is_available() ):           Device = "cuda" # force new tensors to be on GPU
+  if   ( tor.cuda.is_available() ):         Device = "cuda" # force new tensors to be on GPU
   elif ( tor.backends.mps.is_available() ): Device = "mps" # M1/M2 Macs
   else:
     print( "\n\nYour python installation didn't detect a GPU (CUDA nor MPS), so this will run on CPU which is a lot slower\n\n" )

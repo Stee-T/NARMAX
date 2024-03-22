@@ -6,12 +6,12 @@ class MultiKeyHashTable:
     self.Data = [] # List for data storage
     self.LookUpDict = {} # HashTable for quick lookup
 
-  # --------------------------------------------------------- [] operator -----------------------------------------------------------------
+  # --------------------------------------------------- [] operator ----------------------------------------------------
   def __getitem__( self, index ):
     '''Get an item from the Data list by its list index: self.MultiKeyHashTable[ index ] '''
     return ( self.Data[ index ] )
 
-  # --------------------------------------------------------- Same Start ---------------------------------------------------------
+  # ---------------------------------------------------- Same Start ----------------------------------------------------
   def SameStart( self, Item ):
     ''' Getter retrieving an item from the Data list indirectly via the LookUpDict by checking if Item matches the start of any element.
     This is the check performed before node creations and during the rFOrLSR.
@@ -27,7 +27,7 @@ class MultiKeyHashTable:
     else: return ( [] ) # no matching term was found during the iteration
 
 
-  # --------------------------------------------------------- Add Data ------------------------------------------------------------
+  # ----------------------------------------------------- Add Data -----------------------------------------------------
   def AddData( self, Item ):
     '''Add an item to the LG
     
@@ -41,7 +41,7 @@ class MultiKeyHashTable:
     return ( len( self.Data ) - 1 ) # ( -1 since zero-based )
   
 
-  # --------------------------------------------------------- Create Keys ------------------------------------------------------------
+  # ---------------------------------------------------- Create Keys ---------------------------------------------------
   def CreateKeys( self, MinLen, IndexSet, Value ):
     '''Create all keys in the LookUpDict pointing to the passed Value
     ### Inputs:
@@ -57,7 +57,7 @@ class MultiKeyHashTable:
         self.LookUpDict[ key ] = Value # append the sorted list to lookup dictionary with self.LG's last index
     
     
-  # --------------------------------------------------------- Delete All Of Size ------------------------------------------------------------
+  # ------------------------------------------------ Delete All Of Size ------------------------------------------------
   def DeleteAllOfSize( self, n ):
     '''Delete all Look-up table items with size n. Used at the end of every arbo level to gain a bit of memory.
     Since len( LI ) == n+1 at the next level, there won't ever be a query of size < n+1, so delete those.
