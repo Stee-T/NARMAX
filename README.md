@@ -1,7 +1,7 @@
 # Putting the "MAX" back into NARMAX
 <div align="justify">
 
-It doesn't just raises exceptions; it raises eyebrows and occasionally, the bar for what is assumed to be possible...
+The library doesn't just raises exceptions; it raises eyebrows and occasionally, the bar for what is assumed to be possible...
 
 
 Anyways, this GPU-accelerated Python package contains the machine learning algorithms described in my two papers "*[Arborescent Orthogonal Least Squares Regression](#arborescent-orthogonal-least-squares-regression---aorlsr) (AOrLSR)*" and "*[Dictionary Morphing Orthogonal Least Squares Regression](#dictionary-morphing-orthogonal-least-squares-regression---dmorlsr) (DMOrLSR)*" (coming soon) both based on my "*[Recursive Forward Orthogonal Least Squares Regression](#recursive-forward-orthogonal-least-squares-regression---rforlsr) (rFOrLSR)*" to fit "*[Non-Linear Auto-Regressive Moving-Average Exogenous input systems](#narmaxwho) (NARMAX)*". So, now that we have covered all the fancy acronyms, we might get into some explanations.  
