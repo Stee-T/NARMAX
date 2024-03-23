@@ -12,6 +12,36 @@ def InputCheck( x, W, Print ):
 
 
 
+# ################################################# Nonlinear-MA system #################################################
+def MA( x, W = None, Print = True ):
+  '''y[k] = 0.2*x[k] + 0.7*x[k-1] -0.5*x[k-1]**2 + 0.6*x[k-2] -0.7*x[k-2]**3 + 0.4*x[k-3] -0.3*y[k-3]**2 -0.5*x[k-4] + 0.3*y[k-4]**2
+  
+  ### Inputs:
+  - `x`: ((p,)-shaped torch.Tensor) containing the input sequence
+  - `W`: ((p,)-shaped torch.Tensor) containing the additive noise
+  - `Print`: (bool) containing whether to print the System equation
+
+  ### Outputs:
+  - `x`: ((p-MaxLags,)-shaped torch.Tensor) containing the centered and cut input sequence
+  - `y`: ((p-MaxLags,)-shaped torch.Tensor) containing the System response
+  - `W`: ((p-MaxLags,)-shaped torch.Tensor) containing the cut additive noise sequence
+  '''
+
+  InputCheck( x, W, Print )
+
+  MaxLag = 4
+  x -= tor.mean( x ) # necessary else all multiplications are ( x/y[..] + mean)*( x/y[..] + mean), which doesn't correspond to what's desired or in the dict
+  y = tor.zeros( len( x ) ) # system output, 0 to emulate the initialization state
+
+  for k in range( MaxLag, len( x ) ): # maximum lag is 4
+    y[k] = 0.2*x[k] + 0.7*x[k-1] -0.5*x[k-1]**2 + 0.6*x[k-2] -0.7*x[k-2]**3 + 0.4*x[k-3] -0.3*x[k-3]**2 -0.5*x[k-4] + 0.3*x[k-4]**2
+    if ( W is not None ): y[k] += W[k] # Additive Noise 
+  
+  if ( Print ): print("System: y[k] = 0.2*x[k] + 0.7*x[k-1] -0.5*x[k-1]^2 + 0.6*x[k-2] -0.7*x[k-2]^3 + 0.4*x[k-3] -0.3*x[k-3]^2 -0.5*x[k-4] + 0.3*x[k-4]^2 \n")
+  if ( W is not None ): W = W[ MaxLag : ]
+  
+  return ( x[ MaxLag : ], y[ MaxLag : ], W )
+
 ## ######################################################################################## ARX ################################################################################
 def ARX( x, W = None, Print = True ):
   '''y[k] = 0.2*x[k] + 0.7*x[k-1] + 0.6*x[k-2] +0.4*x[k-3] -0.5*x[k-4] -0.5*y[k-1] -0.7*y[k-2] -0.3*y[k-3] + 0.3*y[k-4]
