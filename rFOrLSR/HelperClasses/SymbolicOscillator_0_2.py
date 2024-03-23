@@ -232,8 +232,70 @@ class SymbolicOscillator:
 
   # ################################################### theta setter ###################################################
   def set_theta( self, theta ):
+    '''Setter for the regression coefficients.
+
+    ### Input:
+    - `theta`: ( (nr,)-sized float torch.tensor ) containing the estimated regression coefficients
+    '''
     if ( theta.shape[0] != self.nExpressions ): raise ValueError( f"theta has wrong dimension, expected { self.nExpressions }" )
     self.theta = theta
+  
+
+  # ################################################### theta getter ###################################################
+  def get_theta( self ):
+    '''Getter for the regression coefficients.
+
+    ### Output:
+    - ( (nr,)-sized float torch.tensor ) containing the estimated regression coefficients'''
+    return self.theta
+
+
+  # ############################################### Output Storage setter ##############################################
+  def set_OutputStorage( self, OutVec ):
+    '''Setter for the output storage. Allows to give the system information about its outputs generated before the to-be-passed data. (y[k-j])
+
+    ### Input:
+    - `OutVec`: ( (nr,)-sized float torch.tensor ) containing the estimated regression coefficients
+    '''
+    if ( OutVec.shape != self.OutVec.shape ): raise ValueError( f"OutVec has wrong dimension, expected { self.OutVec.shape }" )
+    if ( self.OutVec.dtype != OutVec.dtype ): raise ValueError( f"OutVec has wrong data type, expected { self.OutVec.dtype }" )
+    self.OutVec = OutVec
+
+
+  # ############################################### Output Storage getter ##############################################
+  def get_OutputStorage( self ):
+    '''Getter for the storage vector containing the required last buffer's past values required for system operation.
+
+    ### Output:
+    - ( (nr,)-sized float torch.tensor ) containing the estimated regression coefficients
+    '''
+    return self.OutVec
+  
+
+  # ############################################### Input Storage setter ###############################################
+  def set_InputStorage( self, InputStorage ):
+    '''Setter for the input storage. Allows to give the system information about its inputs before the to-be-passed data. (x[k-j])
+
+    ### Input:
+    - `InputStorage`: ( (nr,)-sized float torch.tensor ) containing the estimated regression coefficients'''
+    if ( InputStorage.shape != self.InputStorage.shape ): raise ValueError( f"InputStorage has wrong dimension, expected { self.InputStorage.shape }" )
+    if ( self.InputStorage.dtype != InputStorage.dtype ): raise ValueError( f"InputStorage has wrong data type, expected { self.InputStorage.dtype }" )
+    self.InputStorage = InputStorage
+
+
+  # ############################################### Input Storage getter ###############################################
+  def get_InputStorage( self ):
+    '''Getter for the input storage vector containing the required last buffer's past values required for system operation.
+
+    ### Output:
+    - ( (nr,)-sized float torch.tensor ) containing the estimated regression coefficients'''
+    return self.InputStorage
+
+  # ################################################### flushBuffers ###################################################
+  def flushStorage( self ):
+    '''Clears the internal buffers, such that the system isn't influenced by previous buffers data'''
+    self.InputStorage =  tor.zeros( self.InputStorage.shape,  dtype = self.dtype, device = self.device )
+    self.OutputStorage = tor.zeros( self.OutputStorage.shape, dtype = self.dtype, device = self.device )
 
   
   # ##################################################### Oscillate ####################################################
