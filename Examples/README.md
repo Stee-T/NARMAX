@@ -12,7 +12,7 @@ Showcases the Symbolic Oscillator object `rFORLSR.SymbolicOscillator`, which all
 In addition, the SymbolicOscillator object supports modulating the regression parameters and has a supplementary input allowing experimentation with additional regressors, DC-offset, additive noise, etc.
 
 **Executed system**: $y\[k\] = W\[k\] + \frac{{\theta_0\frac{y\[k-1\]}{x_2\[k\]} + \theta_1 x_1^2\[k-1\] + \frac{\theta_2}{\text{abs}\left( 0.2x_1\[k-1\] + 0.5x_1\[k-2\]x_2\[k\] - 0.2 \right)} }}{1 + \theta_3 x_1\[k-1\]x_2\[k-1\] + \theta_4 x_2^2\[k-2\] + \theta_5\cos\left( 0.2x_1\[k-3\]x_2\[k-1\] - 0.1 \right) }$  
-This system has two inputs $x_1$ and $x_2$ in addition to an internal noise channel $W[k]$ and currently only a single output is supported (MISO system).
+This system has two inputs $x_1$ and $x_2$ in addition to an internal noise channel $W[k]$ and a single output (MISO system).
 
 # Example 3: Rational System
 Is a short demonstration of how to fit rational models with the provided signal-constructor. It also contains some supplementary information about the arborescence fitting, including how to reliably reproduce results.
