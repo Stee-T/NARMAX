@@ -383,7 +383,8 @@ class SymbolicOscillator:
       if ( Data[input].ndim != 1 ): raise ValueError( f"Input Data must be 1D. The { input }-th input is not" )
       self.InputStorage[ input ] = Data[ input ][ -self.MaxNegLag : ].clone()
     
-    self.OutputStorage = self.OutVec[ -self.MaxOutputLag : ].clone() # keep last outputs for next buffer
+    if ( self.MaxOutputLag > 0 ): # This doesn't trigger for non-recursive systems
+      self.OutputStorage = self.OutVec[ -self.MaxOutputLag : ].clone() # keep last outputs for next buffer
     
     return ( self.OutVec )
 

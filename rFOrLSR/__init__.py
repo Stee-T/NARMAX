@@ -97,7 +97,6 @@ def DefaultValidation( theta, L, ERR, RegNames, ValData ):
 
   if ( nValidations == 0 ): raise AssertionError( "No validation data was passed, as Data and DsData are both None or empty lists" )
 
-
   # Initialize the model
   Model = SymbolicOscillator( ValData["InputVarNames"], ValData["NonLinearities"], RegNames[L], theta[nS:], OutputVarName )
   StartIdx = max( Model.get_MaxNegOutputLag(), Model.get_MaxNegInputLag() ) # essentially q = max(qx, qy) as usual
@@ -114,11 +113,7 @@ def DefaultValidation( theta, L, ERR, RegNames, ValData ):
 
       yHat = tor.zeros_like( ValData["y"][val] )
       yHat[ :StartIdx ] = ValData["y"][val][ : StartIdx ].clone() # take solution samples, where Model hasn't got all data. Avoids init-Error spikes
-      yHat[ StartIdx: ] = Model.Oscillate( Data = [ input[ StartIdx: ] for input in ValData["Data"][val] ], 
-                                           DsData = AdditionalInput
-                                         )
-
-      # TODO: test what happens for non-recursive systems is Outputstorage = 0
+      yHat[ StartIdx: ] = Model.Oscillate( [ input[ StartIdx: ] for input in ValData["Data"][val] ], AdditionalInput )
 
     Error += tor.mean( tor.abs( ValData["y"][val] - yHat ) / tor.mean( tor.abs( ValData["y"][val] ) ) ) # relative MAE
     
