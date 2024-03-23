@@ -168,9 +168,9 @@ def Expander( Data, RegNames, ExpansionOrder, IteractionOnly = False ):
     IndexSet, PowerSet = np.unique( idx_tuple, return_counts = True ) # remove duplicates and count them
 
     for idx in range( len( IndexSet ) ):
-      Str += f"{ RegNames[ IndexSet[idx] ] } " if ( PowerSet[idx] == 1 ) else f"{ RegNames[ IndexSet[idx] ] }^{ PowerSet[idx] } "
+      Str += f"{ RegNames[ IndexSet[idx] ] } * " if ( PowerSet[idx] == 1 ) else f"{ RegNames[ IndexSet[idx] ] }^{ PowerSet[idx] } * "
     
-    OutNames[counter] = Str[:-1] # Cut last space
+    OutNames[counter] = Str[:-3] # Cut last " * "
   
   return ( RegMat, np.array( OutNames ) )
 
