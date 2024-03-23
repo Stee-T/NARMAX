@@ -247,7 +247,7 @@ class SymbolicOscillator:
 
     ### Output:
     - ( (nr,)-sized float torch.tensor ) containing the estimated regression coefficients'''
-    return self.theta
+    return ( self.theta )
 
 
   # ############################################### Output Storage setter ##############################################
@@ -269,7 +269,7 @@ class SymbolicOscillator:
     ### Output:
     - ( (nr,)-sized float torch.tensor ) containing the estimated regression coefficients
     '''
-    return self.OutVec
+    return ( self.OutVec )
   
 
   # ############################################### Input Storage setter ###############################################
@@ -289,15 +289,46 @@ class SymbolicOscillator:
 
     ### Output:
     - ( (nr,)-sized float torch.tensor ) containing the estimated regression coefficients'''
-    return self.InputStorage
+    return ( self.InputStorage )
+
 
   # ################################################### flushBuffers ###################################################
-  def flushStorage( self ):
-    '''Clears the internal buffers, such that the system isn't influenced by previous buffers data'''
+  def zeroInternalStorage( self ):
+    '''Zeros the internal buffers, such that the system isn't influenced by previous buffer's data'''
     self.InputStorage =  tor.zeros( self.InputStorage.shape,  dtype = self.dtype, device = self.device )
     self.OutputStorage = tor.zeros( self.OutputStorage.shape, dtype = self.dtype, device = self.device )
 
+
+  # ############################################# get number of regressors #############################################
+  def get_nRegressors( self ): 
+    '''Returns the number of regressors (int)'''
+    return ( self.nExpressions )
   
+
+  # ########################################### get number of input variables ###########################################
+  def get_nInputVars( self ):
+    '''Returns the number of input variables (int)'''
+    return ( self.nInputVars )
+  
+
+  # ############################################ largest negative input lag ############################################
+  def get_MaxNegInputLag( self ):
+    '''Returns the largest negative input lag (int)'''
+    return ( self.MaxNegLag )
+
+
+  # ############################################ largest positive input lag ############################################
+  def get_MaxPosInputLag( self ):
+    '''Returns the largest positive lag (int)'''
+    return ( self.MaxPosLag )
+  
+
+  # ########################################### largest negative output lag ############################################
+  def get_MaxNegOutputLag( self ):
+    '''Returns the largest negative output lag (int)'''
+    return ( self.MaxOutputLag )
+  
+
   # ##################################################### Oscillate ####################################################
   def Toggle( self, DataOrOutVec, VarNumber, k, Data ):
     """ Helper function which toggles between the stored internal system state for k < 0 and incomming data for k >= 0.
@@ -363,3 +394,4 @@ class SymbolicOscillator:
 
 if ( __name__ == '__main__' ):
   pass
+   # TODO: unit test with some basic expression and all getters and some hardcodede result
