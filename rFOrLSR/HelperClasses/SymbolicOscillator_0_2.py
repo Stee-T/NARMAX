@@ -251,15 +251,15 @@ class SymbolicOscillator:
 
 
   # ############################################### Output Storage setter ##############################################
-  def set_OutputStorage( self, OutVec ):
+  def set_OutputStorage( self, PreviousOutput ):
     '''Setter for the output storage. Allows to give the system information about its outputs generated before the to-be-passed data. (y[k-j])
 
     ### Input:
-    - `OutVec`: ( (nr,)-sized float torch.tensor ) containing the estimated regression coefficients
+    - `PreviousOutput`: ( (nr,)-sized float torch.tensor ) containing the estimated regression coefficients
     '''
-    if ( OutVec.shape != self.OutVec.shape ): raise ValueError( f"OutVec has wrong dimension, expected { self.OutVec.shape }" )
-    if ( self.OutVec.dtype != OutVec.dtype ): raise ValueError( f"OutVec has wrong data type, expected { self.OutVec.dtype }" )
-    self.OutVec = OutVec
+    if ( PreviousOutput.shape != self.OutputStorage.shape ): raise ValueError( f"PreviousOutput has wrong dimension, expected { self.OutputStorage.shape }" )
+    if ( self.OutputStorage.dtype != PreviousOutput.dtype ): raise ValueError( f"PreviousOutput has wrong data type, expected { self.OutputStorage.dtype }" )
+    self.OutputStorage = PreviousOutput
 
 
   # ############################################### Output Storage getter ##############################################
@@ -269,7 +269,7 @@ class SymbolicOscillator:
     ### Output:
     - ( (nr,)-sized float torch.tensor ) containing the estimated regression coefficients
     '''
-    return ( self.OutVec )
+    return ( self.OutputStorage )
   
 
   # ############################################### Input Storage setter ###############################################
