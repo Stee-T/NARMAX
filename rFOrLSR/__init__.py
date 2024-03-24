@@ -38,7 +38,7 @@ def ComputeNARMAXOutput( Model, y, Data ):
   return ( yHat )
 
 # ############################################ Default Validation procedure #############################################
-def DefaultValidation( theta, L, ERR, RegNames, ValData ):
+def DefaultValidation( theta, L, ERR, RegNames, ValData, DcFilterIdx = None ):
   '''
   Default Validation function based on time domain MAE.
   
@@ -47,6 +47,7 @@ def DefaultValidation( theta, L, ERR, RegNames, ValData ):
   - `L`: ( (nr,)-shaped int nd-array ) containing the regressors indices
   - `ERR`: ( (nr,)-shaped float nd-array ) containing the regression's ERR ( not used here but placeholder to adhere to AOrLSR standard )
   - `RegNames`: ( (nr,)-shaped str nd-array ) containing only the needed regressor names, serves as system equation look-up
+  - `DcFilterIdx`: ( (nr,)-shaped int nd-array ) containing the regressors indices to be filtered, unused by this function but standard in the API
   
   - `ValData`: ( dict ) containing the validation data to be passed to Dc's Ctors:
     → `ValData["y"]`: ( list of float torch.Tensors ) containing the system responses
@@ -725,7 +726,7 @@ class Arborescence:
             RegNames = self.DsNames
           
           if ( self.ValData is None ): Error = 1 - np.sum( ERR ) # take ERR if no validation dictionary is passed
-          else:                        Error = self.ValFunc( theta, reg, ERR, RegNames, self.ValData ) # compute the passed custom error metric
+          else:                        Error = self.ValFunc( theta, reg, ERR, RegNames, self.ValData, self.DcFilterIdx ) # compute the passed custom error metric
 
           if ( Error < MinError ): MinError = Error; self.theta = theta; self.L = reg.astype( np.int64 ); self.ERR = ERR # update best model
 
