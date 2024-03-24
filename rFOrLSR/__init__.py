@@ -54,6 +54,7 @@ def DefaultValidation( theta, L, ERR, RegNames, ValData, DcFilterIdx = None ):
     → `ValData["Data"]`: ( list of iterables of float torch.Tensors ) containing the data to be passed to the standard CTors ( Lagger, Expander, NonLinearizer )
     → `ValData["InputVarNames"]`: ( list of str ) containing the variable names as passed to Lagger, Expander, Nonlinearizer, so not all regressor names
     → `ValData["NonLinearities"]`: ( list of pointer to functions ) containing the regression's transformations to be passed to RegressorTransform
+    → `ValData["OutputVarName"]`: ( optional - str ) containing the name of the output variable
   
   ### Output
   -`Error`: ( float ) containing the passed model's validation error on the validation set

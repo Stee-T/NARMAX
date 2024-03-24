@@ -65,7 +65,7 @@ def VerifyParsedReg( Regressor: Parser.ParsedReg, NonLinNames, InputVarNames, Ou
   if ( Regressor.FuncName is not None ):
     CurrentName = Regressor.FuncName
     if ( ( CurrentName[:2] == '~/' ) or ( CurrentName[:2] == '1/' ) ): CurrentName = CurrentName[2:] # fractions are never stored as separate functions
-    if ( ( CurrentName != '' ) and (CurrentName not in NonLinNames)): # empty string if fraction/denominator term without non-lin
+    if ( ( CurrentName != '' ) and ( CurrentName not in NonLinNames ) ): # empty string if fraction/denominator term without non-lin
       raise ValueError( f"Non-linearity '{ CurrentName }' is not a declared Non-linearity" )
 
   for subexp in Regressor.SubExpressions:
@@ -107,13 +107,13 @@ def Make_SystemLambdas( InputVarNames, OutputVarName, NonLinName2Idx, VarName2Id
 
   for idx, reg in enumerate( RegStrList ):
     if ( reg.FuncName is None ): # Automatically a numerator term, als '~/' is considered a function name
-      NumeratorExpr += f"theta[{ idx }]*" + ParsedReg2EvalStr( reg, VarName2Idx, NonLinName2Idx ) + ' + '
+      NumeratorExpr += f"theta[{ idx }]*" + ParsedReg2EvalStr( reg, VarName2Idx, NonLinName2Idx, OutputVarName ) + ' + '
   
     else: # Potentially denominator term
       if ( reg.FuncName[:2] == '~/' ):
-        DenominatorExpr += f"theta[{ idx }]*" + ParsedReg2EvalStr( reg, VarName2Idx, NonLinName2Idx ).replace( '~/', '' )  + ' + '
+        DenominatorExpr += f"theta[{ idx }]*" + ParsedReg2EvalStr( reg, VarName2Idx, NonLinName2Idx, OutputVarName ).replace( '~/', '' )  + ' + '
       else:
-        NumeratorExpr   += f"theta[{ idx }]*" + ParsedReg2EvalStr( reg, VarName2Idx, NonLinName2Idx )  + ' + '
+        NumeratorExpr   += f"theta[{ idx }]*" + ParsedReg2EvalStr( reg, VarName2Idx, NonLinName2Idx, OutputVarName )  + ' + '
     
 # remove the last ' + '
   NumeratorExpr = NumeratorExpr[:-3]
