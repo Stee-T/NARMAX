@@ -379,9 +379,10 @@ class SymbolicOscillator:
       self.OutVec[k] += self.System_Main( k, self.theta, Data, self.OutVec, self.NonLinearities )
 
     # --------------------------------------------- Internal State Update ----------------------------------------------
-    for input in range ( len( Data ) ): # Must iterate one by one since Data is an arbirtary iterable not necessarily a 2D Tensor
-      if ( Data[input].ndim != 1 ): raise ValueError( f"Input Data must be 1D. The { input }-th input is not" )
-      self.InputStorage[ input ] = Data[ input ][ -self.MaxNegLag : ].clone()
+    if ( self.MaxNegLag > 0 ): # This doesn't trigger for systems being memoryless in the input terms (only x[k] terms)
+      for input in range ( len( Data ) ): # Must iterate one by one since Data is an arbirtary iterable not necessarily a 2D Tensor
+        if ( Data[input].ndim != 1 ): raise ValueError( f"Input Data must be 1D. The { input }-th input is not" )
+        self.InputStorage[ input ] = Data[ input ][ -self.MaxNegLag : ].clone()
     
     if ( self.MaxOutputLag > 0 ): # This doesn't trigger for non-recursive systems
       self.OutputStorage = self.OutVec[ -self.MaxOutputLag : ].clone() # keep last outputs for next buffer
