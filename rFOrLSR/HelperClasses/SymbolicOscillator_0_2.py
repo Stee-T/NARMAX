@@ -117,14 +117,16 @@ def Make_SystemLambdas( InputVarNames, OutputVarName, NonLinName2Idx, VarName2Id
     
 # remove the last ' + '
   NumeratorExpr = NumeratorExpr[:-3]
-  if ( DenominatorExpr != '' ): DenominatorExpr = "1 + " + DenominatorExpr[:-3] # necessary, the way the arbo generates rational systems
+  if ( DenominatorExpr != '' ):
+    DenominatorExpr = "1 + " + DenominatorExpr[:-3] # necessary, the way the arbo generates rational systems
+    if ( NumeratorExpr == '' ): NumeratorExpr = '1' # for denominator only systems
 
 # Create System lambdas. Bufferstart has no OutVec since accessed as class member
   if ( DenominatorExpr ):
     System_Main =        eval( f"lambda k, theta, Data, OutVec, NonLinList: ({ NumeratorExpr }) / ({ DenominatorExpr })" )
     System_BufferStart = eval( f"lambda k, theta, Data, NonLinList, Toggle: ({ Make_BufferStartSystem( NumeratorExpr ) }) / "
                                                                           f"({ Make_BufferStartSystem( DenominatorExpr ) })"
-                            )
+                             )
   else: # Denom is ''
     System_Main        = eval( f"lambda k, theta, Data, OutVec, NonLinList: { NumeratorExpr }" )
     System_BufferStart = eval( f"lambda k, theta, Data, NonLinList, Toggle: { Make_BufferStartSystem( NumeratorExpr ) }" ) # vars are row-wise like the user input
