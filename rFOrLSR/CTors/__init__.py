@@ -242,7 +242,7 @@ def NonLinearizer( y, Data, RegNames, Functions, MakeRational = None ):
         if ( Functions[func].get_Name() == "id" ): # equivalent to func == 0
           for col in range( len( RatNames ) ): RatNames[col] = "~/(" + OutNames[0][col] + ")" # 1/(Reg) for identity
         else:
-          for col in range( len( RatNames ) ): RatNames[col] = "~/(" + Functions[func].get_Name() + "(" + OutNames[0][col] + "))" # 1/(func(Reg)) for functions
+          for col in range( len( RatNames ) ): RatNames[col] = "~/" + Functions[func].get_Name() + "(" + OutNames[0][col] + ")" # 1/func(Reg) for functions
         
         OutNames.append( RatNames ) # apply new column names
 
