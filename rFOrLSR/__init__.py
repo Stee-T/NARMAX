@@ -31,7 +31,7 @@ def DefaultValidation( theta, L, ERR, RegNames, ValData ):
   - `theta`: ( (nr,)-shaped float nd-array ) containing the estimated regression coefficients
   - `L`: ( (nr,)-shaped int nd-array ) containing the regressors indices
   - `ERR`: ( (nr,)-shaped float nd-array ) containing the regression's ERR ( not used here but placeholder to adhere to AOrLSR standard )
-  - `RegNames`: ( (nr,)-shaped str nd-array ) containing all regressor names
+  - `RegNames`: ( (nr,)-shaped str nd-array ) containing only the needed regressor names, serves as system equation look-up
   
   - `ValData`: ( dict ) containing the validation data to be passed to Dc's Ctors:
     → `ValData["y"]`: ( list of float torch.Tensors ) containing the system responses
@@ -98,7 +98,7 @@ def DefaultValidation( theta, L, ERR, RegNames, ValData ):
   if ( nValidations == 0 ): raise AssertionError( "No validation data was passed, as Data and DsData are both None or empty lists" )
 
   # Initialize the model
-  Model = SymbolicOscillator( ValData["InputVarNames"], ValData["NonLinearities"], RegNames[L], theta[nS:], OutputVarName )
+  Model = SymbolicOscillator( ValData["InputVarNames"], ValData["NonLinearities"], RegNames, theta[nS:], OutputVarName )
   StartIdx = max( Model.get_MaxNegOutputLag(), Model.get_MaxNegInputLag() ) # essentially q = max(qx, qy) as usual
 
   for val in range( nValidations ): # iterate over all passed Data tuples
@@ -748,24 +748,27 @@ class Arborescence:
             theta, _, ERR, = self.rFOrLSR( self.y, self.Ds, None, None, None, OutputAll = True )
           
           if ( self.ValData is None ): Error = 1 - np.sum( ERR ) # take ERR if no validation dictionary is passed
-          else:                        Error = self.ValFunc(theta, reg, ERR, self.DcNames, self.ValData ) # compute the passed custom error metric
+          else:                        Error = self.ValFunc( theta, reg, ERR, 
+                                                             np.concatenate( [ self.DsNames, np.ravel( self.DcNames[reg] ) ] ), # pass only selected regressors' RegNames
+                                                             self.ValData
+                                                           ) # compute the passed custom error metric
 
           if ( Error < MinError ): MinError = Error; self.theta = theta; self.L = reg.astype( np.int64 ); self.ERR = ERR # update best model
 
     print( f"\nValidation done on { len( Processed ) } different Regressions. Best validation error: { MinError }" )
     
-    print( f"Out of { self.TotalNodes } only { self.NotSkipped} regressions were computed, of which { self.AbortedRegs } were OOIT - aborted.\n" )
+    print( f"Out of { self.TotalNodes } only { self.NotSkipped } regressions were computed, of which { self.AbortedRegs } were OOIT - aborted.\n" )
 
     return ( self.get_Results() )
 
 
-  # *************************************************************************** Helper function displaying the regression results ***********************************************************************
+  # ******************************************** regression results getter *********************************************
   def get_Results( self ):
     ''' Returns the Arborescence results.
     
     ### Outputs:
     - `theta`: ( (nr,)-sized float nd-array ) containing the estimated regression coefficients
-    - `L`: ( ( nr, )-sized int64 nd-arary ) containing the selected regressors indices
+    - `L`: ( ( nr,)-sized int64 nd-arary ) containing the selected regressors indices
     - `ERR`: ( (nr,)-sized float nd-array ) containing the regression's ERR
     - `MorphDict`: (dict) The generated morphing dictionary containing morphing meta-data
     - `Dc`: The updated regressor dictionary (duplicate-filtered and potentially morphed, mean-free)
@@ -791,8 +794,32 @@ class Arborescence:
     self.MaxDepth = Depth # nothing talks against it, if we arrived until here :D
 
 
-  # *************************************************************************** Helper function displaying the regression results ***********************************************************************
-  def PlotAndPrint( self, PrintRegressor = True ):
+
+
+  # ****************************************** Display the regression results ******************************************
+  def GenerateNARMAX_ComputeOutput( self, ValData, theta, nS, RegNames, OutputVarName ):
+    '''Helper function generating the NARMAX model and computing its output from the 0th element of the validation data.'''
+
+    Model = SymbolicOscillator( ValData["InputVarNames"], ValData["NonLinearities"], RegNames, theta[nS:], OutputVarName )
+    StartIdx = max( Model.get_MaxNegOutputLag(), Model.get_MaxNegInputLag() ) # essentially q = max(qx, qy) as usual
+
+    # --------------------------------------------------- Handle Ds ---------------------------------------------------
+    if ( ValData["DsData"] is not None ): AdditionalInput = ( ValData["DsData"][0] @ theta[ : nS ] ).view( -1 ) # ( p,)-shaped Tensor
+    else:                                 AdditionalInput = None
+
+    # ---------------------------------------------------- Handle Dc ----------------------------------------------------
+    if ( ValData["Data"] is not None ):
+      Model.set_OutputStorage( ValData["y"][0][ : Model.get_MaxNegOutputLag() ].clone() ) # set previous y[k-j] states
+      Model.set_InputStorage( tor.vstack( [ input[ : Model.get_MaxNegInputLag() ] for input in ValData["Data"][0] ] ) ) # set previous phi[k-j] states
+
+      yHat = tor.zeros_like( ValData["y"][0] )
+      yHat[ :StartIdx ] = ValData["y"][0][ : StartIdx ].clone() # take solution samples, where Model hasn't got all data. Avoids init-Error spikes
+      yHat[ StartIdx: ] = Model.Oscillate( [ input[ StartIdx: ] for input in ValData["Data"][0] ], AdditionalInput )
+    
+    return ( yHat )
+
+  # ************************************************** Plot and Print **************************************************
+  def PlotAndPrint( self, ValData, PrintRegressor = True ):
     ''' Function displaying the regression results in form of two plots (1. Signal comparison, 2. Error distribution) and printing the regressors and their coefficients.
     The second plot (ERR vs MEA) is slightly meaning-less since the ERR and the MAE reduction of each term depends on their position in the BVS.
     Also their order in the BVS is arbitrary since imposed and sorted by the AOrLSR but whatever.
@@ -802,17 +829,28 @@ class Arborescence:
     - `AxTuple`: (2D Tuple of Axes objects) for both plots
     '''
 
-    if ( self.L is None ): raise AssertionError( "The fitting hasn't been finished, thus no regression results are available. To get intermediate results, trigger the validation procedure" )
-    
+    if ( self.L is None ): raise AssertionError( "The fitting hasn't been finished, thus no regression results are available."
+                                                 "To get intermediate results, trigger the validation procedure" )
+
+    # ------------------------------------------- Figure 1. Signal comparison ------------------------------------------
+    # Generate yHat
+    nS = len( self.DsNames )
+
     if ( self.Dc is not None ): # results in the problem of self.L.shape == (0,)
-      RegNames = np.concatenate( (self.DsNames, np.ravel( self.DcNames[self.L] ) ) )
-      yHat = tor.column_stack( ( self.Ds, self.Dc[:, self.L] ) ) @ self.theta # Model prediction on the training data
+      RegNames = np.concatenate( ( self.DsNames, np.ravel( self.DcNames[ self.L ] ) ) )
     else: # only a Ds exists
       RegNames = self.DsNames
-      yHat = self.Ds @ self.theta # Model prediction on the training data
-    
-    yNorm = tor.max( tor.abs( self.y ) ) # Compute Model, norming factor to keep the display in % the the error
-    Error = ( self.y - yHat ) / yNorm # divide by max abs to norm with the max amplitude
+      yHat = ValData["DsData"][0] @ self.theta # Model prediction on the training data
+  
+    # Initialize the model
+    if ( "OutputVarName" not in ValData.keys() ): OutputVarName = "y" # default if not passed
+    else:                                         OutputVarName = ValData["OutputVarName"]
+
+    if (self.Dc is not None ): # overwrite yHat only if Dc is passed, else take the one generated above, which doesn't require a model
+      yHat = self.GenerateNARMAX_ComputeOutput( ValData, self.theta, nS, RegNames, OutputVarName )
+
+    yNorm = tor.max( tor.abs( ValData["y"][0] ) ) # Compute Model, norming factor to keep the display in % the the error
+    Error = ( ValData["y"][0] - yHat ) / yNorm # divide by max abs to norm with the max amplitude
     
     # Metrics
     AbsError = tor.abs( Error )
@@ -824,47 +862,51 @@ class Arborescence:
     MeanAbsErrorStr = '{:.3e}'.format( MeanAbsErrorPercent ) if ( MeanAbsErrorPercent < 0.001 ) else str( round( MeanAbsErrorPercent, 3 ) )
     MaxDeviationStr = '{:.3e}'.format( MaxAbsError ) if ( MaxAbsError < 0.001 ) else str( tor.round( MaxAbsError, decimals = 3 ).item() ) # max is stored in array so cheap
     MedianAbsDerivationStr = '{:.4e}'.format( MedianAbsDeviation ) if ( MedianAbsDeviation < 0.001 ) else str( round( MedianAbsDeviation, 3 ) )
-    
 
     # A) Ground thruth and fitting error plot
     Fig, Ax = plt.subplots( 2, sharex = True )
-    Ax[0].plot( self.y.cpu(), "#00aaffff", marker = '.', markersize = 5 ) # force slightly lighter blue than default blue for compatibility with dark mode
+    Ax[0].plot( ValData["y"][0].cpu(), "#00aaffff", marker = '.', markersize = 5 ) # force slightly lighter blue than default blue for compatibility with dark mode
     Ax[0].plot( yHat.cpu(), "tab:orange", marker = '.', markersize = 5 ) # force default orange
     Ax[0].legend( ["System Output y[k]", "Estilmation $\\hat{y}$[k]"] )
     Ax[0].grid( which = 'both', alpha = 0.5 )
 
     Ax[1].plot( Error.cpu(), "#00aaffff", marker = '.', markersize = 5 ) # force slightly lighter blue than default blue for compatibility with dark mode
-    Ax[1].set_xlim( [0, len( self.y )] )
+    Ax[1].set_xlim( [0, len( ValData["y"][0] )] )
     Ax[1].set_title( f"{ len( self.theta ) } Terms yielding MAE: { MeanAbsErrorStr }%. Max dev.: { MaxDeviationStr }%. MAD: { MedianAbsDerivationStr }%" )
     Ax[1].legend( ["$y[k]-\\hat{y}[k]$"] )
     Ax[1].grid( which = 'both', alpha = 0.5 )
     Fig.tight_layout() # prevents the plot from clipping ticks
-
     
-    # B) ERR stem plots with MAE reduction
-    
+    # ----------------------------------- Figure 2. ERR stem plots with MAE reduction ----------------------------------
     # Arg Sort ERR and impose same order on L
     MAE = [] # list containing the MAE values from the models progressively build up
     Order = np.flip( np.argsort( self.ERR ) )
-    ERRtemp = self.ERR[ Order ]; Sortedtheta = self.theta[ list( Order ) ]; RegNames = RegNames[Order] # impose same order on all datastructures
-    if ( self.Dc is not None ):
-      Ltemp = self.L[ Order ]; # L is an empty array if no Dc is passed
-      Imposed = tor.column_stack( ( self.Ds, self.Dc[:, Ltemp] ) ) # invalid indexation if Dc is empty or None
+    SortedERR = self.ERR[ Order ]; RegNames = RegNames[Order] # impose same order on all datastructures
+    
+    if ( self.Dc is not None ): # L is an empty array if no Dc is passed
+      Imposed = tor.column_stack( ( self.Ds, self.Dc[:, self.L[ Order ] ] ) ) # invalid indexation if Dc is empty or None
     else: Imposed = self.Ds
 
-    for i in range( 1, Imposed.shape[1] + 1 ): # iterate over the index list of all selected regressors. +1 since the indexing excludes the last term
+    # The procedure doesn't need to discriminate between Ds and Dc, since Ds might also contain AR terms which must thus be processed
+    for i in tqdm.tqdm( range( 1, SortedERR.shape[0] + 1 ), desc = "Sub-Models" ):
+      # 1. Estimate Submodel theta from the training data:
       theta_TMP = self.rFOrLSR( self.y, Ds = Imposed[:, :i], OutputAll = True )[0] # only impose the regressors to get the new theta
-      MAE.append( ( tor.mean( tor.abs( self.y - Imposed[:, :i] @ tor.Tensor( theta_TMP ) ) ) / yNorm ).item() )
-    
+
+      # 2. Generate and apply the model: take only the current sub-model from RegNames
+      yHat = self.GenerateNARMAX_ComputeOutput( ValData, theta_TMP, nS, RegNames[:i], OutputVarName )
+
+      # 3. Compute the error
+      MAE.append( ( tor.mean( tor.abs( ValData["y"][0] - yHat ) ) / yNorm ).item() )
+
     Fig2, Ax2 = plt.subplots( 2, sharex = True ) # 2 because the first Ax object is outputted by the function
-    Ax2[0].set_title( f"Top: All { len( ERRtemp ) } ERR in descending oder. Bottom: Model MAE evolution" )
-    Ax2[0].stem( ERRtemp, linefmt = "#00aaffff" ) # force slightly lighter blue than default blue for compatibility with dark mode
+    Ax2[0].set_title( f"Top: All { len( SortedERR ) } ERR in descending oder. Bottom: Model MAE evolution" )
+    Ax2[0].stem( SortedERR, linefmt = "#00aaffff" ) # force slightly lighter blue than default blue for compatibility with dark mode
     plt.setp( Ax2[0].get_xticklabels(), visible = False ) # desactivate the ticks
-    Ax2[0].set_ylim( [0, 1.05 * max( ERRtemp )] )
+    Ax2[0].set_ylim( [0, 1.05 * max( SortedERR )] )
     Ax2[0].grid( axis = 'y', alpha = 0.5 )
     
     Ax2[1].plot( MAE, "#00aaffff", marker = '.', markersize = 5 ) # force slightly lighter blue than default blue for compatibility with dark mode
-    Ax2[1].set_xticks( np.arange( len( ERRtemp ) ), RegNames, rotation = 45, ha = 'right' ) # setting ticks manually is more flexible as it allows rotation
+    Ax2[1].set_xticks( np.arange( len( SortedERR ) ), RegNames, rotation = 45, ha = 'right' ) # setting ticks manually is more flexible as it allows rotation
     Ax2[1].grid( axis = 'x', alpha = 0.5 )
     for i, v in enumerate( MAE ): Ax2[1].text( i, v + 0.1 * max( MAE ), '{:.3e}'.format( v ), ha = "center" ) # print exact values
     Ax2[1].set_ylim( [0, max( MAE ) * 1.3] )
@@ -872,13 +914,14 @@ class Arborescence:
     Fig2.tight_layout() # prevents the plot from clipping ticks
     plt.subplots_adjust( hspace = 0.001 )
     
+    # ------------------------------------------------ Console Printing ------------------------------------------------
     # print summary to console
     print( Imposed.shape[1], "Terms yielding an Mean absolute Error (MAE) of", MeanAbsErrorStr + "% and a maximal deviation of", MaxDeviationStr +
           "% and a Median Absolute Deviation (MAD) of", MedianAbsDerivationStr )
     
     if ( PrintRegressor ): # print the regressors in a readable manner
       print( "\nRecognized regressors:" )
-      for i in range( len( Sortedtheta ) ): print( Sortedtheta[i].item(), RegNames[i] )
+      for i in range( len( SortedERR ) ): print( self.theta[ list( Order ) ][i].item(), RegNames[i] )
       print( "\n" )
 
-    return ( ( Fig, Fig2 ), ( Ax, Ax2 ) ) # for further operations
+    return ( ( Fig, Fig2 ), ( Ax, Ax2 ) ) 
