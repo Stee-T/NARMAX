@@ -22,6 +22,21 @@ device = HF.Set_Tensortype_And_Device() # force 64 bits, on GPU if available
 Identity = NonLinearity( "id", lambda x: x ) # pre-define object for user
 CutY = HF.CutY
 
+# ############################################ Compute NARMAX Output #############################################
+def ComputeNARMAXOutput( Model, y, Data ):
+  '''Helper function initializing the NARMAX model and generating its output from the passed data.'''
+
+  StartIdx = max( Model.get_MaxNegOutputLag(), Model.get_MaxNegInputLag() ) # essentially q = max(qx, qy) as usual
+
+  Model.set_OutputStorage( y[ : Model.get_MaxNegOutputLag() ].clone() ) # set previous y[k-j] states
+  Model.set_InputStorage( tor.vstack( [ input[ : Model.get_MaxNegInputLag() ] for input in Data ] ) ) # set previous phi[k-j] states
+
+  yHat = tor.zeros_like( y )
+  yHat[ :StartIdx ] = y[ : StartIdx ].clone() # take solution samples, where Model hasn't got all data. Avoids init-Error spikes
+  yHat[ StartIdx: ] = Model.Oscillate( [ input[ StartIdx: ] for input in Data ] )
+  
+  return ( yHat )
+
 # ############################################ Default Validation procedure #############################################
 def DefaultValidation( theta, L, ERR, RegNames, ValData ):
   '''
@@ -37,7 +52,6 @@ def DefaultValidation( theta, L, ERR, RegNames, ValData ):
     → `ValData["y"]`: ( list of float torch.Tensors ) containing the system responses
     → `ValData["Data"]`: ( list of iterables of float torch.Tensors ) containing the data to be passed to the standard CTors ( Lagger, Expander, NonLinearizer )
     → `ValData["InputVarNames"]`: ( list of str ) containing the variable names as passed to Lagger, Expander, Nonlinearizer, so not all regressor names
-    → `ValData["DsData"]`: ( list of float Torch.Tensors or None ) containing all imposed regressors column wise
     → `ValData["NonLinearities"]`: ( list of pointer to functions ) containing the regression's transformations to be passed to RegressorTransform
   
   ### Output
@@ -47,83 +61,44 @@ def DefaultValidation( theta, L, ERR, RegNames, ValData ):
   # ---------------------------------------  Bullshit prevention ----------------------------------------------------
   if ( not isinstance( ValData, dict ) ): raise AssertionError( "The passed ValData datastructure is not a dictionary as expected" )
   
-  for var in [ "y", "InputVarNames", "Data", "DsData", "NonLinearities" ]:
+  for var in [ "y", "InputVarNames", "Data", "NonLinearities" ]:
     if ( var not in ValData.keys() ): raise AssertionError( f"The validation datastructure contains no '{ var }' entry" )
-  
-  # Dirty conversion but simplifies the code a lot
-  if ( ValData["DsData"] == [] ): ValData["DsData"] = None
-  if ( ValData["Data"] == [] ):   ValData["Data"]   = None
 
   if ( not isinstance( ValData["y"], list ) ): raise AssertionError( "ValData's 'y' entry is expected to be a list of float torch.Tensors" )
 
-  if ( ValData["Data"] is not None ):
-    if ( not isinstance( ValData["Data"], list ) ):         raise AssertionError( "ValData's 'Data' entry is expected to be a list" )
-    if ( len ( ValData["Data"] ) != len ( ValData["y"] ) ): raise AssertionError( "ValData's 'Data' and 'y' entries should have the same length" )
+  # Data entry validation
+  if ( ( ValData["Data"] == [] ) or ( ValData["Data"] is None ) ):   raise AssertionError( "ValData's 'Data' entry is empty, there is thus no validation that can be performed" )
+  if ( not isinstance( ValData["Data"], list ) ):         raise AssertionError( "ValData's 'Data' entry is expected to be a list" )
+  if ( len ( ValData["Data"] ) != len ( ValData["y"] ) ): raise AssertionError( "ValData's 'Data' and 'y' lists should have the same length" )
 
-    for val in ValData["Data"]: # iterate over all passed Data tuples
-      for reg in val: # Data entries contain unknown number of regressors in the MISO
-        if ( not isinstance( reg, tor.Tensor ) ): raise AssertionError( "ValData's 'Data' entry is expected to be a list of 2D-tuples of float torch.Tensors" )
+  for val in range( len( ValData["Data"] ) ): # iterate over all passed Data tuples
+    for reg in ValData["Data"][val]: # Data entries contain unknown number of regressors in the MISO
+      if ( not isinstance( reg, tor.Tensor ) ): raise AssertionError( "ValData's 'Data' entry is expected to be a list of 2D-tuples of float torch.Tensors" )
+      if ( ValData["y"][val].shape[0] != reg.shape[0] ): raise AssertionError( f"ValData's 'DsData' { val }-th entry has not the same length as the { val }-th 'y' entry" )
 
+  # NonLinearities entry validation
   if ( not isinstance( ValData["NonLinearities"], list ) ): raise AssertionError( "ValData's 'NonLinearities' entry is expected to be a list of NonLinearity objects" )
   for func in ValData["NonLinearities"]: # iterate over all passed NonLinearities
     if ( not isinstance( func, NonLinearity ) ): raise AssertionError( "ValData's 'NonLinearities' entry is expected to be a list of NonLinearity objects" )
-  
-  if ( ValData["DsData"] is not None):
-    if ( len( ValData["DsData"] ) != len( ValData["y"] ) ): raise AssertionError( "ValData's 'Data' and 'y' lists should have the same length" )
-
-    for data in ValData["DsData"]: # iterate over all passed Data tuples
-      if ( not isinstance( data[0], tor.Tensor ) ): raise AssertionError( "ValData's 'DsData' entry is expected to be a list of (torch.Tensor (for y), torch.Tensor (for Ds)) or None" )
-      if ( not isinstance( data[1], tor.Tensor ) ): raise AssertionError( "ValData's 'DsData' entry is expected to be a list of (torch.Tensor (for y), torch.Tensor (for Ds)) or None" )
-
-    for val in range ( len( ValData["DsData"] ) ):  # iterate over all passed Data tuples
-      if ( ValData["y"][val].shape[0] != ValData["DsData"][val].shape[0] ): raise AssertionError( f"ValData's 'DsData' { val }-th entry has not the same length as the { val }-th 'y' entry" )
           
   # ------------------------------------------- Validation loop preparations -------------------------------------------
   if ( "OutputVarName" not in ValData.keys() ): OutputVarName = "y" # default if not passed
   else:                                         OutputVarName = ValData["OutputVarName"]
-  
-  Error = 0 # total relative error
 
-  # Estuimate the number of validations
-  nValidations = 0
-  if ( ValData["Data"] is not None ): nValidations = len( ValData["Data"] )
+  Error = 0 # Total relative error
+  Model = SymbolicOscillator( ValData["InputVarNames"], ValData["NonLinearities"], RegNames, theta, OutputVarName )
 
-  if ( ValData["DsData"] is not None ):
-    if ( ( nValidations != 0 ) and ( len( ValData["DsData"] ) != nValidations ) ):
-      raise AssertionError( "ValData's 'DsData' entry is not the same length as 'Data'" )
-    nValidations = len( ValData["DsData"] )
-    nS = ValData["DsData"][0].shape[1] # number of cols in Validation Ds
-  else: nS = 0 # number of cols in Validation Ds
-
-  if ( nValidations == 0 ): raise AssertionError( "No validation data was passed, as Data and DsData are both None or empty lists" )
-
-  # Initialize the model
-  Model = SymbolicOscillator( ValData["InputVarNames"], ValData["NonLinearities"], RegNames, theta[nS:], OutputVarName )
-  StartIdx = max( Model.get_MaxNegOutputLag(), Model.get_MaxNegInputLag() ) # essentially q = max(qx, qy) as usual
-
-  for val in range( nValidations ): # iterate over all passed Data tuples
-    # --------------------------------------------------- Handle Ds ---------------------------------------------------
-    if ( ValData["DsData"] is not None ): AdditionalInput = ( ValData["DsData"][val] @ theta[ : nS ] ).view( -1 ) # ( p,)-shaped Tensor
-    else:                                 AdditionalInput = None
-
-    # ---------------------------------------------------- Handle Dc ----------------------------------------------------
-    if ( ValData["Data"] is not None ):
-      Model.set_OutputStorage( ValData["y"][val][ : Model.get_MaxNegOutputLag() ].clone() ) # set previous y[k-j] states
-      Model.set_InputStorage( tor.vstack( [ input[ : StartIdx ] for input in ValData["Data"][val] ] ) ) # set previous phi[k-j] states
-
-      yHat = tor.zeros_like( ValData["y"][val] )
-      yHat[ :StartIdx ] = ValData["y"][val][ : StartIdx ].clone() # take solution samples, where Model hasn't got all data. Avoids init-Error spikes
-      yHat[ StartIdx: ] = Model.Oscillate( [ input[ StartIdx: ] for input in ValData["Data"][val] ], AdditionalInput )
-
+  for val in range( len( ValData["Data"] ) ): # iterate over all passed Data iterables (Validations)
+    yHat = ComputeNARMAXOutput( Model, ValData["y"][val], ValData["Data"][val] ) # Set internal state and compute output
     Error += tor.mean( tor.abs( ValData["y"][val] - yHat ) / tor.mean( tor.abs( ValData["y"][val] ) ) ) # relative MAE
     
-  return ( Error.item() / nValidations ) # norm by the number of validation ( not necessary for AOrLSR but printed for the user )
+  return ( Error.item() / len( ValData["Data"] ) ) # norm by the number of validations ( not necessary for AOrLSR but printed for the user )
 
 
-# ####################################################################################################### AOrLSR Class ############################################################################################
+# #################################################### AOrLSR Class ####################################################
 class Arborescence:
 
-  # ******************************************************************************************************** Init *************************************************************************************************
+  # ***************************************************** Init *********************************************************
   def __init__( self, y = None, Ds = None, DsNames = None, Dc = None, DcNames = None, # Fitting Data
                tolRoot = 0.001, tolRest = 0.001, MaxDepth = 5, # Arbo size influencers: rho 1 & 2
                ValFunc = None, ValData = None, # Validation function and Data
@@ -230,7 +205,7 @@ class Arborescence:
     self.SaveFrequency = SaveFrequency * 60 # transform from seconds into minutes
     self.INT_TYPE = np.int64 # default, if no DC present to overwrite it (thus not used since it only affects the arbo search)
 
-    # ------------------------------------------------------------------------------------------ Argument Processing ---------------------------------------------------------------------------------
+    # ---------------------------------------------- Argument Processing -----------------------------------------------
 
     # ~~~~~~~~~~~~ DC Stuff
     if ( self.DcNames is not None ): # needs to be checked first since used in Dc processing -if below
@@ -744,20 +719,18 @@ class Arborescence:
           
           if ( self.Dc is not None ):
             theta, _, ERR, = self.rFOrLSR( self.y, tor.column_stack( ( self.Ds, self.Dc[:, reg.astype( np.int64 )] ) ), None, None, None, OutputAll = True )
+            RegNames = np.concatenate( ( self.DsNames, np.ravel( self.DcNames[reg] ) ) ) # pass only selected regressors' RegNames
           else: # for regression with imposed regressors only (no Dc)
             theta, _, ERR, = self.rFOrLSR( self.y, self.Ds, None, None, None, OutputAll = True )
+            RegNames = self.DsNames
           
           if ( self.ValData is None ): Error = 1 - np.sum( ERR ) # take ERR if no validation dictionary is passed
-          else:                        Error = self.ValFunc( theta, reg, ERR, 
-                                                             np.concatenate( [ self.DsNames, np.ravel( self.DcNames[reg] ) ] ), # pass only selected regressors' RegNames
-                                                             self.ValData
-                                                           ) # compute the passed custom error metric
+          else:                        Error = self.ValFunc( theta, reg, ERR, RegNames, self.ValData ) # compute the passed custom error metric
 
           if ( Error < MinError ): MinError = Error; self.theta = theta; self.L = reg.astype( np.int64 ); self.ERR = ERR # update best model
 
-    print( f"\nValidation done on { len( Processed ) } different Regressions. Best validation error: { MinError }" )
-    
-    print( f"Out of { self.TotalNodes } only { self.NotSkipped } regressions were computed, of which { self.AbortedRegs } were OOIT - aborted.\n" )
+    print( f"\nValidation done on { len( Processed ) } different Regressions. Best validation error: { MinError }\n",
+           f"Out of { self.TotalNodes } only { self.NotSkipped } regressions were computed, of which { self.AbortedRegs } were OOIT-aborted.\n" )
 
     return ( self.get_Results() )
 
@@ -794,30 +767,6 @@ class Arborescence:
     self.MaxDepth = Depth # nothing talks against it, if we arrived until here :D
 
 
-
-
-  # ****************************************** Display the regression results ******************************************
-  def GenerateNARMAX_ComputeOutput( self, ValData, theta, nS, RegNames, OutputVarName ):
-    '''Helper function generating the NARMAX model and computing its output from the 0th element of the validation data.'''
-
-    Model = SymbolicOscillator( ValData["InputVarNames"], ValData["NonLinearities"], RegNames, theta[nS:], OutputVarName )
-    StartIdx = max( Model.get_MaxNegOutputLag(), Model.get_MaxNegInputLag() ) # essentially q = max(qx, qy) as usual
-
-    # --------------------------------------------------- Handle Ds ---------------------------------------------------
-    if ( ValData["DsData"] is not None ): AdditionalInput = ( ValData["DsData"][0] @ theta[ : nS ] ).view( -1 ) # ( p,)-shaped Tensor
-    else:                                 AdditionalInput = None
-
-    # ---------------------------------------------------- Handle Dc ----------------------------------------------------
-    if ( ValData["Data"] is not None ):
-      Model.set_OutputStorage( ValData["y"][0][ : Model.get_MaxNegOutputLag() ].clone() ) # set previous y[k-j] states
-      Model.set_InputStorage( tor.vstack( [ input[ : Model.get_MaxNegInputLag() ] for input in ValData["Data"][0] ] ) ) # set previous phi[k-j] states
-
-      yHat = tor.zeros_like( ValData["y"][0] )
-      yHat[ :StartIdx ] = ValData["y"][0][ : StartIdx ].clone() # take solution samples, where Model hasn't got all data. Avoids init-Error spikes
-      yHat[ StartIdx: ] = Model.Oscillate( [ input[ StartIdx: ] for input in ValData["Data"][0] ], AdditionalInput )
-    
-    return ( yHat )
-
   # ************************************************** Plot and Print **************************************************
   def PlotAndPrint( self, ValData, PrintRegressor = True ):
     ''' Function displaying the regression results in form of two plots (1. Signal comparison, 2. Error distribution) and printing the regressors and their coefficients.
@@ -833,21 +782,16 @@ class Arborescence:
                                                  "To get intermediate results, trigger the validation procedure" )
 
     # ------------------------------------------- Figure 1. Signal comparison ------------------------------------------
-    # Generate yHat
-    nS = len( self.DsNames )
 
-    if ( self.Dc is not None ): # results in the problem of self.L.shape == (0,)
-      RegNames = np.concatenate( ( self.DsNames, np.ravel( self.DcNames[ self.L ] ) ) )
-    else: # only a Ds exists
-      RegNames = self.DsNames
-      yHat = ValData["DsData"][0] @ self.theta # Model prediction on the training data
+    if ( self.Dc is not None ): RegNames = np.concatenate( ( self.DsNames, np.ravel( self.DcNames[ self.L ] ) ) ) # avoids incorrect indexation with L.shape == (0,) and Dc = None
+    else:                       RegNames = self.DsNames # only a Ds exists
   
     # Initialize the model
     if ( "OutputVarName" not in ValData.keys() ): OutputVarName = "y" # default if not passed
     else:                                         OutputVarName = ValData["OutputVarName"]
 
-    if (self.Dc is not None ): # overwrite yHat only if Dc is passed, else take the one generated above, which doesn't require a model
-      yHat = self.GenerateNARMAX_ComputeOutput( ValData, self.theta, nS, RegNames, OutputVarName )
+    Model = SymbolicOscillator( ValData["InputVarNames"], ValData["NonLinearities"], RegNames, self.theta, OutputVarName )
+    yHat = ComputeNARMAXOutput( Model, ValData["y"][0], ValData["Data"][0] )
 
     yNorm = tor.max( tor.abs( ValData["y"][0] ) ) # Compute Model, norming factor to keep the display in % the the error
     Error = ( ValData["y"][0] - yHat ) / yNorm # divide by max abs to norm with the max amplitude
@@ -883,20 +827,15 @@ class Arborescence:
     Order = np.flip( np.argsort( self.ERR ) )
     SortedERR = self.ERR[ Order ]; RegNames = RegNames[Order] # impose same order on all datastructures
     
-    if ( self.Dc is not None ): # L is an empty array if no Dc is passed
-      Imposed = tor.column_stack( ( self.Ds, self.Dc[:, self.L[ Order ] ] ) ) # invalid indexation if Dc is empty or None
-    else: Imposed = self.Ds
+    if ( self.Dc is not None ): Imposed = tor.column_stack( ( self.Ds, self.Dc[:, self.L[ Order ] ] ) ) # invalid indexation if Dc is empty or None
+    else:                       Imposed = self.Ds
 
-    # The procedure doesn't need to discriminate between Ds and Dc, since Ds might also contain AR terms which must thus be processed
-    for i in tqdm.tqdm( range( 1, SortedERR.shape[0] + 1 ), desc = "Sub-Models" ):
-      # 1. Estimate Submodel theta from the training data:
-      theta_TMP = self.rFOrLSR( self.y, Ds = Imposed[:, :i], OutputAll = True )[0] # only impose the regressors to get the new theta
-
-      # 2. Generate and apply the model: take only the current sub-model from RegNames
-      yHat = self.GenerateNARMAX_ComputeOutput( ValData, theta_TMP, nS, RegNames[:i], OutputVarName )
-
-      # 3. Compute the error
-      MAE.append( ( tor.mean( tor.abs( ValData["y"][0] - yHat ) ) / yNorm ).item() )
+    # The procedure doesn't discriminate between Ds and Dc, since Ds might also contain AR terms which must thus be processed
+    for i in tqdm.tqdm( range( 1, SortedERR.shape[0] + 1 ), desc = "MAE: Estimating Sub-Models ", leave = False ):
+      theta_TMP = self.rFOrLSR( self.y, Ds = Imposed[:, :i], OutputAll = True )[0] # Estimate Sub-model theta from training data
+      Model = SymbolicOscillator( ValData["InputVarNames"], ValData["NonLinearities"], RegNames[:i], theta_TMP, OutputVarName ) # Generate current submodel
+      yHat = ComputeNARMAXOutput( Model, ValData["y"][0], ValData["Data"][0] )
+      MAE.append( ( tor.mean( tor.abs( ValData["y"][0] - yHat ) ) / yNorm ).item() ) # Compute the error
 
     Fig2, Ax2 = plt.subplots( 2, sharex = True ) # 2 because the first Ax object is outputted by the function
     Ax2[0].set_title( f"Top: All { len( SortedERR ) } ERR in descending oder. Bottom: Model MAE evolution" )
