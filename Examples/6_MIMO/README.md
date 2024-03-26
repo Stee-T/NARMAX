@@ -83,25 +83,25 @@ One arborescence is generated for each output $y_i$ and the correct dictionaries
 7 Terms yielding an Mean absolute Error (MAE) of 3.973e-15% and a maximal deviation of 4.000e-14% and a Median Absolute Deviation (MAD) of 3.3332e-15
 
 Recognized regressors:
--0.2999999999999999 x2[k-2]^2 y2[k-1]
--0.8000000000000002 abs(x3[k-1] y1[k-2])
--0.6999999999999997 x1[k-1] x2[k-1]^2
-0.4999999999999999 x1[k-2] x2[k-3]
-0.29999999999999993 x2[k]^3
-0.7 abs(x3[k])
-0.20000000000000007 x1[k]
+-0.2999999999999999 x2[k-2]^2 * y2[k-1]
+-0.8000000000000002 abs(x3[k-1] * y1[k-2])
+-0.6999999999999997 x1[k-1] * x2[k-1]^2
+ 0.4999999999999999 x1[k-2] * x2[k-3]
+ 0.29999999999999993 x2[k]^3
+ 0.7 abs(x3[k])
+ 0.20000000000000007 x1[k]
 
 
 7 Terms yielding an Mean absolute Error (MAE) of 2.547e-15% and a maximal deviation of 3.521e-14% and a Median Absolute Deviation (MAD) of 2.2005e-15
 
 Recognized regressors:
--0.9 abs(x3[k-1] y2[k-2])
--0.40000000000000013 x3[k-2]^2 y1[k-1]
--0.6999999999999998 x2[k-1]^2 x3[k-1]
-0.6000000000000001 x1[k-2] y1[k-3]
-0.5 x3[k]^3
-0.7000000000000001 abs(y1[k-1])
-0.30000000000000004 x1[k-1]
+-0.9 abs(x3[k-1] * y2[k-2])
+-0.40000000000000013 x3[k-2]^2 * y1[k-1]
+-0.6999999999999998 x2[k-1]^2 * x3[k-1]
+ 0.6000000000000001 x1[k-2] * y1[k-3]
+ 0.5 x3[k]^3
+ 0.7000000000000001 abs(y1[k-1])
+ 0.30000000000000004 x1[k-1]
 ```
 
 [Previous Tutorial: 5. Sigmoid Expansion & Custom Validation](https://github.com/Stee-T/rFOrLSR/tree/main/Examples/5_tanh)  

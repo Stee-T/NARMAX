@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 plt.style.use( 'dark_background' ) # black graphs <3
 
 import torch as tor
+import copy
 
 # ################################################################################ Inputs creation ################################################################################
 # Sigmoids data generation
@@ -31,6 +32,7 @@ while ( 5 ): # 5 is the absolute truth, do while y contains no nan
 
 
 NonLinearities = [ rFOrLSR.Identity, rFOrLSR.NonLinearity( "abs", f = tor.abs ) ] # List of NonLinearity objects, must start with identity
+InputVars = [ "x1", "x2", "x3", "y1", "y2" ] # Variables used in the system
 
 # ---------------------------------------------------- 3. Training Data
 _, RegMat, RegNames = rFOrLSR.CTors.Lagger( Data = [ x1, x2, x3, y1, y2 ], Lags = Lags, RegNames = [ "x1", "x2", "x3", "y1", "y2" ] ) # Create the delayed regressors
@@ -45,17 +47,14 @@ y2 = rFOrLSR.CutY( y2, Lags )
 ValidationDict1 = { # contains essentially everything passed to the CTors to reconstruct the regressor
   "y": [],
   "Data": [],
-  "InputVarNames": [ "x1", "x2", "x3", "y1", "y2" ], # RegNames for Lagger
-  "DsData": None, # No impopsed terms in this example
-  "Lags": Lags,
-  "ExpansionOrder": ExpansionOrder,
+  "InputVarNames": [ "x1", "x2", "x3", "y2", "y1" ], # output put as last entry to keep the same order as VDict1["Data"] below
   "NonLinearities": NonLinearities,
-  "MakeRational": None, 
+  "OutputVarName": "y1" # declare since can't use the default, which is 'y'
 }
 
-import copy
-
 ValidationDict2 = copy.deepcopy( ValidationDict1 )
+ValidationDict2["OutputVarName"] = "y2"
+ValidationDict2["InputVarNames"] = [ "x1", "x2", "x3", "y1", "y2" ] # here again, output put as last entry
 
 for i in range( 5 ): # Fill the validation dict's data entry with randomly generated validation data
   while ( 5 ): # 5 is the absolute truth
@@ -72,13 +71,13 @@ for i in range( 5 ): # Fill the validation dict's data entry with randomly gener
 
     if ( not tor.isnan( tor.sum( y1_val ) ) and not tor.isnan( tor.sum( y2_val ) ) ): break # Remain in the loop until no NaN
   
-  # Each system output needs it final output
-  ValidationDict1["y"].append( rFOrLSR.CutY( y1_val, ValidationDict1["Lags"] ) ) # Cuts the y to the right size (avois a warning)
-  ValidationDict2["y"].append( rFOrLSR.CutY( y2_val, ValidationDict2["Lags"] ) ) # Cuts the y to the right size (avois a warning)
+  # Each system output needs its final output
+  ValidationDict1["y"].append( y1_val )
+  ValidationDict2["y"].append( y2_val )
   
-  # Both system output require the full data
-  ValidationDict1["Data"].append( [ x1_val, x2_val, x3_val, y1_val, y2_val ] ) # uncut y
-  ValidationDict2["Data"].append( [ x1_val, x2_val, x3_val, y1_val, y2_val ] ) # uncut y
+  # Both system output require the full data and the other channel's output. For simplicity, we add the same data to both
+  ValidationDict1["Data"].append( [ x1_val, x2_val, x3_val, y2_val ] )
+  ValidationDict2["Data"].append( [ x1_val, x2_val, x3_val, y1_val ] )
 
 
 # ---------------------------------------------------- 5. Running the Arborescences
@@ -87,7 +86,7 @@ Arbo_1 = rFOrLSR.Arborescence( y1,
                                tolRoot = tol, tolRest = tol, # \rho tolerances
                                MaxDepth = ArboDepth, # Maximal number of levels
                                ValFunc = rFOrLSR.DefaultValidation, ValData = ValidationDict1, # Validation function and dictionary
-                              )
+                             )
 Arbo_1.fit() # Don't overwrite RegMat, since it is used in the next Arbo
 
 
@@ -96,14 +95,14 @@ Arbo_2 = rFOrLSR.Arborescence( y2,
                                tolRoot = tol, tolRest = tol, # \rho tolerances
                                MaxDepth = ArboDepth, # Maximal number of levels
                                ValFunc = rFOrLSR.DefaultValidation, ValData = ValidationDict2, # Validation function and dictionary
-                              )
+                             )
 Arbo_2.fit()
 
 
-Figs, Axs = Arbo_1.PlotAndPrint() # returns both figures and axes for further processing, as as the zoom-in below
+Figs, Axs = Arbo_1.PlotAndPrint( ValidationDict1 ) # returns both figures and axes for further processing, as as the zoom-in below
 Axs[0][0].set_xlim( [0, 500] ) # Force a zoom-in
 
-Figs, Axs = Arbo_2.PlotAndPrint() # returns both figures and axes for further processing, as as the zoom-in below
+Figs, Axs = Arbo_2.PlotAndPrint( ValidationDict2 ) # returns both figures and axes for further processing, as as the zoom-in below
 Axs[0][0].set_xlim( [0, 500] ) # Force a zoom-in
 
 

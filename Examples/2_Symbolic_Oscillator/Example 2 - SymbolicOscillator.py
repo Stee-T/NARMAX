@@ -57,7 +57,7 @@ for i in range( 3 ):
 
 # ------------------------------------------------- 3. Testing
 Fig, Ax = plt.subplots()
-Diff = (y - yHat)[20:] # cut the start since the system init of the foor loops in incomplete
+Diff = (y - yHat)[20:] # cut the start since the system init of the foor loops is incomplete
 Ax.plot( Diff.cpu().numpy() ) 
 Ax.set( title = "y - yHat", xlabel = 'k', ylabel = 'y - yHat',
         xlim = ( 0, p-20 ), ylim = ( 1.1*Diff.min().item(), 1.1*Diff.max().item() )

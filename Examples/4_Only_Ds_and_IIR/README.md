@@ -66,11 +66,7 @@ DsValDict = { # contains essentially everything passed to the CTors to reconstru
   "y": [],
   "Data": None, # No free to chose from regressors in this example
   "InputVarNames": [ "x", "y" ], # variables in Data, Lags, etc
-  "DsData": [],
-  "Lags": ( qx, qy ),
-  "ExpansionOrder": ExpansionOrder,
   "NonLinearities": [ rFOrLSR.Identity ], # no non-linearities
-  "MakeRational": None, # equivalent to [ False ]
 }
 
 for i in range( 5 ): # Fill the validation dict's data entry with randomly generated validation data
@@ -78,9 +74,8 @@ for i in range( 5 ): # Fill the validation dict's data entry with randomly gener
   x_val -= tor.mean( x_val ) # CENTER!!!
   y_val = Sys( x_val, Filters ) # _val to avoid overwriting the training y
 
-  y_val, DsData, _ = rFOrLSR.CTors.Lagger( Data = ( x_val, y_val ), Lags = ( qx, qy ) ) # RegName not needed since same as training
-  DsValDict["y"].append( y_val ) # cut version by Lagger
-  DsValDict["DsData"].append( DsData )
+  DsValDict["y"].append( y_val )
+  DsValDict["Data"].append( [ x_val ] )
 ```
 <br/>
 

@@ -43,13 +43,9 @@ RegMat, RegNames, _ = rFOrLSR.CTors.NonLinearizer( y, RegMat, RegNames, NonLinea
 ValidationDict = { # contains essentially everything passed to the CTors to reconstruct the regressors
   "y": [],
   "Data": [],
-  "InputVarNames": [ "x", "y" ], # variables in Data, Lags, etc
+  "InputVarNames": [ "x", "y" ], # variables used in the system
   "DcNames": RegNames,
-  "DsData": None, # No impopsed terms in this example
-  "Lags": ( qx, qy ),
-  "ExpansionOrder": ExpansionOrder,
   "NonLinearities": NonLinearities,
-  "MakeRational": MakeRational, 
 }
 
 for i in range( 5 ): # Fill the validation dict's data entry with randomly generated validation data
@@ -59,8 +55,8 @@ for i in range( 5 ): # Fill the validation dict's data entry with randomly gener
     x_val, y_val, W = Sys( x_val, W, Print = False ) # _val to avoid overwriting the training y
     if ( not tor.isnan( tor.sum( y_val ) ) ): break # Remain in the loop until no NaN
   
-  ValidationDict["y"].append( rFOrLSR.CutY( y_val, ValidationDict["Lags"] ) ) # Cuts the y to the right size (avois a warning)
-  ValidationDict["Data"].append( ( x_val, y_val ) )
+  ValidationDict["y"].append( y_val ) # Cuts the y to the right size (avois a warning)
+  ValidationDict["Data"].append( [ x_val ] ) # List of only input terms
 
 
 # ---------------------------------------------------- 5. Running the Arborescence
@@ -84,9 +80,30 @@ Arbo.fit()
 # Arbo.load( File ) # load pickle file
 # Arbo.fit() # resume fitting
 
-Figs, Axs = Arbo.PlotAndPrint() # returns both figures and axes for further processing, as as the zoom-in below
+Figs, Axs = Arbo.PlotAndPrint( ValidationDict ) # returns both figures and axes for further processing, as as the zoom-in below
 Axs[0][0].set_xlim( [0, 500] ) # Force a zoom-in
 
 theta, L, ERR, _, RegMat, RegNames = Arbo.get_Results()
+
+# ---------------------------------------------------- 6. Run the system
+TestInput = tor.tensor( ( 2 * InputAmplitude ) * ( tor.rand( p ) - 0.5 ) ) # uniformly distributed white noise
+TestInput -= TestInput.mean() # center
+
+_, y, W = Sys( TestInput, W, Print = True ) # Original for-loop
+
+NARMAX = rFOrLSR.SymbolicOscillator( [ "x", "y" ], NonLinearities, RegNames[L], tor.tensor( theta ) )
+
+# Prefill the internal state to perfectly emulate the ground truth y
+NARMAX.set_InputStorage( TestInput[ None, :NARMAX.get_MaxNegInputLag() ].clone() ) # corresponds to qx in this example
+NARMAX.set_OutputStorage( y[ :NARMAX.get_MaxNegOutputLag() ].clone() ) # corresponds to qy in this example
+yHat = NARMAX.Oscillate( [ TestInput[ -len( y ): ] ] ) # generate data
+
+# Note: We cut the input w.r.t. len( y ), since the generated model might have different lags.
+# Otherwise max( NARMAX.get_MaxNegOutputLag(), NARMAX.get_MaxNegInputLag() ) is the way to go##
+
+Fig, Ax = plt.subplots()
+Ax.plot( (y - yHat )[10:].cpu().numpy(), label = "y - yHat" )
+Ax.grid( which = "both", alpha = 0.3 )
+
 
 plt.show()

@@ -26,7 +26,7 @@ Sys = Test_Systems.NonLinearities
 
 # Generate x and y data
 while ( 5 ): # 5 is the absolute truth, do while y contains no nan
-  x = InputAmplitude * ( tor.rand( p, device = rFOrLSR.device ) * 2 - 1 ) # uniformly distributed white noise
+  x = ( InputAmplitude * 2 ) * ( tor.rand( p, device = rFOrLSR.device ) - 0.5 ) # uniformly distributed white noise
   x -= tor.mean( x ) # center: VERY IMPORTANT!
   x, y, W = Sys( x, W, Print = True ) # apply selected system
   if ( not tor.isnan( tor.sum( y ) ) ): break
@@ -47,12 +47,8 @@ RegMat, RegNames, _ = rFOrLSR.CTors.NonLinearizer( y, RegMat, RegNames, NonLinea
 ValidationDict = { # contains essentially everything passed to the CTors to reconstruct the regressors
   "y": [],
   "Data": [],
-  "InputVarNames": [ "x", "y" ], # variables in Data, Lags, etc
-  "DsData": None, # No impopsed terms in this example
-  "Lags": (qx,qy),
-  "ExpansionOrder": ExpansionOrder,
+  "InputVarNames": [ "x", "y" ], # variables in Data, etc
   "NonLinearities": NonLinearities,
-  "MakeRational": None, 
 }
 
 for i in range( 5 ): # Fill the validation dict's data entry with randomly generated validation data
@@ -62,8 +58,8 @@ for i in range( 5 ): # Fill the validation dict's data entry with randomly gener
     x_val, y_val, W = Sys( x_val, W, Print = False ) # _val to avoid overwriting the training y
     if ( not tor.isnan( tor.sum( y_val ) ) ): break # Remain in the loop until no NaN
   
-  ValidationDict["y"].append( rFOrLSR.CutY( y_val, ValidationDict["Lags"] ) ) # Cuts the y to the right size (avois a warning)
-  ValidationDict["Data"].append( ( x_val, y_val ) )
+  ValidationDict["y"].append( y_val )
+  ValidationDict["Data"].append( [ x_val ] ) # must be in a list. Only pass input variables
 
 
 # ---------------------------------------------------- 5. Running the Arborescence
@@ -76,9 +72,9 @@ Arbo = rFOrLSR.Arborescence( y,
                              MaxDepth = ArboDepth, # Maximal number of levels
                              ValFunc = rFOrLSR.DefaultValidation, ValData = ValidationDict, # Validation function and dictionary
                              Verbose = False, # Print the current state of the FOrLSR (only meaningful for regressions with many terms)
-                            #  FileName = File, # Path and File to save the Backups into
-                            #  SaveFrequency = 10, # Save frequency in minutes
-                           )
+                             # FileName = File, # Path and File to save the Backups into
+                             # SaveFrequency = 10, # Save frequency in minutes
+                            )
 
 Arbo.fit()
 
@@ -87,9 +83,9 @@ Arbo.fit()
 # Arbo.load( File ) # load pickle file
 # Arbo.fit() # resume fitting
 
-Figs, Axs = Arbo.PlotAndPrint() # returns both figures and axes for further processing, as as the zoom-in below
+Figs, Axs = Arbo.PlotAndPrint( ValidationDict ) # returns both figures and axes for further processing, as as the zoom-in below
 Axs[0][0].set_xlim( [0, 500] ) # Force a zoom-in
 
-theta, L, ERR, _, RegMat, RegNames = Arbo.get_Results()
+theta, L, ERR, _, RegMat, RegNames = Arbo.get_Results() # See Tutorial 2 for how to create a NARMX object.
 
 plt.show()

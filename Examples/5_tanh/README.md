@@ -95,9 +95,9 @@ The validation function does some input checking after which the three aforement
 
 
 ``` python
-def Sigmoid_Expansion_L_inf( theta, L, ERR, ValDic, MorphDict, DcFilterIdx = None ): # The arborescence imposes 6 arguments to passed validation functions
+def Sigmoid_Expansion_L_inf( theta, L, ERR, RegNames, ValDic,  DcFilterIdx = None ): # The arborescence imposes 6 arguments to passed validation functions
 
-  # ------------------------------- Defensive programming
+  # --------------------------------------------------------------- Defensive programming ------------------------------------------------------------------
   if ( not isinstance( ValDic, dict ) ): raise AssertionError( "The passed ValDic datastructure is not a dictionary as expected" )
   
   for var in [ "y", "Data", "ExpansionOrder" ]: # no functions passed since done manually
@@ -105,7 +105,7 @@ def Sigmoid_Expansion_L_inf( theta, L, ERR, ValDic, MorphDict, DcFilterIdx = Non
   
   if ( not isinstance( ValDic["Data"], list ) ):  raise AssertionError( "ValDic's 'Data' entry is expected to be a list" )
 
-  # ------------------------------- Validation
+  # ----------------------------------------------------------------------- Validation --------------------------------------------------------------------
   Error = 0 # total error
   
   for i in range( len( ValDic["Data"] ) ): # iterate over all passed Data tuples
@@ -115,10 +115,10 @@ def Sigmoid_Expansion_L_inf( theta, L, ERR, ValDic, MorphDict, DcFilterIdx = Non
 
     A = tor.abs( RegMat[ :, L.astype( np.int64 ) ] ) @ tor.tensor( theta ) # A abs-polynomial as in paper
     yHat = tor.sign( ValDic["Data"][i] ).view( -1 ) * ( 1 - 1 / (1 + A) ) # create Sigmoid with sign(x) * ( 1 - 1 / ( 1 + Expansion ) )
-    
+
     Error += tor.max( tor.abs( ValDic["y"][i] - yHat ) ) # maximum absolute error
     
-  return ( Error / len( ValDic["Data"] ) ) # norm by the number of validataion-sets ( not really necessary for AOrLSR but printed for the user )
+  return ( Error / len( ValDic["Data"] ) ) # norm by the number of validation-sets ( not really necessary for AOrLSR but printed for the user )
 ```
 
 ## 3. Fitting

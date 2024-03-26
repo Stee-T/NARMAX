@@ -67,13 +67,9 @@ print( "\nDict-shape:", RegMat.shape, "\nqx =", qx, "; qy =", qy, "\nExpansionOr
 
 DsValDict = { # contains essentially everything passed to the CTors to reconstruct the regressors
   "y": [],
-  "Data": None, # No free to chose from regressors in this example
+  "Data": [], # From the validation's POW, this is normal data beign passed not DsData
   "InputVarNames": [ "x", "y" ], # variables in Data, Lags, etc
-  "DsData": [],
-  "Lags": ( qx, qy ),
-  "ExpansionOrder": ExpansionOrder,
   "NonLinearities": [ rFOrLSR.Identity ], # no non-linearities
-  "MakeRational": None, # equivalent to [ False ]
 }
 
 for i in range( 5 ): # Fill the validation dict's data entry with randomly generated validation data
@@ -81,9 +77,9 @@ for i in range( 5 ): # Fill the validation dict's data entry with randomly gener
   x_val -= tor.mean( x_val ) # center
   y_val = Sys( x_val, Filters ) # _val to avoid overwriting the training y
 
-  y_val, DsData, _ = rFOrLSR.CTors.Lagger( Data = ( x_val, y_val ), Lags = ( qx, qy ) ) # RegName not neede since same as training
-  DsValDict["y"].append( y_val ) # cut version by Lagger
-  DsValDict["DsData"].append( DsData )
+  DsValDict["y"].append( y_val )
+  DsValDict["Data"].append( [ x_val ] )
+  # TODO: Write in the text that from the validation's POW, this is normal data beign passed, sicne the model is generated as usual
 
 # --------------------------------------------------------------------------------------- Fitting imposed regressors ---------------------------------------------------------------------------------------
 
@@ -93,9 +89,9 @@ Arbo = rFOrLSR.Arborescence( y,
                              ValFunc = rFOrLSR.DefaultValidation, ValData = DsValDict, # Validation function and dictionary
                            )
 
-theta, L, ERR, _, RegMat, RegNames = Arbo.fit()
+theta, _, ERR, = Arbo.fit()[:3] # ignore Morphingdata, RegMat, RegNames and L, since those are Dc-fitting only
 
-Figs, Axs = Arbo.PlotAndPrint() # returns both figures and axes for further processing
+Figs, Axs = Arbo.PlotAndPrint( DsValDict ) # returns both figures and axes for further processing
 Axs[0][0].set_xlim( [0, 500] ) # Force a zoom-in
 
 b_Ds, a_Ds = rFOrLSR.Tools.rFOrLSR2IIR( theta, [i for i in range( len( theta ) )], RegNames ) # reconstruct L since empty as no terms selected, here all are taken in order
@@ -109,10 +105,10 @@ h_Original = np.sum( [ sps.freqz( filt[0], filt[1], worN = Resolution, fs = Fs )
 
 # Plot frequency responses
 rFOrLSR.Tools.IIR_Spectrum( h_List = [ h_Original, h_Ds ], FilterNames = [ 'Original', 'Estimated' ], # what to plot
-                               Fs = Fs, # Frequency of sampling (aka Sampling rate)
-                               xLims = [ 10, Fs / 2 ], # x-limits common to both plots
-                               yLimMag = [ -50, None ] # stop at -50dB but make upper-limit data dependent with None
-                             )
+                            Fs = Fs, # Frequency of sampling (aka Sampling rate)
+                            xLims = [ 10, Fs / 2 ], # x-limits common to both plots
+                            yLimMag = [ -50, None ] # stop at -50dB but make upper-limit data dependent with None
+                          )
 
 rFOrLSR.Tools.zPlanePlot( b_Ds, a_Ds, Title = 'Estimated' )
 

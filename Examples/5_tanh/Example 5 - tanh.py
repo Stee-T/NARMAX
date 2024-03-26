@@ -34,7 +34,7 @@ ValidationDict = { # Contains only the data used by our custom validation functi
   "ExpansionOrder": ExpansionOrder,
 }
 
-def Sigmoid_Expansion_L_inf( theta, L, ERR, ValDic, MorphDict, DcFilterIdx = None ): # The arborescence imposes 6 arguments to passed validation functions
+def Sigmoid_Expansion_L_inf( theta, L, ERR, RegNames, ValDic,  DcFilterIdx = None ): # The arborescence imposes 6 arguments to passed validation functions
 
   # --------------------------------------------------------------- Defensive programming ------------------------------------------------------------------
   if ( not isinstance( ValDic, dict ) ): raise AssertionError( "The passed ValDic datastructure is not a dictionary as expected" )
@@ -93,3 +93,5 @@ Ax.legend( ["Fitting error"] )
 Fig.tight_layout()
 
 plt.show()
+
+# TODO: maka a NARMAXC object for this, good test with absolutely memory-less sytem
