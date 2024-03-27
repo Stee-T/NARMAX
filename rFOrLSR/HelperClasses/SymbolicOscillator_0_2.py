@@ -373,7 +373,7 @@ class SymbolicOscillator:
       raise ValueError( f"Input buffer-size is smaller than the system's total lag range of { self.MaxNegLag + self.MaxPosLag }. Not illegal but not supported yet." )
 
     # --------------------------------------------------- Processing ---------------------------------------------------
-    if ( DsData is not None ): self.OutVec = DsData.cpu() # pre-allocate for performance
+    if ( DsData is not None ): self.OutVec = DsData.clone().cpu() # pre-allocate for performance
     else:                      self.OutVec = tor.zeros( Data[0].shape, dtype = self.dtype, device = "cpu" )
 
     for k in range( 0, self.MaxNegLag ): # Buffer start procedure, with dispatch to internal state via toggle
