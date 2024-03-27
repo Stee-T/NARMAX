@@ -184,7 +184,7 @@ class SymbolicOscillator:
 
     # Output Data parameters
     self.dtype = dtype
-    self.device = device
+    self.device = device # only needed for the output data, since internally teh SymOsc uses the CPU
 
     # Systems Lambdas
     self.System_BufferStart = None # Lambda containing the system run in the left buffer border part (buffer start)
@@ -200,7 +200,7 @@ class SymbolicOscillator:
     self.InputStorage = None # for any variable indexed by k-j with j > 0
     self.OutputStorage = None # for OutVec[k-j] with j > 0
     
-    self.OutVec = tor.zeros( 8, dtype = self.dtype, device = self.device ) # arbitrary length as placeholder: only known when user calls Oscillate()
+    self.OutVec = tor.zeros( 8, dtype = self.dtype, device = "cpu" ) # arbitrary length as placeholder: only known when user calls Oscillate()
 
     # --------------------------------------- Convertion Dicts and Reg validation --------------------------------------
     NonLinName2Idx = {} # key: name, value: index in NonLinearities
@@ -228,8 +228,8 @@ class SymbolicOscillator:
           if   ( se.Lag < 0 ): self.MaxNegLag = max( self.MaxNegLag, abs( se.Lag ) )
           elif ( se.Lag > 0 ): self.MaxPosLag = max( self.MaxPosLag, se.Lag )
 
-    self.OutputStorage = tor.zeros( self.MaxOutputLag, dtype = self.dtype, device = self.device )
-    self.InputStorage = tor.zeros( ( self.nInputVars, self.MaxNegLag ), dtype = self.dtype, device = self.device ) 
+    self.OutputStorage = tor.zeros( self.MaxOutputLag, dtype = self.dtype, device = "cpu" )
+    self.InputStorage = tor.zeros( ( self.nInputVars, self.MaxNegLag ), dtype = self.dtype, device = "cpu" )
 
 
   # ################################################### theta setter ###################################################
@@ -240,7 +240,7 @@ class SymbolicOscillator:
     - `theta`: ( (nr,)-sized float torch.tensor ) containing the estimated regression coefficients
     '''
     if ( theta.shape[0] != self.nExpressions ): raise ValueError( f"theta has wrong dimension, expected { self.nExpressions }" )
-    self.theta = theta
+    self.theta = theta.cpu()
   
 
   # ################################################### theta getter ###################################################
@@ -249,7 +249,7 @@ class SymbolicOscillator:
 
     ### Output:
     - ( (nr,)-sized float torch.tensor ) containing the estimated regression coefficients'''
-    return ( self.theta )
+    return ( self.theta.to( self.device ) )
 
 
   # ############################################### Output Storage setter ##############################################
@@ -261,7 +261,7 @@ class SymbolicOscillator:
     '''
     if ( PreviousOutput.shape != self.OutputStorage.shape ): raise ValueError( f"PreviousOutput has wrong dimension, expected { self.OutputStorage.shape }" )
     if ( self.OutputStorage.dtype != PreviousOutput.dtype ): raise ValueError( f"PreviousOutput has wrong data type, expected { self.OutputStorage.dtype }" )
-    self.OutputStorage = PreviousOutput
+    self.OutputStorage = PreviousOutput.cpu()
 
 
   # ############################################### Output Storage getter ##############################################
@@ -271,7 +271,7 @@ class SymbolicOscillator:
     ### Output:
     - ( (nr,)-sized float torch.tensor ) containing the estimated regression coefficients
     '''
-    return ( self.OutputStorage )
+    return ( self.OutputStorage.to( self.device ) )
   
 
   # ############################################### Input Storage setter ###############################################
@@ -282,7 +282,7 @@ class SymbolicOscillator:
     - `InputStorage`: ( (nr,)-sized float torch.tensor ) containing the estimated regression coefficients'''
     if ( InputStorage.shape != self.InputStorage.shape ): raise ValueError( f"InputStorage has wrong dimension, expected { self.InputStorage.shape }" )
     if ( self.InputStorage.dtype != InputStorage.dtype ): raise ValueError( f"InputStorage has wrong data type, expected { self.InputStorage.dtype }" )
-    self.InputStorage = InputStorage
+    self.InputStorage = InputStorage.cpu()
 
 
   # ############################################### Input Storage getter ###############################################
@@ -291,14 +291,14 @@ class SymbolicOscillator:
 
     ### Output:
     - ( (nr,)-sized float torch.tensor ) containing the estimated regression coefficients'''
-    return ( self.InputStorage )
+    return ( self.InputStorage.to( self.device ) )
 
 
   # ################################################### flushBuffers ###################################################
   def zeroInternalStorage( self ):
     '''Zeros the internal buffers, such that the system isn't influenced by previous buffer's data'''
-    self.InputStorage =  tor.zeros( self.InputStorage.shape,  dtype = self.dtype, device = self.device )
-    self.OutputStorage = tor.zeros( self.OutputStorage.shape, dtype = self.dtype, device = self.device )
+    self.InputStorage =  tor.zeros( self.InputStorage.shape,  dtype = self.dtype, device = "cpu" )
+    self.OutputStorage = tor.zeros( self.OutputStorage.shape, dtype = self.dtype, device = "cpu" )
 
 
   # ############################################# get number of regressors #############################################
@@ -358,6 +358,8 @@ class SymbolicOscillator:
     - `DsData`: (optional 1D-tensor) containing any signal to be directly (no scaling, processing or storage) injected into the system
     """
     # -------------------------------------------- System Parameter Update ---------------------------------------------
+    Data = [x.cpu() for x in Data]
+    
     if ( DsData is not None ):
       if ( DsData.ndim != 1 ): raise ValueError( "DsData must be 1D" )
       if ( DsData.shape[0] != Data[0].shape[0] ): raise ValueError( f"DsData's dimension doesn't equal that of Data, being { Data.shape[0] }" )
@@ -365,14 +367,14 @@ class SymbolicOscillator:
     if ( theta is not None ): self.set_theta( theta )
 
     if ( self.OutVec.shape[0] != Data[0].shape[0] ): # stored to avoid re-allocating, update if necessary
-      self.OutVec = tor.zeros( Data[0].shape[0], dtype = self.dtype, device = self.device ) # reinitialize since not used in state-storage
+      self.OutVec = tor.zeros( Data[0].shape[0], dtype = self.dtype, device = "cpu" ) # reinitialize since not used in state-storage
 
     if ( self.MaxNegLag + self.MaxPosLag > Data[0].shape[0] ):
       raise ValueError( f"Input buffer-size is smaller than the system's total lag range of { self.MaxNegLag + self.MaxPosLag }. Not illegal but not supported yet." )
 
     # --------------------------------------------------- Processing ---------------------------------------------------
-    if ( DsData is not None ): self.OutVec = DsData.clone() # pre-allocate for performance
-    else:                      self.OutVec = tor.zeros_like( Data[0] )
+    if ( DsData is not None ): self.OutVec = DsData.cpu() # pre-allocate for performance
+    else:                      self.OutVec = tor.zeros( Data[0].shape, dtype = self.dtype, device = "cpu" )
 
     for k in range( 0, self.MaxNegLag ): # Buffer start procedure, with dispatch to internal state via toggle
       self.OutVec[k] += self.System_BufferStart( k, self.theta, Data, self.NonLinearities, self.Toggle )
@@ -389,7 +391,7 @@ class SymbolicOscillator:
     if ( self.MaxOutputLag > 0 ): # This doesn't trigger for non-recursive systems
       self.OutputStorage = self.OutVec[ -self.MaxOutputLag : ].clone() # keep last outputs for next buffer
     
-    return ( self.OutVec )
+    return ( self.OutVec.to( self.device ) )
 
 
 ########################################################################################################################
