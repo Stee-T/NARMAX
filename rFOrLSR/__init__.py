@@ -23,7 +23,7 @@ Identity = NonLinearity( "id", lambda x: x ) # pre-define object for user
 CutY = HF.CutY
 
 # ############################################ Compute NARMAX Output #############################################
-def ComputeNARMAXOutput( Model, y, Data ):
+def InitAndComputeBuffer( Model, y, Data ):
   '''Helper function initializing the NARMAX model and generating its output from the passed data.'''
 
   StartIdx = max( Model.get_MaxNegOutputLag(), Model.get_MaxNegInputLag() ) # essentially q = max(qx, qy) as usual
@@ -91,7 +91,7 @@ def DefaultValidation( theta, L, ERR, RegNames, ValData, DcFilterIdx = None ):
   Model = SymbolicOscillator( ValData["InputVarNames"], ValData["NonLinearities"], RegNames, theta, OutputVarName )
 
   for val in range( len( ValData["Data"] ) ): # iterate over all passed Data iterables (Validations)
-    yHat = ComputeNARMAXOutput( Model, ValData["y"][val], ValData["Data"][val] ) # Set internal state and compute output
+    yHat = InitAndComputeBuffer( Model, ValData["y"][val], ValData["Data"][val] ) # Set internal state and compute output
     Error += tor.mean( tor.abs( ValData["y"][val] - yHat ) / tor.mean( tor.abs( ValData["y"][val] ) ) ) # relative MAE
     
   return ( Error.item() / len( ValData["Data"] ) ) # norm by the number of validations ( not necessary for AOrLSR but printed for the user )
@@ -570,7 +570,6 @@ class Arborescence:
       return ( HF.SolveSystem( A, W ), np.array( L, dtype = self.INT_TYPE ), np.array( ERR ) ) # R[4/4] return regression coeffs theta and used regressor names ( only selected from Dc )
 
 
-
   # *********************************************************************************************** Actual ADMOrLSR Algorithm **********************************************************************************
   def fit( self, FileName = None, SaveFrequency = 0 ):
     '''Breadth-first Search Arborescent rFOrLSR (AOrLSR)
@@ -731,6 +730,11 @@ class Arborescence:
 
           if ( Error < MinError ): MinError = Error; self.theta = theta; self.L = reg.astype( np.int64 ); self.ERR = ERR # update best model
 
+    if ( MinError == tor.inf ):
+      print( "\n\nValidation failed: All regressions yield inf as validation error. Outputtng one of minimal length\n\n" )
+      for reg in self.LG.Data: # and over each regressor sequence
+        if ( len( reg ) == self.MinLen[-1] ): self.theta = theta; self.L = reg.astype( np.int64 ); self.ERR = ERR; break
+
     print( f"\nValidation done on { len( Processed ) } different Regressions. Best validation error: { MinError }\n",
            f"Out of { self.TotalNodes } only { self.NotSkipped } regressions were computed, of which { self.AbortedRegs } were OOIT-aborted.\n" )
 
@@ -793,7 +797,7 @@ class Arborescence:
     else:                                         OutputVarName = ValData["OutputVarName"]
 
     Model = SymbolicOscillator( ValData["InputVarNames"], ValData["NonLinearities"], RegNames, self.theta, OutputVarName )
-    yHat = ComputeNARMAXOutput( Model, ValData["y"][0], ValData["Data"][0] )
+    yHat = InitAndComputeBuffer( Model, ValData["y"][0], ValData["Data"][0] )
 
     yNorm = tor.max( tor.abs( ValData["y"][0] ) ) # Compute Model, norming factor to keep the display in % the the error
     Error = ( ValData["y"][0] - yHat ) / yNorm # divide by max abs to norm with the max amplitude
@@ -836,7 +840,7 @@ class Arborescence:
     for i in tqdm.tqdm( range( 1, SortedERR.shape[0] + 1 ), desc = "MAE: Estimating Sub-Models ", leave = False ):
       theta_TMP = self.rFOrLSR( self.y, Ds = Imposed[:, :i], OutputAll = True )[0] # Estimate Sub-model theta from training data
       Model = SymbolicOscillator( ValData["InputVarNames"], ValData["NonLinearities"], RegNames[:i], theta_TMP, OutputVarName ) # Generate current submodel
-      yHat = ComputeNARMAXOutput( Model, ValData["y"][0], ValData["Data"][0] )
+      yHat = InitAndComputeBuffer( Model, ValData["y"][0], ValData["Data"][0] )
       MAE.append( ( tor.mean( tor.abs( ValData["y"][0] - yHat ) ) / yNorm ).item() ) # Compute the error
 
     Fig2, Ax2 = plt.subplots( 2, sharex = True ) # 2 because the first Ax object is outputted by the function
@@ -850,7 +854,7 @@ class Arborescence:
     Ax2[1].set_xticks( np.arange( len( SortedERR ) ), RegNames, rotation = 45, ha = 'right' ) # setting ticks manually is more flexible as it allows rotation
     Ax2[1].grid( axis = 'x', alpha = 0.5 )
     for i, v in enumerate( MAE ): Ax2[1].text( i, v + 0.1 * max( MAE ), '{:.3e}'.format( v ), ha = "center" ) # print exact values
-    Ax2[1].set_ylim( [0, max( MAE ) * 1.3] )
+    Ax2[1].set_ylim( [0, max( [i if i < np.inf else 0 for i in MAE] ) * 1.3] )
     
     Fig2.tight_layout() # prevents the plot from clipping ticks
     plt.subplots_adjust( hspace = 0.001 )
