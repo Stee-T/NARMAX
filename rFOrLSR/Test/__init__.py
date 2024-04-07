@@ -168,7 +168,7 @@ def NonLinearities( x, W = None, Print = True ):
  
 ## ######################################################################################## Not In Dict ################################################################################
 def SevereNonLinearities( x, W = None, Print = True ): # Model with terms not in the dictionary
-  '''y[k] = 0.5cos(0.2x[k] + 0.3x[k-1])^3 + 0.2exp(x[k-2]*x[k-1])**2 + 0.5|tanh(x[k-3]*x[k-2])| + 0.1|y[k-3]|^3
+  '''0.5*cos^3(0.2*x[k] + 0.3*x[k-1]) + 0.2*tan( x[k-2]*x[k-1]) + 0.5*abs(tanh( x[k-3]*x[k-2])) + 0.1*abs^3(y[k-3]-0.1)
     
   ### Inputs:
   - `x`: ((p,)-shaped torch.Tensor) containing the input sequence
@@ -191,7 +191,7 @@ def SevereNonLinearities( x, W = None, Print = True ): # Model with terms not in
     y[k] = 0.5*tor.cos(0.2*x[k] + 0.3*x[k-1])**3 + 0.2*tor.tan( x[k-2]*x[k-1]) + 0.5*tor.abs(tor.tanh( x[k-3]*x[k-2])) + 0.1*tor.abs(y[k-3]-0.1)**3
     if ( W is not None ): y[k] += W[k] # Additive Noise
   
-  if ( Print ): print("System: y[k] = 0.5cos(0.2x[k] + 0.3x[k-1])^3 + 0.2exp(x[k-2]*x[k-1])**2 + 0.5|tanh(x[k-3]*x[k-2])| + 0.1|y[k-3]|^3\n")
+  if ( Print ): print("System: 0.5*cos^3(0.2*x[k] + 0.3*x[k-1]) + 0.2*tan( x[k-2]*x[k-1]) + 0.5*abs(tanh( x[k-3]*x[k-2])) + 0.1*abs^3(y[k-3]-0.1) \n")
   if ( W is not None ): W = W[ MaxLag : ]
   
   return ( x[ MaxLag : ], y[ MaxLag : ], W )
