@@ -177,7 +177,7 @@ class SymbolicOscillator:
     # The Class stores only the data needed to oscillate, everything else is discarded
 
     # Processing parameters
-    self.theta = theta
+    self.theta = theta.cpu()
     self.NonLinearities = NonLinearities
     self.nExpressions = len( ExprList )
     self.nInputVars = len( InputVarNames ) if ( OutputVarName not in InputVarNames ) else len( InputVarNames ) - 1 # Don't count the output variable, it has own buffer

@@ -249,6 +249,51 @@ def NonLinearizer( y, Data, RegNames, Functions, MakeRational = None ):
   return ( tor.hstack( DataList ), np.concatenate( OutNames ), M ) # Concatenate the list of segments into a single matrix
 
 
+######################################################## Booler ########################################################
+def Booler( Data, RegNames, Operations = [ tor.logical_and, tor.logical_xor, tor.logical_or ], OperationNames = [ "&&", "^", "||" ], AllowNegation = True ):
+
+  # --------------------------------------------------- Input checks ---------------------------------------------------
+  # TODO: check that each operation is indeed binary only by checking all combinations of True and False as input
+
+  if ( not isinstance( AllowNegation, bool ) ): raise ValueError( "AllowNegation must be a bool" )
+  if ( len( Operations ) != len( OperationNames ) ): raise ValueError( "Operations and OperationNames must have the same length" )
+
+  if ( not isinstance( Data, list | tuple | tor.Tensor ) ): raise ValueError( "Data must be a list, tuple, or torch.Tensor" )
+
+  # -------------------------------------- A. Generate Regressors and Output Names -------------------------------------
+  
+  if ( isinstance( Data, list | tuple ) ): DataList = [ tor.column_stack( Data ) ] # make single tensor
+  else:                                    DataList = [ Data ] # already single tensor
+
+  if ( DataList[0].shape[1] != len( RegNames ) ): raise ValueError( "Data and RegNames must have the same number of regressors" )
+
+  OutNames = [ reg for reg in RegNames ] # cover the case that RegNames is an arbitrary container (list, np.array, etc)
+
+  if ( AllowNegation ):
+    DataList.append( tor.logical_not( DataList[0] ) )
+    OutNames += [ "!" + reg for reg in RegNames ]
+
+  for op in range( len( Operations ) ):
+    for i in range( DataList[0].shape[1] -1 ): # -1 due to +1 that avoids matrix diagonal
+        
+      DataList.append( Operations[ op ]( DataList[0][:, i, None], DataList[0][ :, i+1: ] ) )
+      NameStart = RegNames[ i ] + " " + OperationNames[ op ] + " " # pre-compute since static
+      OutNames += [ NameStart + RegNames[ j ] for j in range( i + 1, DataList[0].shape[1] )]
+
+      if ( AllowNegation ):
+        DataList.append( Operations[ op ]( DataList[1][:, i, None], DataList[0][ :, i+1: ] ) ) # DataList[1] is the negation
+        NameStart = "!" + RegNames[ i ] + " " + OperationNames[ op ] + " " # pre-compute since static
+        OutNames += [ NameStart + RegNames[ j ] for j in range( i + 1, DataList[0].shape[1] )]
+
+  # ------------------------------------------ B. Constant regressor filtering -----------------------------------------
+  # Filtering out all 0s or all 1s for combinations such as (x && !x)
+  DataList = tor.column_stack( DataList )
+  Sum = tor.sum( DataList, axis = 0 )
+  IdxToKeep = tor.logical_not( tor.logical_or( Sum == DataList.shape[0], Sum == 0 ) )
+  
+  return ( DataList[ :, IdxToKeep ], np.array( OutNames )[ IdxToKeep.cpu() ] )
+
+
 ####################################################################################### Ultra Orthogonal fitting Stuff ###########################################################################
 
 # Legacy code, as hasn't been updated to new API, etc

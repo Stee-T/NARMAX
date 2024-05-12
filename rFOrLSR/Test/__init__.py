@@ -348,3 +348,49 @@ def ThreeInputMIMO( x1, x2, x3, W = None, Print = False ):
   
   if ( W is not None ): W = W[ MaxLag : ]
   return ( x1[ MaxLag : ], x2[ MaxLag : ], x3[ MaxLag : ], y1[ MaxLag : ], y2[ MaxLag : ], W )
+
+
+
+def Binary_MISO_System( x1, x2, x3, x4, W, Print ):
+  
+  '''y[k] = ( !x1[k] && x2[k] ) - ( x3[k] ^ x4[k] ) + ( x1[k] || x3[k-1] ) "
+                                "+ ( x2[k] ^ x4[k-2] ) - ( !x1[k-2] && x2[k] ) - !x3[k-2] + !x2[k-1] + x4[k-1]
+  
+  ### Inputs:
+  - `x1`: ((p,)-shaped torch.Tensor) containing the first input sequence
+  - `x2`: ((p,)-shaped torch.Tensor) containing the second input sequence
+  - `x3`: ((p,)-shaped torch.Tensor) containing the third input sequence
+  - `W`: ((p,)-shaped torch.Tensor) containing the additive noise
+  - `Print`: (bool) containing whether to print the System equation
+
+  ### Outputs:
+  - `x1`: ((p-MaxLags,)-shaped torch.Tensor) containing the centered and cut first input sequence
+  - `x2`: ((p-MaxLags,)-shaped torch.Tensor) containing the centered and cut second input sequence
+  - `x3`: ((p-MaxLags,)-shaped torch.Tensor) containing the centered and cut third input sequence
+  - `y1`: ((p-MaxLags,)-shaped torch.Tensor) containing the System response
+  - `W`: ((p-MaxLags,)-shaped torch.Tensor) containing the cut additive noise sequence
+  '''
+  
+  for x in [ x1, x2, x3, x4 ]:
+    if ( not tor.all( tor.logical_or( x == 0, x == 1 ) ).item() ): raise ValueError( "x must be a binary torch.Tensor" )
+    if ( len( x ) != len( x1 ) ): raise ValueError( "All inputs must have the same length" )
+
+  MaxLag = 2
+  y = tor.zeros( len( x1 ), dtype = tor.int32 ) # system output, 0 to emulate the initialization state
+
+  XOR = lambda x,y: tor.logical_xor( x, y ).int()
+  AND = lambda x,y: tor.logical_and( x, y ).int()
+  OR = lambda x,y: tor.logical_or( x, y ).int()
+  NOT = lambda x: tor.logical_not( x ).int()
+  
+  for k in range( MaxLag, len( x ) ): # maximum lag is 1
+    y[k] = ( AND( NOT( x1[k] ), x2[k] ) - XOR( x3[k], x4[k] ) + OR( x1[k], x3[k-1] )
+           + XOR( x2[k], x4[k-2] ) - AND( NOT( x1[k-2] ), x2[k] ) - NOT( x3[k-2] ) + NOT( x2[k-1] ) + x4[k-1]
+           )
+    if ( W is not None ): y[k] += W[k] # Additive Noise
+  
+  if ( Print ): print( "System: y[k] = ( !x1[k] && x2[k] ) - ( x3[k] ^ x4[k] ) + ( x1[k] || x3[k-1] ) "
+                                "+ ( x2[k] ^ x4[k-2] ) - ( !x1[k-2] && x2[k] ) - !x3[k-2] + !x2[k-1] + x4[k-1] \n")
+  if ( W is not None ): W = W[ MaxLag : ]
+  
+  return ( x1[ MaxLag : ], x2[ MaxLag : ], x3[ MaxLag : ], x4[ MaxLag : ], y[ MaxLag : ], W )
