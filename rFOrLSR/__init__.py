@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 # Rest of the Lib: "from ."" is same Folder and ".Name" is subfolder import
 from .HelperClasses import Queue, MultiKeyHashTable # for the BFS Arborescent Regression
 from .HelperClasses.NonLinearity import NonLinearity # import here to give acces to the user (add to namespaec rFOrLSR)
-from .HelperClasses.SymbolicOscillator_0_2 import SymbolicOscillator
+from .HelperClasses.SymbolicOscillator_0_3 import SymbolicOscillator
 from .CTors import __init__ # import all constuctors and helper functions
 from . import Morphing
 from . import HelperFuncs as HF

@@ -23,7 +23,9 @@ def ParsedReg2EvalStr( RegStr: Parser.ParsedReg, VarName2Idx: dict, NonLinName2I
   Transform the expression into a string that can be evaluated by the python interpreter.
   Spam everything with parentheses to be sure the evaluation order is correct.
   """
+  isAR = False # Flag tracking if the current regressor contains the output varaible making it auto-regressive
 
+  # --------------------------- A. Function name / constant coefficient handling
   OutStr = "" # Covers the case of RegStr.FuncName is None
   if ( RegStr.FuncName is not None ):
     if ( RegStr.FuncName in ["~/", "1/"] ): # Those exact names: fractional/denominator with no supplementary Non-lin
@@ -33,19 +35,23 @@ def ParsedReg2EvalStr( RegStr: Parser.ParsedReg, VarName2Idx: dict, NonLinName2I
     else: # Non-fractional aka Numerator expression
       OutStr += f"NonLinList[{ NonLinName2Idx[RegStr.FuncName] }].get_f()"
 
+  # --------------------------- B. Subexpression handling
   OutStr += "("
   for i in range( len( RegStr.SubExpressions ) ):
     if ( RegStr.SubExpressions[i].VarName is not None ):
       TempSubExpr = copy.deepcopy( RegStr.SubExpressions[i] )
-      if ( RegStr.SubExpressions[i].VarName == OutputVarName ): TempSubExpr.VarName = "OutVec" # reserve name to allow user to have y as variable
-      else: TempSubExpr.VarName = f"Data[{ VarName2Idx[TempSubExpr.VarName] }]"
+
+      if ( RegStr.SubExpressions[i].VarName == OutputVarName ):
+        TempSubExpr.VarName = "OutVec" # reserve name to allow user to have y as variable
+        isAR = True
+      else: TempSubExpr.VarName = f"Data[{ VarName2Idx[TempSubExpr.VarName] }]" # MA
       OutStr += f"({ TempSubExpr })"
     
     else: OutStr += f"({ RegStr.SubExpressions[i] })" # don't copy and process the variable if const or y
 
     if ( i != len( RegStr.Operators ) ): OutStr += " " + RegStr.Operators[i] + " " # one less oàperator than variables
 
-  return ( OutStr + ")" )
+  return ( OutStr + ")", isAR )
 
 
 # ############################################### Verify the Expression ##############################################
@@ -90,48 +96,86 @@ def Make_BufferStartSystem( Expr ):
                 )
   
   Output = re.sub( r'OutVec\[k(([-+])(\d+))?\]', # Regexp recognizing OutVec = Output regressors
-                  lambda match: f"Toggle(1, None, k{ match.group(1) if match.group(1) is not None else '' }, Data)",
+                  lambda match: f"Toggle(1, None, k{ match.group(1) if match.group(1) is not None else '' }, None)",
                   Output # Overwrite
                 )
   
   return ( Output )
 
 
-# ################################################ Make System Lambdas ###############################################
+# ################################################ Make System Lambdas #################################################
 def Make_SystemLambdas( InputVarNames, OutputVarName, NonLinName2Idx, VarName2Idx, RegStrList ):
+  # ----------------------------------------------- 0. Verify Regressors -----------------------------------------------
   for reg in RegStrList:
     VerifyParsedReg( reg, NonLinName2Idx.keys(), InputVarNames, OutputVarName ) # Are all required variables & nonLins passed + no sus lags?
 
-  NumeratorExpr = ''
-  DenominatorExpr = '' # stays an empty string for non-rational NARMAXes
+  # --------------------------------------------- 1. Create System strings ---------------------------------------------
+  # System subexpressions, both Den expressions remain '' for non-rational systems
+  MA_NumExpr = ''; MA_DenExpr = ''; AR_NumExpr = ''; AR_DenExpr = ''
 
   for idx, reg in enumerate( RegStrList ):
-    if ( reg.FuncName is None ): # Automatically a numerator term, als '~/' is considered a function name
-      NumeratorExpr += f"theta[{ idx }]*" + ParsedReg2EvalStr( reg, VarName2Idx, NonLinName2Idx, OutputVarName ) + ' + '
+    CurrentExpr, isAR = ParsedReg2EvalStr( reg, VarName2Idx, NonLinName2Idx, OutputVarName )
+
+    if ( reg.FuncName is None ): # Automatically a numerator term, as '~/' is considered a function name
+      if ( isAR ): AR_NumExpr +=  f"theta[{ idx }]*{ CurrentExpr } + "
+      else:        MA_NumExpr +=  f"theta[{ idx }]*{ CurrentExpr } + "
   
     else: # Potentially denominator term
       if ( reg.FuncName[:2] == '~/' ):
-        DenominatorExpr += f"theta[{ idx }]*" + ParsedReg2EvalStr( reg, VarName2Idx, NonLinName2Idx, OutputVarName ).replace( '~/', '' )  + ' + '
+        if ( isAR ): AR_DenExpr += f"theta[{ idx }]*{ CurrentExpr.replace( '~/', '' ) } + "
+        else:        MA_DenExpr += f"theta[{ idx }]*{ CurrentExpr.replace( '~/', '' ) } + "
       else:
-        NumeratorExpr   += f"theta[{ idx }]*" + ParsedReg2EvalStr( reg, VarName2Idx, NonLinName2Idx, OutputVarName )  + ' + '
+        if ( isAR ): AR_NumExpr += f"theta[{ idx }]*{ CurrentExpr } + "
+        else:        MA_NumExpr += f"theta[{ idx }]*{ CurrentExpr } + "
+  
+  # remove the last ' + ' on all strings
+  if ( MA_NumExpr != ''): MA_NumExpr = MA_NumExpr[:-3]
+  if ( MA_DenExpr != ''): MA_DenExpr = MA_DenExpr[:-3]
+  if ( AR_NumExpr != ''): AR_NumExpr = AR_NumExpr[:-3]
+  if ( AR_DenExpr != ''): AR_DenExpr = AR_DenExpr[:-3]
+
+
+  # Numerator Handling
+  if ( ( AR_NumExpr == '' ) and ( MA_NumExpr == '' ) ): NumExpr = "1" # for denominator-only systems
+  elif ( MA_NumExpr == '' ): NumExpr = AR_NumExpr
+  elif ( AR_NumExpr == '' ): NumExpr = f"MA_Num[k]"
+  else:                      NumExpr = f"MA_Num[k] + { AR_NumExpr }"
+
+  isRational = ( MA_DenExpr != '' ) or ( AR_DenExpr != '' )
+
+  # Optional Denominator Handling
+  if ( isRational ): # Rational since at least one denom term exists
+    if   ( MA_DenExpr == '' ): DenExpr = f"1.0 + { AR_DenExpr }" # needs + 1 the way the arbo fits
+    elif ( AR_DenExpr == '' ): DenExpr = f"1.0 + MA_Den[k]"
+    else:                      DenExpr = f"1.0 + MA_Den[k] + { AR_DenExpr }"
+
+  # --------------------------------------------- 2. Create System lambdas ---------------------------------------------
+
+  # Bufferstart has no OutVec since accessed as class member
+  Make_MA_System = lambda Expr: re.sub( r'Data\[(\d+)\]\[k(([-+])(\d+))?\]', # Regexp recognizing Data = Input regressors
+                   lambda match: f"Toggle({ int( match.group(1) ) },{ match.group(2) if match.group(2) is not None else '0' },Data)",
+                   Expr)
+  
+  if ( MA_NumExpr != ''  ):
+    SubSystem_MA_Num = eval( f"lambda theta, Data, NonLinList, Toggle: { Make_MA_System( MA_NumExpr ) }" )
+  else: SubSystem_MA_Num = None # if None, oscillate function checks just generates an array of zeros
+
+  if ( MA_DenExpr != '' ):
+    SubSystem_MA_Den = eval( f"lambda theta, Data, NonLinList, Toggle: { Make_MA_System( MA_DenExpr ) }" )
+  else: SubSystem_MA_Den = None
+
+  # The final system has the form y[k] = ( MA_Num[k] + AR_Sys_Num( Data, k ) ) / ( MA_Den[k] + AR_Sys_Denom( Data, k) )
+  # Bufferstart has no OutVec since accessed as class member
+  SystemStart = f"lambda k, theta, Data, NonLinList, MA_Num, MA_Den, " # Standard form even if som MA are None
+  if ( isRational ): 
+    System_Main =        eval( SystemStart + f"OutVec: ({ NumExpr }) / ({ DenExpr })" )
+    System_BufferStart = eval( SystemStart + f"Toggle: ({ Make_BufferStartSystem( NumExpr ) }) / ({ Make_BufferStartSystem( DenExpr ) })" )
     
-# remove the last ' + '
-  NumeratorExpr = NumeratorExpr[:-3]
-  if ( DenominatorExpr != '' ):
-    DenominatorExpr = "1 + " + DenominatorExpr[:-3] # necessary, the way the arbo generates rational systems
-    if ( NumeratorExpr == '' ): NumeratorExpr = '1' # for denominator only systems
+  else: # Non-rational system
+    System_Main =        eval( SystemStart + f"OutVec: { NumExpr }" )
+    System_BufferStart = eval( SystemStart + f"Toggle: ({ Make_BufferStartSystem( NumExpr ) })" )
 
-# Create System lambdas. Bufferstart has no OutVec since accessed as class member
-  if ( DenominatorExpr ):
-    System_Main =        eval( f"lambda k, theta, Data, OutVec, NonLinList: ({ NumeratorExpr }) / ({ DenominatorExpr })" )
-    System_BufferStart = eval( f"lambda k, theta, Data, NonLinList, Toggle: ({ Make_BufferStartSystem( NumeratorExpr ) }) / "
-                                                                          f"({ Make_BufferStartSystem( DenominatorExpr ) })"
-                             )
-  else: # Denom is ''
-    System_Main        = eval( f"lambda k, theta, Data, OutVec, NonLinList: { NumeratorExpr }" )
-    System_BufferStart = eval( f"lambda k, theta, Data, NonLinList, Toggle: { Make_BufferStartSystem( NumeratorExpr ) }" ) # vars are row-wise like the user input
-
-  return ( System_BufferStart, System_Main )
+  return ( SubSystem_MA_Num, SubSystem_MA_Den, System_BufferStart, System_Main )
 
 
 ########################################################################################################################
@@ -187,8 +231,10 @@ class SymbolicOscillator:
     self.device = device # only needed for the output data, since internally teh SymOsc uses the CPU
 
     # Systems Lambdas
-    self.System_BufferStart = None # Lambda containing the system run in the left buffer border part (buffer start)
-    self.System_Main = None # Lambda containing the system run in the non-border buffer part
+    self.SubSystem_MA_Num = None # Non-recursive Numerator part (GPU)
+    self.SubSystem_MA_Den = None # Non-recursive Denominator part (GPU)
+    self.System_BufferStart = None # Full system for buffer start, calls AR_Toggle to dispatch between storage and input (CPU)
+    self.System_Main = None # Full system for main buffer (CPU)
 
     # MaxLags data for the current system. Uninitialized since strings not yet parsed
     self.MaxNegLag = 0 # Maximum negative delay for input data
@@ -215,8 +261,9 @@ class SymbolicOscillator:
 
     RegStrList = [ Parser.ExpressionParser( expr ) for expr in ExprList ] # Parsed Regressor Objects
 
-    # ----------------------------------------------- Generate Expressions -----------------------------------------------
-    self.System_BufferStart, self.System_Main = Make_SystemLambdas( InputVarNames, OutputVarName, NonLinName2Idx, VarName2Idx, RegStrList )
+    # ---------------------------------------------- Generate Expressions ----------------------------------------------
+    self.SubSystem_MA_Num, self.SubSystem_MA_Den, self.System_BufferStart, self.System_Main = \
+      Make_SystemLambdas( InputVarNames, OutputVarName, NonLinName2Idx, VarName2Idx, RegStrList )
 
     # ----------------------------------------- Find Maxlags and create buffers ----------------------------------------
     for reg in RegStrList:
@@ -331,8 +378,17 @@ class SymbolicOscillator:
     return ( self.MaxOutputLag )
   
 
-  # ##################################################### Oscillate ####################################################
-  def Toggle( self, DataOrOutVec, VarNumber, k, Data ):
+  # ################################################## Buffer Toggle ###################################################
+  def Buffer_Toggle( self, VarNumber, k, Data ):
+    if ( k < 0 ): return tor.concat( [ self.InputStorage[ VarNumber, k: ].to( Data[ VarNumber ].device ), 
+                                         Data[ VarNumber ][ :k ] ]
+                                   )
+    elif ( k == 0 ): return Data[ VarNumber ]
+    else:         raise ValueError( "Lag must be negative or zero" )
+
+
+  # ################################################## Scalar Toggle ###################################################
+  def Scalar_Toggle( self, DataOrOutVec, VarNumber, k, Data ):
     """ Helper function which toggles between the stored internal system state for k < 0 and incomming data for k >= 0.
     VarNumber is the index of the variable in the Data array, Later for -MO-systems it will also be used for OutVec
     """
@@ -345,7 +401,7 @@ class SymbolicOscillator:
       else:          return self.OutputStorage[ k ]
 
     else: raise ValueError( "Internal Error, please report this bug: 'DataOrOutVec is neither Data nor OutVec'" )
-
+  
 
   # ##################################################### Oscillate ####################################################
   def Oscillate( self, Data, theta = None, DsData = None ):
@@ -358,7 +414,6 @@ class SymbolicOscillator:
     - `DsData`: (optional 1D-tensor) containing any signal to be directly (no scaling, processing or storage) injected into the system
     """
     # -------------------------------------------- System Parameter Update ---------------------------------------------
-    Data = [x.cpu() for x in Data]
     
     if ( DsData is not None ):
       if ( DsData.ndim != 1 ): raise ValueError( "DsData must be 1D" )
@@ -376,11 +431,22 @@ class SymbolicOscillator:
     if ( DsData is not None ): self.OutVec = DsData.clone().cpu() # pre-allocate for performance
     else:                      self.OutVec = tor.zeros( Data[0].shape, dtype = self.dtype, device = "cpu" )
 
+    # MA parts as block-operations (stay on user-given device, hopefully GPU)
+    if ( self.SubSystem_MA_Num is not None ):
+      MA_Num = self.SubSystem_MA_Num( self.theta, Data, self.NonLinearities, self.Buffer_Toggle ).cpu()
+    else: MA_Num = None
+
+    if ( self.SubSystem_MA_Den is not None ):
+      MA_Den = self.SubSystem_MA_Den( self.theta, Data, self.NonLinearities, self.Buffer_Toggle ).cpu()
+    else: MA_Den = None
+
+    Data = [x.cpu() for x in Data] # force all to CPU
+
     for k in range( 0, self.MaxNegLag ): # Buffer start procedure, with dispatch to internal state via toggle
-      self.OutVec[k] += self.System_BufferStart( k, self.theta, Data, self.NonLinearities, self.Toggle )
+      self.OutVec[k] += self.System_BufferStart( k, self.theta, Data, self.NonLinearities, MA_Num, MA_Den, self.Scalar_Toggle )
 
     for k in range( self.MaxNegLag, Data[0].shape[0] - self.MaxPosLag ): # Fully swung-in state
-      self.OutVec[k] += self.System_Main( k, self.theta, Data, self.OutVec, self.NonLinearities )
+      self.OutVec[k] += self.System_Main( k, self.theta, Data, self.NonLinearities, MA_Num, MA_Den, self.OutVec)
 
     # --------------------------------------------- Internal State Update ----------------------------------------------
     if ( self.MaxNegLag > 0 ): # This doesn't trigger for systems being memoryless in the input terms (only x[k] terms)
