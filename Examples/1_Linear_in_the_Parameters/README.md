@@ -5,7 +5,7 @@
 This example / tutorial illustrates
 - Library basics: imports, hyper-parameters and their meaning
 - Regressor constructors: *Lagger*, *Expander*, *NonLinearizer*
-- Using the Default validation function and creating the required data and hyper-parameter dictionary
+- Using the default validation function and creating the required data and hyper-parameter dictionary
 - Running the arborescence
 - Interpreting the results
 
@@ -13,9 +13,9 @@ This example / tutorial illustrates
 ## 1. Imports
 The main dependency is PyTorch which is used to do matrix operations on the GPU. Make sure that CUDA or MPS (M1/M2 Macs) is installed and that your PyTorch installation recognizes it. The library will issue a warning if no GPU is usable, as the fitting will be much slower.
 
-A list of dependencies is available on [the main git page](https://github.com/Stee-T/rFOrLSR/tree/main).  
+A list of dependencies is available on [the main git page](https://github.com/Stee-T/NARMAX/tree/main).  
 We also tell matplotlib to use a dark background, because it's no longer the 90s and we don't like looking at the sun.  
-The rFOrLSR.Test_Systems contains many systems to demonstrate the library. In real word usage, the system is the system under investigation.
+The NARMAX.Test_Systems contains many systems to demonstrate the library. In real word usage, the system is the system under investigation.
 
 
 ```python 
@@ -24,8 +24,8 @@ import torch as tor
 import matplotlib.pyplot as plt
 plt.style.use( 'dark_background' ) # black graphs <3
 
-import rFOrLSR
-import rFOrLSR.Test as Test_Systems
+import NARMAX
+import NARMAX.Test as Test_Systems
 ```
 
 ## 2. Hyper-parameters
@@ -75,7 +75,7 @@ Once the main hyper-parameters are selected, one needs to create the input seque
 
 The while loop represents that we'd like to avoid NaNs in the output $\underline{y}$, which can happen for certain $\underline{x}$ sequences on the given Test systems.
 
-rFOrLSR.device is a string conaining the device (CPU / GPU) currently used by the library.
+NARMAX.device is a string conaining the device (CPU / GPU) currently used by the library.
 
 ```python 
 # System choice
@@ -87,23 +87,23 @@ Sys = Test_Systems.NonLinearities # Example 1 in the paper
 
 # Generate x and y data
 while ( 5 ): # 5 is the absolute truth
-  x = InputAmplitude * ( tor.rand( p, device = rFOrLSR.device ) * 2 - 1 ) # uniformly distributed white noise
+  x = InputAmplitude * ( tor.rand( p, device = NARMAX.device ) * 2 - 1 ) # uniformly distributed white noise
   x -= tor.mean( x ) # center: VERY IMPORTANT!
   x, y, W = Sys( x, W, Print = True ) # apply selected system
   if ( not tor.isnan( tor.sum( y ) ) ): break
 ```
 
 **Non-linearities:** If desired, the NonLinearizer regressor-CTor can be used to add non-linearities to the candidate regressor dictionary $D_C$.  
-Non-Linearities must be declared by adding them to a list starting with the provided identity as `rFOrLSR.NonLinearity` objects. These objects take the non-linearity name and the function-pointer to be applied. Many security checks are performed in their constructor to assure that the function is usable for fitting, as the user can pass arbitrary function pointers.  
+Non-Linearities must be declared by adding them to a list starting with the provided identity as `NARMAX.NonLinearity` objects. These objects take the non-linearity name and the function-pointer to be applied. Many security checks are performed in their constructor to assure that the function is usable for fitting, as the user can pass arbitrary function pointers.  
 Note that here only the name and the non-linearity itself are passed, since no morphing is performed. The morphing also requires the first and second derivatives of each function.  
 User-defined function-pointers are expected to point towards functions accepting torch tensors and returning torch tensors of the same dimensions.  
 Importantly, the NonLinearities list must start with the identity, to allow the creation of rational regressors and for the morphing.
 
 ```python
-NonLinearities = [ rFOrLSR.Identity ] # List of NonLinearity objects, must start with identity
-NonLinearities.append( rFOrLSR.NonLinearity( "abs", f = tor.abs ) )
-NonLinearities.append( rFOrLSR.NonLinearity( "cos", f = tor.cos ) )
-NonLinearities.append( rFOrLSR.NonLinearity( "exp", f = tor.exp ) )
+NonLinearities = [ NARMAX.Identity ] # List of NonLinearity objects, must start with identity
+NonLinearities.append( NARMAX.NonLinearity( "abs", f = tor.abs ) )
+NonLinearities.append( NARMAX.NonLinearity( "cos", f = tor.cos ) )
+NonLinearities.append( NARMAX.NonLinearity( "exp", f = tor.exp ) )
 
 ```
 <br/>
@@ -112,16 +112,16 @@ NonLinearities.append( rFOrLSR.NonLinearity( "exp", f = tor.exp ) )
 Once all hyper-parameters are set, the provided regressor-CTors are used to create the candidate regressor dictionary $D_C$. Each regressor-CTor of course also updates the regressor names. The *NonLinearizer* outputs a 3rd argument, which is for the morphing procedure, it will thus be explained in later tutorials.
 
 ```python 
-y, RegMat, RegNames = rFOrLSR.CTors.Lagger( Data = ( x, y ), MaxLags = ( qx, qy ) ) # Create the delayed regressors
-RegMat, RegNames = rFOrLSR.CTors.Expander( RegMat, RegNames, ExpansionOrder ) # Monomial expand the regressors
-RegMat, RegNames, _ = rFOrLSR.CTors.NonLinearizer( y, RegMat, RegNames, NonLinearities) # add the listed terms to the Regression matrix
+y, RegMat, RegNames = NARMAX.CTors.Lagger( Data = ( x, y ), MaxLags = ( qx, qy ) ) # Create the delayed regressors
+RegMat, RegNames = NARMAX.CTors.Expander( RegMat, RegNames, ExpansionOrder ) # Monomial expand the regressors
+RegMat, RegNames, _ = NARMAX.CTors.NonLinearizer( y, RegMat, RegNames, NonLinearities) # add the listed terms to the Regression matrix
 ```
 <br/>
 
 ##  4. Validation Data
-Since many models are created by the arborescence, a validation procedure choosing the best system is required. This basic example demonstrates the use of the provided `rFOrLSR.DefaultValidation` function with its required data.
+Since many models are created by the arborescence, a validation procedure choosing the best system is required. This basic example demonstrates the use of the provided `NARMAX.DefaultValidation` function with its required data.
 
-**DefaultValidation:** The the provided `rFOrLSR.DefaultValidation` is designed to imitate step 3. Thus, all 3 CTors are called with their arguments contained in the `ValidationDict` dictionary. Regressor-CTors are bypassed by setting their arguments to the respective identities, being (0,0) for the *Lagger*, 0 for the ExpansionOrder and the [ rFOrLSR.Identity ] for the NonLinearizer with additionally None for the *MakeRational* argument (which is explained in the next tutorial).  
+**DefaultValidation:** The the provided `NARMAX.DefaultValidation` is designed to imitate step 3. Thus, all 3 CTors are called with their arguments contained in the `ValidationDict` dictionary. Regressor-CTors are bypassed by setting their arguments to the respective identities, being (0,0) for the *Lagger*, 0 for the ExpansionOrder and the [ NARMAX.Identity ] for the NonLinearizer with additionally None for the *MakeRational* argument (which is explained in the next tutorial).  
 The code generates 5 validation sequences to test the solutions on 5 different input sequences.
 
 **Custom Validation Function and Data:** This will be demonstrated in a further tutorial. The arborescence expects a function pointer and a dictionary, so under mild formal conditions (fixed number of arguments, etc.), arbitrary validation procedures can be used.
@@ -148,19 +148,19 @@ for i in range( 5 ): # Fill the validation dict's data entry with randomly gener
 <br/>
 
 ## 5. Running the Arborescence
-Now that the training data and the validation data are created, the arborescence can be run by first creating an `rFOrLSR.Arborescence` object then calling its `fit()` method.  
+Now that the training data and the validation data are created, the arborescence can be run by first creating an `NARMAX.Arborescence` object then calling its `fit()` method.  
 
 **Backups:** The code also demonstrates how to set-up regular backups via the `FileName` (saving Path with filename) and `SaveFrequency` (in minutes) arguments. Those can be omitted if no backups are required. The arborescence can be interrupted at any time by just killing the python process running it and later restarted at will. The commented-out section demonstrates how to continue the fitting after an interruption.
 
 ```python 
 File = "Some/Valid/Path/FileName.pkl"
 
-Arbo = rFOrLSR.Arborescence( y,
+Arbo = NARMAX.Arborescence( y,
                              Ds = None, DsNames = None, # Ds & Regressor names, being dictionary of selected regressors
                              Dc = RegMat, DcNames = RegNames, # Dc & Regressor names, being dictionnary of candidate regerssors (phi)
                              tolRoot = tol, tolRest = tol, # \rho tolerances
                              MaxDepth = ArboDepth, # Maximal number of levels
-                             ValFunc = rFOrLSR.DefaultValidation, ValData = ValidationDict, # Validation function and dictionary
+                             ValFunc = NARMAX.DefaultValidation, ValData = ValidationDict, # Validation function and dictionary
                              Verbose = False, # Print current rFOrLSR state (only meaningful for regressions with many terms)
                              FileName = File, # Path and File to save the Backups into
                              SaveFrequency = 10, # Save frequency in minutes
@@ -169,7 +169,7 @@ Arbo = rFOrLSR.Arborescence( y,
 Arbo.fit()
 
 # If the Arborescence was interrupted and saved, continue with:
-# Arbo = rFOrLSR.Arborescence() # init empty Arbo
+# Arbo = NARMAX.Arborescence() # init empty Arbo
 # Arbo.load( File ) # load pickle file
 # Arbo.fit() # resume fitting
 ```
@@ -246,7 +246,7 @@ The metrics are given in percentage, as the error is normed by $\max(|\underline
 
 - **Mean Absolute Error (MAE):** $\text{MAE} := \frac{\Sigma_{k=1}^p |y[k] - \hat{y}[k]|}{p \cdot \max(|\underline{y}|)} \cdot 100$  
 More representative than the MSE (mean squared error), since no squaring is performed, see above.  
-This is also what the `rFOrLSR.DefaultValidation` computes. There the norming is however done with $\Sigma_{k=1}^p |y[k]|$ instead of $\max(|\underline{y}|)$.
+This is also what the `NARMAX.DefaultValidation` computes. There the norming is however done with $\Sigma_{k=1}^p |y[k]|$ instead of $\max(|\underline{y}|)$.
 
 - **Maximal Deviation (MD):** $\text{MD} := \frac{\max(|\underline{y} - \underline{\hat{y}}|)}{\max(|\underline{y}|)} \cdot 100$.  
 Largest relative error for the given input sequence $\underline{x}$.
@@ -305,4 +305,4 @@ Contains the MAE reduction of the regressors in the order imposed by the arbores
 
 <br/>
 
-[Next Tutorial: 2. The Symbolic Oscillator](https://github.com/Stee-T/rFOrLSR/tree/main/Examples/2_Symbolic_Oscillator)  
+[Next Tutorial: 2. The Symbolic Oscillator](https://github.com/Stee-T/NARMAX/tree/main/Examples/2_Symbolic_Oscillator)  

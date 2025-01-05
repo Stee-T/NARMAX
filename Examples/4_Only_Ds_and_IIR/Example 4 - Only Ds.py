@@ -1,6 +1,6 @@
 import torch as tor
 
-import rFOrLSR
+import NARMAX
 
 import matplotlib.pyplot as plt
 plt.style.use( 'dark_background' ) # black graphs
@@ -20,7 +20,6 @@ qx = 2 * nBiquads; qy = 2 * nBiquads # maximum x and y delays
 print( "number of biquads:", nBiquads, "\nLags: qx:", qx, "qy:", qy )
 
 # use a fixed seed to reproduce results
-import numpy as np
 Seed = 3 # fixed seed to reproduce results
 print ( "\nSeed: ", Seed, "\n" )
 RNG = np.random.default_rng( seed = Seed )
@@ -59,7 +58,7 @@ y = Sys( x, Filters ) # Apply selected system
 
 # ---------------------------------------------------------------------------------------  Training data ---------------------------------------------------------------------------------------
 # We're fitting an IIR in this example, so we only need to create lagged regressors
-y, RegMat, RegNames = rFOrLSR.CTors.Lagger( Data = ( x, y ), Lags = ( qx, qy ) ) # Create the delayed regressors (cut to q to only have swung-in system)
+y, RegMat, RegNames = NARMAX.CTors.Lagger( Data = ( x, y ), Lags = ( qx, qy ) ) # Create the delayed regressors (cut to q to only have swung-in system)
 
 print( "\nDict-shape:", RegMat.shape, "\nqx =", qx, "; qy =", qy, "\nExpansionOrder =", ExpansionOrder, "\n\n" )
 
@@ -69,7 +68,7 @@ DsValDict = { # contains essentially everything passed to the CTors to reconstru
   "y": [],
   "Data": [], # From the validation's POW, this is normal data beign passed not DsData
   "InputVarNames": [ "x", "y" ], # variables in Data, Lags, etc
-  "NonLinearities": [ rFOrLSR.Identity ], # no non-linearities
+  "NonLinearities": [ NARMAX.Identity ], # no non-linearities
 }
 
 for i in range( 5 ): # Fill the validation dict's data entry with randomly generated validation data
@@ -84,9 +83,9 @@ for i in range( 5 ): # Fill the validation dict's data entry with randomly gener
 # --------------------------------------------------------------------------------------- Fitting imposed regressors ---------------------------------------------------------------------------------------
 
 # Since we're only imposing regressors: no Dc, no DcNames, no tolerances, no MaxDepth need to be passed
-Arbo = rFOrLSR.Arborescence( y,
+Arbo = NARMAX.Arborescence( y,
                              Ds = RegMat, DsNames = RegNames, # Ds & Regressor names, being dictionary of selected regressors
-                             ValFunc = rFOrLSR.DefaultValidation, ValData = DsValDict, # Validation function and dictionary
+                             ValFunc = NARMAX.DefaultValidation, ValData = DsValDict, # Validation function and dictionary
                            )
 
 theta, _, ERR, = Arbo.fit()[:3] # ignore Morphingdata, RegMat, RegNames and L, since those are Dc-fitting only
@@ -94,7 +93,7 @@ theta, _, ERR, = Arbo.fit()[:3] # ignore Morphingdata, RegMat, RegNames and L, s
 Figs, Axs = Arbo.PlotAndPrint( DsValDict ) # returns both figures and axes for further processing
 Axs[0][0].set_xlim( [0, 500] ) # Force a zoom-in
 
-b_Ds, a_Ds = rFOrLSR.Tools.rFOrLSR2IIR( theta, [i for i in range( len( theta ) )], RegNames ) # reconstruct L since empty as no terms selected, here all are taken in order
+b_Ds, a_Ds = NARMAX.Tools.rFOrLSR2IIR( theta, [i for i in range( len( theta ) )], RegNames ) # reconstruct L since empty as no terms selected, here all are taken in order
 
 # --------------------------------------------------------------------------------------- Plots ---------------------------------------------------------------------------------------
 
@@ -104,12 +103,12 @@ w, h_Ds = sps.freqz( b_Ds, a_Ds, worN = Resolution, fs = Fs )
 h_Original = np.sum( [ sps.freqz( filt[0], filt[1], worN = Resolution, fs = Fs )[1] for filt in Filters ], axis = 0 ) # sum since parallel filters
 
 # Plot frequency responses
-rFOrLSR.Tools.IIR_Spectrum( h_List = [ h_Original, h_Ds ], FilterNames = [ 'Original', 'Estimated' ], # what to plot
+NARMAX.Tools.IIR_Spectrum( h_List = [ h_Original, h_Ds ], FilterNames = [ 'Original', 'Estimated' ], # what to plot
                             Fs = Fs, # Frequency of sampling (aka Sampling rate)
                             xLims = [ 10, Fs / 2 ], # x-limits common to both plots
                             yLimMag = [ -50, None ] # stop at -50dB but make upper-limit data dependent with None
                           )
 
-rFOrLSR.Tools.zPlanePlot( b_Ds, a_Ds, Title = 'Estimated' )
+NARMAX.Tools.zPlanePlot( b_Ds, a_Ds, Title = 'Estimated' )
 
 plt.show()

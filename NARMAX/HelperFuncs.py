@@ -21,11 +21,11 @@ def Set_Tensortype_And_Device():
   ### Outputs
   - Device: String, either "cpu", "mps", "vulkan", "opencl" or "cuda"
   '''
-  if   ( tor.has_opencl ):                     Device = "opencl"  # Devices with OpenCL support
-  elif ( tor.cuda.is_available() ):            Device = "cuda" # force new tensors to be on GPU
+  if ( tor.cuda.is_available() ):            Device = "cuda" # force new tensors to be on GPU
   elif ( tor.backends.mps.is_available() ):    Device = "mps" # M1/M2 Macs
-  elif ( tor.backends.vulkan.is_available() ): Device = "vulkan"  # Vulkan devices
-  elif ( tor.backends.mkl.is_available() ):    Device = "mkl" # Intel MKL backend
+  # elif ( tor.has_opencl() ):                     Device = "opencl"  # Devices with OpenCL support
+  # elif ( tor.backends.vulkan.is_available() ): Device = "vulkan"  # Vulkan devices
+  # elif ( tor.backends.mkl.is_available() ):    Device = "mkl" # Intel MKL backend
   else:
     print( "\n\nYour python installation didn't detect a hardware-accelerator (CUDA, MPS, Vulkan), so this will run on CPU which is a lot slower\n\n" )
     Device = "cpu" # force new tensors to be on CPU

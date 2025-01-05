@@ -8,7 +8,7 @@ Covers the basics of the library (functions, algorithm hyper-parameters, etc) an
 **Fitted system**: $y\[k\] = 0.2x\[k\] + 0.3x^3\[k-1\] + 0.7|x\[k-2\]x^2\[k-1\]| +0.5e^{x\[k-3\]x\[k-2\]} - \cos(y\[k-1\]x\[k-2\]) -0.4|x\[k-1\]y^2\[k-2\]| - y^3\[k-3\]$
 
 # Example 2: The Symbolic Oscillator
-Showcases the Symbolic Oscillator object `rFORLSR.SymbolicOscillator`, which allows to execute the NARMAX System (user-defined or as obtained by the arborescence object) and thus apply it on data.
+Showcases the Symbolic Oscillator object `NARMAX.SymbolicOscillator`, which allows to execute the NARMAX System (user-defined or as obtained by the arborescence object) and thus apply it on data.
 In addition, the SymbolicOscillator object supports modulating the regression parameters and has a supplementary input allowing experimentation with additional regressors, DC-offset, additive noise, etc.
 
 **Executed system**: $y\[k\] = W\[k\] + \frac{{\theta_0\frac{y\[k-1\]}{x_2\[k\]} + \theta_1 x_1^2\[k-1\] + \frac{\theta_2}{\text{abs}\left( 0.2x_1\[k-1\] + 0.5x_1\[k-2\]x_2\[k\] - 0.2 \right)} }}{1 + \theta_3 x_1\[k-1\]x_2\[k-1\] + \theta_4 x_2^2\[k-2\] + \theta_5\cos\left( 0.2x_1\[k-3\]x_2\[k-1\] - 0.1 \right) }$  
@@ -37,3 +37,6 @@ Demonstrates how to fit MIMO (Multiple Input Multiple Output) systems.
 **Fitted system**:  
 $y_1\[k\] = 0.2 x_1\[k\] + 0.3 x_2^3\[k\] + 0.7 |x_3\[k\]| + 0.5 x_2\[k-3\] x_1\[k-2\] - 0.3 y_2\[k-1\] x_2^2\[k-2\] - 0.8 |x_3\[k-1\] y_1\[k-2\]| - 0.7 x_1\[k-1\] x_2^2\[k-1\]$  
 $y_2\[k\] = 0.3 x_1\[k-1\] + 0.5 x_3^3\[k\] + 0.7 |y_1\[k-1\]| + 0.6 y_1\[k-3\] x_1\[k-2\] - 0.4 y_1\[k-1\] x_3^2\[k-2\] - 0.9 |x_3\[k-1\] y_2\[k-2\]| - 0.7 x_3\[k-1\] x_2^2\[k-1\]$
+
+# Example 7: Binary System Fitting
+TODO: Add explanation

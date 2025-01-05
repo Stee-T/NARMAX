@@ -4,8 +4,8 @@ import torch as tor
 import matplotlib.pyplot as plt
 plt.style.use( 'dark_background' ) # black graphs <3
 
-import rFOrLSR
-import rFOrLSR.Test as Test_Systems
+import NARMAX
+import NARMAX.Test as Test_Systems
 
 # ---------------------------------------------------- 2. Hyper-parameters
 p = 2_500 # Dataset size
@@ -27,16 +27,16 @@ x -= tor.mean( x ) # center
 x, y, W = Sys( x, W, Print = True ) # apply selected system
 if ( tor.isnan( tor.sum( y ) ) ): raise AssertionError( "Yields NaNs, which we don't like" )
 
-NonLinearities = [ rFOrLSR.Identity ] # List of NonLinearity objects, must start with identity
+NonLinearities = [ NARMAX.Identity ] # List of NonLinearity objects, must start with identity
 MakeRational = [ True ] # List of bool, deciding if each NonLinearity is to also be made rational
 
-NonLinearities.append( rFOrLSR.NonLinearity( "abs", f = tor.abs ) )
+NonLinearities.append( NARMAX.NonLinearity( "abs", f = tor.abs ) )
 MakeRational.append( True )
 
 # ---------------------------------------------------- 3. Training Data
-y, RegMat, RegNames = rFOrLSR.CTors.Lagger( Data = ( x, y ), Lags = ( qx, qy ) ) # Create the delayed regressors
-RegMat, RegNames = rFOrLSR.CTors.Expander( RegMat, RegNames, ExpansionOrder ) # Monomial expand the regressors
-RegMat, RegNames, _ = rFOrLSR.CTors.NonLinearizer( y, RegMat, RegNames, NonLinearities, MakeRational = MakeRational ) # add the listed terms to the Regression matrix
+y, RegMat, RegNames = NARMAX.CTors.Lagger( Data = ( x, y ), Lags = ( qx, qy ) ) # Create the delayed regressors
+RegMat, RegNames = NARMAX.CTors.Expander( RegMat, RegNames, ExpansionOrder ) # Monomial expand the regressors
+RegMat, RegNames, _ = NARMAX.CTors.NonLinearizer( y, RegMat, RegNames, NonLinearities, MakeRational = MakeRational ) # add the listed terms to the Regression matrix
 
 
 # ---------------------------------------------------- 4. Validation Data
@@ -62,13 +62,13 @@ for i in range( 5 ): # Fill the validation dict's data entry with randomly gener
 # ---------------------------------------------------- 5. Running the Arborescence
 File = "Some/Valid/Path/FileName.pkl"
 
-Arbo = rFOrLSR.Arborescence( y,
-                             Ds = None, DsNames = None, # Ds & Regressor names, being dictionary of selected regressors
-                             Dc = RegMat, DcNames = RegNames, # Dc & Regressor names, being dictionnary of candidate regerssors (phi)
-                             tolRoot = tol, tolRest = tol, # \rho tolerances
-                             MaxDepth = ArboDepth, # Maximal number of levels
-                             ValFunc = rFOrLSR.DefaultValidation, ValData = ValidationDict, # Validation function and dictionary
-                             Verbose = False, # Print the current state of the FOrLSR (only meaningful for regressions with many terms)
+Arbo = NARMAX.Arborescence( y,
+                            Ds = None, DsNames = None, # Ds & Regressor names, being dictionary of selected regressors
+                            Dc = RegMat, DcNames = RegNames, # Dc & Regressor names, being dictionnary of candidate regerssors (phi)
+                            tolRoot = tol, tolRest = tol, # \rho tolerances
+                            MaxDepth = ArboDepth, # Maximal number of levels
+                            ValFunc = NARMAX.DefaultValidation, ValData = ValidationDict, # Validation function and dictionary
+                            Verbose = False, # Print the current state of the FOrLSR (only meaningful for regressions with many terms)
                             #  FileName = File, # Path and File to save the Backups into
                             #  SaveFrequency = 10, # Save frequency in minutes
                            )
@@ -76,7 +76,7 @@ Arbo = rFOrLSR.Arborescence( y,
 Arbo.fit()
 
 # If the Arborescence was interrupted and saved, continue with:
-# Arbo = rFOrLSR.Arborescence() # init empty Arbo
+# Arbo = NARMAX.Arborescence() # init empty Arbo
 # Arbo.load( File ) # load pickle file
 # Arbo.fit() # resume fitting
 
@@ -91,15 +91,15 @@ TestInput -= TestInput.mean() # center
 
 _, y, W = Sys( TestInput, W, Print = True ) # Original for-loop
 
-NARMAX = rFOrLSR.SymbolicOscillator( [ "x", "y" ], NonLinearities, RegNames[L], tor.tensor( theta ) )
+Model = NARMAX.SymbolicOscillator( [ "x", "y" ], NonLinearities, RegNames[ L ], tor.tensor( theta ) )
 
 # Prefill the internal state to perfectly emulate the ground truth y
-NARMAX.set_InputStorage( TestInput[ None, :NARMAX.get_MaxNegInputLag() ].clone() ) # corresponds to qx in this example
-NARMAX.set_OutputStorage( y[ :NARMAX.get_MaxNegOutputLag() ].clone() ) # corresponds to qy in this example
-yHat = NARMAX.Oscillate( [ TestInput[ -len( y ): ] ] ) # generate data
+Model.set_InputStorage( TestInput[ None, :Model.get_MaxNegInputLag() ].clone() ) # corresponds to qx in this example
+Model.set_OutputStorage( y[ :Model.get_MaxNegOutputLag() ].clone() ) # corresponds to qy in this example
+yHat = Model.Oscillate( [ TestInput[ -len( y ): ] ] ) # generate data
 
 # Note: We cut the input w.r.t. len( y ), since the generated model might have different lags.
-# Otherwise max( NARMAX.get_MaxNegOutputLag(), NARMAX.get_MaxNegInputLag() ) is the way to go##
+# Otherwise max( Model.get_MaxNegOutputLag(), Model.get_MaxNegInputLag() ) is the way to go##
 
 Fig, Ax = plt.subplots()
 Ax.plot( (y - yHat )[10:].cpu().numpy(), label = "y - yHat" )

@@ -1,4 +1,4 @@
-import rFOrLSR
+import NARMAX
 
 import matplotlib.pyplot as plt
 plt.style.use( 'dark_background' ) # black graphs <3
@@ -19,7 +19,7 @@ x -= tor.mean( x ) # important as always
 y = tor.tanh( x ) # desired function
 
 # ############################################################################ Training Data creation ###########################################################################
-RegMat, RegNames = rFOrLSR.CTors.Expander( Data = tor.abs( x.view( -1, 1 ) ), RegNames = [ "|x|" ], ExpansionOrder = ExpansionOrder )
+RegMat, RegNames = NARMAX.CTors.Expander( Data = tor.abs( x.view( -1, 1 ) ), RegNames = [ "|x|" ], ExpansionOrder = ExpansionOrder )
 y = - y / tor.sign( x ) + 1 # subtract sign(x) to impose it in regression and divide by it
 RegMat = -y.view( -1, 1 ) * RegMat # multiply by -y to put regressors in denominator
 
@@ -48,7 +48,7 @@ def Sigmoid_Expansion_L_inf( theta, L, ERR, RegNames, ValDic,  DcFilterIdx = Non
   Error = 0 # total error
   
   for i in range( len( ValDic["Data"] ) ): # iterate over all passed Data tuples
-    RegMat, _ = rFOrLSR.CTors.Expander( Data = ValDic["Data"][i], RegNames = [ "|x|" ], ExpansionOrder = ValDic["ExpansionOrder"] ) # create data
+    RegMat, _ = NARMAX.CTors.Expander( Data = ValDic["Data"][i], RegNames = [ "|x|" ], ExpansionOrder = ValDic["ExpansionOrder"] ) # create data
 
     if ( DcFilterIdx is not None ): RegMat = RegMat[:, DcFilterIdx] # Filter out same regressors as for the regression
 
@@ -62,12 +62,12 @@ def Sigmoid_Expansion_L_inf( theta, L, ERR, RegNames, ValDic,  DcFilterIdx = Non
 
 # ######################################################################### Fitting #########################################################################
 
-Arbo = rFOrLSR.Arborescence( y,
-                             Dc = RegMat, DcNames = RegNames, # dictionary of candidates and the column names
-                             tolRoot = tol, tolRest = tol, # \rho tolerances
-                             MaxDepth = 3, # Maximal arborescence depth
-                             ValFunc = Sigmoid_Expansion_L_inf, ValData = ValidationDict, # Validation function and dictionary
-                           )
+Arbo = NARMAX.Arborescence( y,
+                            Dc = RegMat, DcNames = RegNames, # dictionary of candidates and the column names
+                            tolRoot = tol, tolRest = tol, # \rho tolerances
+                            MaxDepth = 3, # Maximal arborescence depth
+                            ValFunc = Sigmoid_Expansion_L_inf, ValData = ValidationDict, # Validation function and dictionary
+                          )
 
 theta, L, ERR, _, RegMat, RegNames = Arbo.fit()
 
@@ -81,7 +81,7 @@ print( "\n", Expression[ : -3 ], "\n" )
 x_Plot = tor.linspace( -TestRange, TestRange, 5_000 )
 
 # create a RegMat of the regressor matrix and transform it as necessary and use L to acces the corerct terms to recreate the A polynomial
-RegMat_Plot = rFOrLSR.CTors.Expander( Data = x_Plot.view( -1, 1 ), RegNames = [ "x" ], ExpansionOrder = ExpansionOrder )[0] # ignore the names
+RegMat_Plot = NARMAX.CTors.Expander( Data = x_Plot.view( -1, 1 ), RegNames = [ "x" ], ExpansionOrder = ExpansionOrder )[0] # ignore the names
 
 A = ( tor.abs( RegMat_Plot[ :, L ] ) @ tor.tensor( theta ) ).cpu()
 x_Plot = x_Plot.cpu()
@@ -94,4 +94,4 @@ Fig.tight_layout()
 
 plt.show()
 
-# TODO: maka a NARMAXC object for this, good test with absolutely memory-less sytem
+# TODO: maka a NARMAX object for this, good test with absolutely memory-less sytem

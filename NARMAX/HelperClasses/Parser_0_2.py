@@ -65,7 +65,7 @@ def CleanExpression( InputExpr: str ):
   # Handle missing spaces, excludes +,-,^ on purpose since this ruins the lags and exponents analysis
   for op in [ '*', '/' ]: Expr = Expr.replace( op, ' ' + op + ' ' )
   Expr = Expr.replace( '~ / ', '~/' ); Expr = Expr.replace( '1 / ', '1/' ) # repair two exceptions of the above space
-  Expr = Expr.replace( '(', '( ' ); Expr = Expr.replace( ')', ' )' ) # Add spaces aroudn parenthesis
+  Expr = Expr.replace( '(', '( ' ); Expr = Expr.replace( ')', ' )' ) # Add spaces around parenthesis
   Expr = ' '.join( Expr.split() ) # collapse an arbitrary amount of spaces to a single one (the above might have created double spaces)
 
   # Merge subtractions into the coefficient

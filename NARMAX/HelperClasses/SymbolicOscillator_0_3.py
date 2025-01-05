@@ -189,7 +189,7 @@ class SymbolicOscillator:
     
     ### Inputs:
     - `InputVarNames`: (list of str) containing the regressor names
-    - `NonLinearities`: (list of rFOrLSR.NonLinearity) containing the non-linearity objects
+    - `NonLinearities`: (list of NARMAX.NonLinearity) containing the non-linearity objects
     - `ExprList`: (list of str) containing the RegressorStr objects
     - `theta`: ((DsData.shape[1] + len( ExprList)),)-shaped torch tensor) containing the regression Coefficients
     - `OutputVarName`: (str) containing the name used to denote the output variable in the passed strings
@@ -203,7 +203,7 @@ class SymbolicOscillator:
     
     if ( len( NonLinearities ) == 0 ): raise ValueError( "No Non-linearities were declared" )
     for i in range( len( NonLinearities ) ):
-      if ( not isinstance( NonLinearities[i], NL.NonLinearity ) ): raise ValueError( f"NonLinearities[{ i }] is not of type 'rFOrLSR.NonLinearity'" )
+      if ( not isinstance( NonLinearities[i], NL.NonLinearity ) ): raise ValueError( f"NonLinearities[{ i }] is not of type 'NARMAX.NonLinearity'" )
 
     if ( len( ExprList ) == 0 ):     raise ValueError( "No Regressors were declared" )
     for i in range( len( ExprList ) ):

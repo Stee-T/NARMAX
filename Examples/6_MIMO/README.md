@@ -42,12 +42,12 @@ RegNames = [ 'x1', 'x2', 'x3', 'y1', 'y2' ]
 
 **$y$ variable:** The `Lagger` looks for a generated variable called $y\[k\]$ in the dictionary $D_C$. If it is not found, it outputs None. Thus, one can't use the function output at that position for MIMO systems.
 
-**Outputs:** The `Lagger` CTor generates lagged regressors by tactically cutting the vectors. Thus, resulting regressors are shorter than the original vectors, which must be done manually for the system outputs $\underline{y}_1, \underline{y}_2$. The library provides the convenience function `rFOrLSR.CutY`, which recursively checks for the maximum lag then returns the cut $\underline{y}$ vector:
+**Outputs:** The `Lagger` CTor generates lagged regressors by tactically cutting the vectors. Thus, resulting regressors are shorter than the original vectors, which must be done manually for the system outputs $\underline{y}_1, \underline{y}_2$. The library provides the convenience function `NARMAX.CutY`, which recursively checks for the maximum lag then returns the cut $\underline{y}$ vector:
 
 ``` python
 # Cut y1, y2 to the same length as RegMat
-y1 = rFOrLSR.CutY( y1, Lags )
-y2 = rFOrLSR.CutY( y2, Lags )
+y1 = NARMAX.CutY( y1, Lags )
+y2 = NARMAX.CutY( y2, Lags )
 ```
 
 <br/>
@@ -58,16 +58,16 @@ Nothing in particular to be done here. The `Expander` expands and combines all v
 The `NonLinarizer` applies the passed non-linearities to the passed dictionary. Note that here "None" is passed as $\underline{y}$ as no single output exists for the system. Fit rational MIMO systems would require calling the `NonLinarizer` twice with the respective $\underline{y}$ vectors, one for each output.
 
 ``` python
-NonLinearities = [ rFOrLSR.Identity, rFOrLSR.NonLinearity( "abs", f = tor.abs ) ] # List of NonLinearity objects, must start with identity
+NonLinearities = [ NARMAX.Identity, NARMAX.NonLinearity( "abs", f = tor.abs ) ] # List of NonLinearity objects, must start with identity
 
-RegMat, RegNames = rFOrLSR.CTors.Expander( RegMat, RegNames, ExpansionOrder ) # Monomial expand the regressors
-RegMat, RegNames, _ = rFOrLSR.CTors.NonLinearizer( None, RegMat, RegNames, NonLinearities ) # add the listed terms to the Regression matrix
+RegMat, RegNames = NARMAX.CTors.Expander( RegMat, RegNames, ExpansionOrder ) # Monomial expand the regressors
+RegMat, RegNames, _ = NARMAX.CTors.NonLinearizer( None, RegMat, RegNames, NonLinearities ) # add the listed terms to the Regression matrix
 ```
 
 <br/>
 
 # 3. Validation
-This example uses the `rFOrLSR.DefaultValidation` ([see Tutorial 1](https://github.com/Stee-T/rFOrLSR/tree/main/Examples/1_Linear_in_the_Parameters)). The only difference between each channel's validation (the example assuming that both channels contain similar terms and thus share the same dictionary $D_C$) is the $y$ variable.  
+This example uses the `NARMAX.DefaultValidation` ([see Tutorial 1](https://github.com/Stee-T/NARMAX/tree/main/Examples/1_Linear_in_the_Parameters)). The only difference between each channel's validation (the example assuming that both channels contain similar terms and thus share the same dictionary $D_C$) is the $y$ variable.  
 Note that deep-copies are necessary to avoid python overwriting the same dictionary.
 
 <br/>
@@ -104,5 +104,5 @@ Recognized regressors:
  0.30000000000000004 x1[k-1]
 ```
 
-[Previous Tutorial: 5. Sigmoid Expansion & Custom Validation](https://github.com/Stee-T/rFOrLSR/tree/main/Examples/5_tanh)  
-[Next Tutorial: 7. MaxLags](https://github.com/Stee-T/rFOrLSR/tree/main/Examples/7_MaxLags)
+[Previous Tutorial: 5. Sigmoid Expansion & Custom Validation](https://github.com/Stee-T/NARMAX/tree/main/Examples/5_tanh)  
+[Next Tutorial: 7. MaxLags](https://github.com/Stee-T/NARMAX/tree/main/Examples/7_MaxLags)

@@ -1,5 +1,5 @@
-import rFOrLSR as rFOrLSR
-import rFOrLSR.Test as Test_Systems
+import NARMAX
+import NARMAX.Test as Test_Systems
 
 import matplotlib.pyplot as plt
 plt.style.use( 'dark_background' ) # black graphs <3
@@ -31,17 +31,17 @@ while ( 5 ): # 5 is the absolute truth, do while y contains no nan
   if ( not tor.isnan( tor.sum( y1 ) ) and not tor.isnan( tor.sum( y2 ) ) ): break
 
 
-NonLinearities = [ rFOrLSR.Identity, rFOrLSR.NonLinearity( "abs", f = tor.abs ) ] # List of NonLinearity objects, must start with identity
+NonLinearities = [ NARMAX.Identity, NARMAX.NonLinearity( "abs", f = tor.abs ) ] # List of NonLinearity objects, must start with identity
 InputVars = [ "x1", "x2", "x3", "y1", "y2" ] # Variables used in the system
 
 # ---------------------------------------------------- 3. Training Data
-_, RegMat, RegNames = rFOrLSR.CTors.Lagger( Data = [ x1, x2, x3, y1, y2 ], Lags = Lags, RegNames = [ "x1", "x2", "x3", "y1", "y2" ] ) # Create the delayed regressors
-RegMat, RegNames = rFOrLSR.CTors.Expander( RegMat, RegNames, ExpansionOrder ) # Monomial expand the regressors
-RegMat, RegNames, _ = rFOrLSR.CTors.NonLinearizer( None, RegMat, RegNames, NonLinearities ) # add the listed terms to the Regression matrix
+_, RegMat, RegNames = NARMAX.CTors.Lagger( Data = [ x1, x2, x3, y1, y2 ], Lags = Lags, RegNames = [ "x1", "x2", "x3", "y1", "y2" ] ) # Create the delayed regressors
+RegMat, RegNames = NARMAX.CTors.Expander( RegMat, RegNames, ExpansionOrder ) # Monomial expand the regressors
+RegMat, RegNames, _ = NARMAX.CTors.NonLinearizer( None, RegMat, RegNames, NonLinearities ) # add the listed terms to the Regression matrix
 
 # Cut y1, y2 to the same length as RegMat
-y1 = rFOrLSR.CutY( y1, Lags )
-y2 = rFOrLSR.CutY( y2, Lags )
+y1 = NARMAX.CutY( y1, Lags )
+y2 = NARMAX.CutY( y2, Lags )
 
 # ---------------------------------------------------- 4. Validation Data
 ValidationDict1 = { # contains essentially everything passed to the CTors to reconstruct the regressor
@@ -81,21 +81,21 @@ for i in range( 5 ): # Fill the validation dict's data entry with randomly gener
 
 
 # ---------------------------------------------------- 5. Running the Arborescences
-Arbo_1 = rFOrLSR.Arborescence( y1,
-                               Dc = RegMat, DcNames = RegNames, # Dc & Regressor names, being dictionnary of candidate regerssors (phi)
-                               tolRoot = tol, tolRest = tol, # \rho tolerances
-                               MaxDepth = ArboDepth, # Maximal number of levels
-                               ValFunc = rFOrLSR.DefaultValidation, ValData = ValidationDict1, # Validation function and dictionary
-                             )
+Arbo_1 = NARMAX.Arborescence( y1,
+                              Dc = RegMat, DcNames = RegNames, # Dc & Regressor names, being dictionnary of candidate regerssors (phi)
+                              tolRoot = tol, tolRest = tol, # \rho tolerances
+                              MaxDepth = ArboDepth, # Maximal number of levels
+                              ValFunc = NARMAX.DefaultValidation, ValData = ValidationDict1, # Validation function and dictionary
+                            )
 Arbo_1.fit() # Don't overwrite RegMat, since it is used in the next Arbo
 
 
-Arbo_2 = rFOrLSR.Arborescence( y2,
-                               Dc = RegMat, DcNames = RegNames, # Dc & Regressor names, being dictionnary of candidate regerssors (phi)
-                               tolRoot = tol, tolRest = tol, # \rho tolerances
-                               MaxDepth = ArboDepth, # Maximal number of levels
-                               ValFunc = rFOrLSR.DefaultValidation, ValData = ValidationDict2, # Validation function and dictionary
-                             )
+Arbo_2 = NARMAX.Arborescence( y2,
+                              Dc = RegMat, DcNames = RegNames, # Dc & Regressor names, being dictionnary of candidate regerssors (phi)
+                              tolRoot = tol, tolRest = tol, # \rho tolerances
+                              MaxDepth = ArboDepth, # Maximal number of levels
+                              ValFunc = NARMAX.DefaultValidation, ValData = ValidationDict2, # Validation function and dictionary
+                            )
 Arbo_2.fit()
 
 
@@ -104,6 +104,5 @@ Axs[0][0].set_xlim( [0, 500] ) # Force a zoom-in
 
 Figs, Axs = Arbo_2.PlotAndPrint( ValidationDict2 ) # returns both figures and axes for further processing, as as the zoom-in below
 Axs[0][0].set_xlim( [0, 500] ) # Force a zoom-in
-
 
 plt.show()
