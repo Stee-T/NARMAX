@@ -105,4 +105,4 @@ Recognized regressors:
 ```
 
 [Previous Tutorial: 5. Sigmoid Expansion & Custom Validation](https://github.com/Stee-T/NARMAX/tree/main/Examples/5_tanh)  
-[Next Tutorial: 7. MaxLags](https://github.com/Stee-T/NARMAX/tree/main/Examples/7_MaxLags)
+[Next Tutorial: 7. Binary System](https://github.com/Stee-T/NARMAX/tree/main/Examples/7_Binary_System_Fitting)

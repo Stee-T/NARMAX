@@ -217,4 +217,4 @@ The following list shows all public member functions of the `NARMAX.SymbolicOsci
 [1] There are currently some limitations on the expression, such as nesting multiple functions with coefficients. This is, however, what I'm currently working on, since the Symbolic Oscillator is the object of the paper I'm writing at the moment. Support for arbitrary nesting depth of expressions will thus be added in the near future.
 
 [Previous Tutorial: 1. Linear in the Parameters](https://github.com/Stee-T/NARMAX/tree/main/Examples/1_Linear_in_the_Parameters)  
-[Next Tutorial: 2. Rational Fitting](https://github.com/Stee-T/NARMAX/tree/main/Examples/2_Rational_Fitting)
+[Next Tutorial: 2. Rational Fitting](https://github.com/Stee-T/NARMAX/tree/main/Examples/3_Rational_Fitting)
