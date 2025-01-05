@@ -6,9 +6,11 @@ import torch as tor
 from . import NonLinearity as NL
 from . import Parser_0_2 as Parser
 
-from .. import HelperFuncs as HF # Folder above
+def ScopeLimitHF(): # Here to clarify that HF is only used for the device selection
+  from .. import HelperFuncs # Folder above
+  return HelperFuncs.Set_Tensortype_And_Device()
 
-Device = HF.Set_Tensortype_And_Device()
+Device = ScopeLimitHF() # Done here to avoid calling it twice (here and in the main __init__.py)
 
 ########################################################################################################################
 #####                                            Processing functions                                              #####

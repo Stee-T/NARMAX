@@ -18,7 +18,7 @@ import tqdm # progress bars
 import timeit # time measurements for Back-ups
 
 # Taking stuff in to the namespace
-device = HF.Set_Tensortype_And_Device() # force 64 bits, on GPU if available
+device = HelperClasses.SymbolicOscillator_0_3.Device # Calls HF.Set_Tensortype_And_Device() to force 64 bits, on GPU if available
 Identity = NonLinearity( "id", lambda x: x ) # pre-define object for user
 CutY = HF.CutY
 
