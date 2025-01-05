@@ -204,7 +204,7 @@ class Arborescence:
     self.Verbose = Verbose
     self.MorphDict = MorphDict
     self.FileName = FileName
-    self.SaveFrequency = SaveFrequency * 60 # transform from seconds into minutes
+    self.SaveFrequency = SaveFrequency * 60 # transform from minutes into seconds
     self.INT_TYPE = np.int64 # default, if no DC present to overwrite it (thus not used since it only affects the arbo search)
 
     # ---------------------------------------------- Argument Processing -----------------------------------------------
@@ -274,13 +274,13 @@ class Arborescence:
     self.Abort = False # Toggle activated at MaxDepth to finish regressions early
 
     self.MinLen = [] # overwritten by first iteration
-    self.nTermsNext = 0 # Nodes in next level, overwritten by first iteration
-    self.nTermsCurrent = 0 # Nodes in current level, overwritten by first iteration
+    self.nNodesInNextLevel = 0 # Nodes in next level, overwritten by first iteration
+    self.nNodesInCurrentLevel = 0 # Nodes in current level, overwritten by first iteration
     self.nComputed = 0 # Nodes computed in current level, stores the current tqdm state
 
     # For stats only ( not needed by the arbo):
     self.TotalNodes = 1 # Nodes in the arbo ( starts at 1 since root counts )
-    self.NotSkipped = 0 # Actually computed regressions ( =0 is used to detect if fit is called for the first time or not )
+    self.nNotSkippedNodes = 0 # Actually computed regressions ( =0 is used to detect if fit is called for the first time or not )
     self.AbortedRegs = 0 # Not OOIT - computed regressions, since longer than shortest known
 
     # ------------------------------------------------------------------------------------------------ Results ---------------------------------------------------------------------------------
@@ -328,11 +328,11 @@ class Arborescence:
 
       # Arbo Statistics
       dill.dump( self.MinLen, file );         ProgressCount.update()
-      dill.dump( self.nTermsNext, file );     ProgressCount.update()
-      dill.dump( self.nTermsCurrent, file );  ProgressCount.update()
+      dill.dump( self.nNodesInNextLevel, file );     ProgressCount.update()
+      dill.dump( self.nNodesInCurrentLevel, file );  ProgressCount.update()
       dill.dump( nComputed, file );           ProgressCount.update() # from function input, used to display the correct progress
       dill.dump( self.TotalNodes, file );     ProgressCount.update()
-      dill.dump( self.NotSkipped, file );     ProgressCount.update()
+      dill.dump( self.nNotSkippedNodes, file );     ProgressCount.update()
       dill.dump( self.AbortedRegs, file );    ProgressCount.update()
     
     ProgressCount.close()
@@ -378,16 +378,16 @@ class Arborescence:
 
       # Arbo Statistics
       self.MinLen = dill.load( file )
-      self.nTermsNext = dill.load( file )
-      self.nTermsCurrent = dill.load( file )
+      self.nNodesInNextLevel = dill.load( file )
+      self.nNodesInCurrentLevel = dill.load( file )
       self.nComputed = dill.load( file )
       self.TotalNodes = dill.load( file )
-      self.NotSkipped = dill.load( file )
+      self.nNotSkippedNodes = dill.load( file )
       self.AbortedRegs = dill.load( file )
 
       if ( Print ): # print some stats
         print( "\nTolerance: " + str(self.tolRest), "\nArboDepth:", self.MaxDepth, "\nCurrent Dict-shape:", self.Dc.shape,
-              "\nTraversed Nodes:", self.TotalNodes, "\nNot Skipped:", self.NotSkipped, "\nAborted Regs:", self.AbortedRegs )
+              "\nTraversed Nodes:", self.TotalNodes, "\nNot Skipped:", self.nNotSkippedNodes, "\nAborted Regs:", self.AbortedRegs )
         print( "\nShortest Sequence at each level:")
         for i in range( len( self.Q.peek() ) ): print( f"Level { i }: { self.MinLen[i] }" ) 
         print() # print empty line
@@ -460,7 +460,7 @@ class Arborescence:
       Psi_n = Psi / n_Omega # normed orthogonal regressor matrix
       W.append( ( Psi_n.T @ y ).item() ) # store orthogonal regression coefficient ( w )
       ERR.append( W[-1]**2 * n_Omega / s2y )
-      if ( self.Verbose ): ProgressCount.update() # Update counter
+      if ( self.Verbose ): ProgressCount.update()
       
       for col in range( 1, Ds.shape[1] ): # iterate over columns, start after position 1
         # Computations
@@ -474,14 +474,14 @@ class Arborescence:
         Psi = tor.column_stack( ( Psi, Omega ) ) # unnormed matrix
         Psi_n = tor.column_stack( ( Psi_n, Omega / n_Omega ) ) # normed matrix
         s += 1 # increment the A-matrix column count
-        if ( self.Verbose ): ProgressCount.update() # Update counter
+        if ( self.Verbose ): ProgressCount.update()
 
     # Term selecting iteration with orthogonalization
     if ( Dc is not None ):
+      # ---------------------------------------------------- 2. First iteration treated separately since no orthogonalization -----------------------------------------------------------
       if ( Ds is not None ): Omega = Dc[:, U] - Psi_n @ ( Psi.T @ Dc[:, U] ) # orthogonalize Dc w.r.t Ds
       else: Omega = Dc[:, U] # If no imposed term start with unorthogonalized dictionary
       
-      # ---------------------------------------------------- 2. First iteration treated separately since no orthogonalization -----------------------------------------------------------
       n_Omega = HF.Norm2( Omega ) # norm squared or fudge factor elementwise
       ell = tor.argmax( ( Omega.T @ y )**2 / tor.ravel( n_Omega ) ) # get highest QERR index
 
@@ -512,7 +512,7 @@ class Arborescence:
       W.append( ( Psi_n[:,-1] @ y ).item() ) # add orthogonal regression coefficient
       ERR.append( W[-1]**2 * n_Reg / s2y )
       U.remove( U[ell] ) # update unused indices list
-      if ( self.Verbose ): ProgressCount.update() # Update counter
+      if ( self.Verbose ): ProgressCount.update()
 
       # ------------------------------------------------------------------------ 3. Optimal regressor search loop ---------------------------------------------------------------------------
       while ( ( 1 - np.sum( ERR ) > tol ) and ( s < MatSize ) ): # while not enough variance explained ( empty lists sum to zero ) and still regressors available ( nS + nC )
@@ -554,12 +554,12 @@ class Arborescence:
         Psi = tor.column_stack( ( Psi, Reg ) ) # unnormed matrix
         Psi_n = tor.column_stack( ( Psi_n, Reg / n_Reg ) ) # normed matrix
         W.append( ( Psi_n[:, -1] @ y ).item() ) # store orthogonal regression coefficient ( w )
-        ERR.append( W[-1]**2 * n_Reg / s2y ) # store this regressors ERR
+        ERR.append( W[-1]**2 * n_Reg / s2y ) # store this regressors' ERR
         U.remove( U[ell] ) # update unused indices list
         if ( U == [] ): print( "\n\nThe entire dictionary has been used without reaching the desired tolerance!\n\n" ) # no need to exit, since done by 's'
         s += 1 # increment the A-matrix column count
-        if ( self.Verbose ): ProgressCount.update() # Update counter
-    
+        if ( self.Verbose ): ProgressCount.update()
+         
     # ------------------------------------------------------------------------ 4. Output generation ---------------------------------------------------------------------------
     if ( self.Verbose ): ProgressCount.close() # close tqdm counter
 
@@ -603,22 +603,22 @@ class Arborescence:
     # --------------------------------------------------------------------------------- Traversal Init ----------------------------------------------------------------------------
     # Root Computation
     
-    if ( self.Q.is_empty() and ( self.NotSkipped == 0 ) ): # only true if Arbo non-initialized (or if someone loads an ended arbo from a file, but what's the point?)
+    if ( self.Q.is_empty() and ( self.nNotSkippedNodes == 0 ) ): # only true if Arbo non-initialized (or if someone loads an ended arbo from a file, but what's the point?)
       print( "Performing root regression" )
       theta, L, ERR = self.rFOrLSR( self.y, self.Ds, self.Dc, self.U.copy(), self.tolRoot, OutputAll = True ) # create new temp data, use classe's Dc
 
-      self.NotSkipped = 1 # Root is always computed
+      self.nNotSkippedNodes = 1 # Root is always computed
 
       self.LG.AddData( np.array( L, dtype = self.INT_TYPE ) ) # Store regression idices
       self.LG.CreateKeys( MinLen = 0, IndexSet = L, Value = 0 ) # declare root subsets for fast lookup
       
       self.MinLen = [ len( L ), len( L ) ] # list so that the MinLen per level is stored, twice since once for root then for first level
       self.MaxDepth = min( ( self.MaxDepth, self.MinLen[-1] ) ) # update to implement ADTT
-      self.nTermsNext = 0 # number of nodes in the next level, zero since unknown here
+      self.nNodesInNextLevel = 0 # number of nodes in the next level, zero since unknown here
       print( "Shortest encountered sequence (root):", self.MinLen[-1] + self.nS, '\n' )
 
       for ImposedReg in L: self.Q.put( np.array( [ ImposedReg ], dtype = self.INT_TYPE ) ) # append all imposed regressors to the Queue as one element arrays
-      self.nTermsCurrent = len( L ) # update current level number of nodes
+      self.nNodesInCurrentLevel = len( L )
 
       if ( ( self.MaxDepth == 0 ) or ( self.Dc is None ) ): # theta, L, ERR are written by the validation function
         self.MinLen = [ self.MinLen[0] ] # cut out the predictions for the next level, recast into list
@@ -626,7 +626,7 @@ class Arborescence:
 
     if ( self.SaveFrequency > 0 ): self.MemoryDump( 0 ) # If this first back-up fails we know it immediately, rather than potentially a few hours later
     
-    ProgressBar = tqdm.tqdm( total = self.nTermsCurrent, desc = f"Arborescence Level { len( self.Q.peek() ) }", unit = " rFOrLSR" )  # Initialise progrssbar with known total number of iterations of first level 
+    ProgressBar = tqdm.tqdm( total = self.nNodesInCurrentLevel, desc = f"Arborescence Level { len( self.Q.peek() ) }", unit = " rFOrLSR" )  # Initialise progrssbar with known total number of iterations of first level 
     ProgressBar.update( self.nComputed ) # insert the correct progress
     StartTime = timeit.default_timer() # start time counter for memory dumps
 
@@ -644,7 +644,7 @@ class Arborescence:
       ellG = self.LG.SameStart( LI ) # Regression already computed? Yes = index, No = []
 
       if ( ellG == [] ): # This indexset isn’t equal to a previous one, else pass and use returned index
-        self.NotSkipped += 1 # just for statistics not needed for regression
+        self.nNotSkippedNodes += 1 # just for statistics not needed for regression
 
         U_tmp = self.U.copy() # copy required since else self.U is modified when passed to a function
         for li in LI: 
@@ -667,7 +667,7 @@ class Arborescence:
     
       if ( len( LI ) < self.MaxDepth ): # Iterate next level? (new regressions are only added by the previous level: if True, AOrLSR is in the last level → don't add nodes for the next one)
         LC = HF.AllCombinations( LI, ellG, self.INT_TYPE ) # compute all term combinations, pass INT_TYPE since not a class member function
-        self.nTermsNext += LC.shape[0] # add set cardinality to nTerms of the next level
+        self.nNodesInNextLevel += LC.shape[0] # add set cardinality to nTerms of the next level
         for combinations in LC: self.Q.put( combinations ) # append all imposed regressors to the Queue
       
       ProgressBar.update() # increase count, Done here since almost all processing is done for this node, must be before the "last node?" if handling the level change
@@ -680,13 +680,13 @@ class Arborescence:
         self.LG.DeleteAllOfSize( len( LI ) )
         
         if ( len( LI ) + 1 <= self.MaxDepth ): # Is next level to be iterated?
-          ProgressBar = tqdm.tqdm( total = self.nTermsNext, desc = f"Arborescence Level {len( LI ) + 1}", unit = " rFOrLSR" ) # Initialise progressbar with number of iterations
-          self.nTermsCurrent = self.nTermsNext # number of node in this level (needed to load the progressbar from file)
+          ProgressBar = tqdm.tqdm( total = self.nNodesInNextLevel, desc = f"Arborescence Level {len( LI ) + 1}", unit = " rFOrLSR" ) # Initialise progressbar with number of iterations
+          self.nNodesInCurrentLevel = self.nNodesInNextLevel # number of node in this level (needed to load the progressbar from file)
           self.MinLen.append( self.MinLen[-1] ) # new entry for the new level
 
-        self.Abort = len( LI ) + 1 == self.MaxDepth # early exit non-competitive regressions since this level contains the leaves ( only true at maxdepth )
+        self.Abort = len( LI ) + 1 == self.MaxDepth # early exit non-competitive regressions since this level contains the leaves
         
-        self.nTermsNext = 0 # reinitialize next level nodes counter ( must be done after the use for the progressbar )
+        self.nNodesInNextLevel = 0 # must be done after the use for the progressbar
     
     ProgressBar.close() # Avoids glitches
     
@@ -736,7 +736,7 @@ class Arborescence:
         if ( len( reg ) == self.MinLen[-1] ): self.theta = theta; self.L = reg.astype( np.int64 ); self.ERR = ERR; break
 
     print( f"\nValidation done on { len( Processed ) } different Regressions. Best validation error: { MinError }\n",
-           f"Out of { self.TotalNodes } only { self.NotSkipped } regressions were computed, of which { self.AbortedRegs } were OOIT-aborted.\n" )
+           f"Out of { self.TotalNodes } only { self.nNotSkippedNodes } regressions were computed, of which { self.AbortedRegs } were OOIT-aborted.\n" )
 
     return ( self.get_Results() )
 
