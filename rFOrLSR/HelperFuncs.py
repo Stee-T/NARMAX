@@ -126,10 +126,15 @@ def RemoveDuplicates( RegMat, RegNames ):
   - `DcFilterIdx`: Indexset of the remaining regressors
   '''
   # Clean the dictionary of equivalent entries to speed up the search and avoid ( +inf - inf ) problems during fitting
+  nCols = RegMat.shape[1]
   TempData = ( RegMat.cpu().numpy() ).T # copy to CPU memory (if necessary) and Cast to numpy
   b = np.ascontiguousarray( TempData ).view( np.dtype( ( np.void, TempData.dtype.itemsize * TempData.shape[1] ) ) ) # black magic recast
   _, DcFilterIdx, indices = np.unique( b, return_index = True, return_inverse = True )
   DcFilterIdx = np.sort( DcFilterIdx ) # keep the original Data order
+
+  if ( len( DcFilterIdx ) < nCols ): # Dictionary (Ds or Dc) was filtered, warn user.
+    nRedundant = nCols - len( DcFilterIdx )
+    print( f"\n\nWARNING: { nRedundant } redundant regressor{ "s were" if nRedundant > 1 else " is" } eliminated from the dictionary. Use the returned one for further operations.\n\n" )
 
   return ( ( RegMat.T[DcFilterIdx] ).T, RegNames[DcFilterIdx], DcFilterIdx ) # Apply filter on original GPU tensor
 
