@@ -17,7 +17,7 @@ import itertools as it
 import scipy.optimize as spop # for the minimization via Trust Region Methods
 
 # Internal imports
-from . import HelperFuncs as HF
+from .. import HelperFuncs as HF
 
 
 #################################################################################################### Optimizer helper functions ############################################
@@ -216,9 +216,8 @@ def InfOPT( y, Xl, ksiS, Ds, Dc, PA, f, fPrime, fSecond, Reps, A_T, Psi, Psi_n, 
   return ( ksiMin )
 
 
-
 # ************************************************************************************************ Morphing function ********************************************************************************
-def Morpher( U, ell, Psi, Psi_n, y, A_T, W_T, L, Ds, Dc, MDict ):
+def DictionaryMorpher( U, ell, Psi, Psi_n, y, A_T, W_T, L, Ds, Dc, MDict ):
   ''''Morphing function containing all morphing subfunction and the final data handling.
   Means is not updated since morphable terms are not re-morphed'''
   if ( Psi.shape == ( len( y ), 0 ) ): Psi = None # overwrite for clarity

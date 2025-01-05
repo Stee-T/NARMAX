@@ -72,15 +72,6 @@ def CutY( y, Lags ):
 
   return ( y[ q : ] )
 
-
-
-# *********************************************************************************** FindMinInt ****************************************************************************************
-def FindMinInt( nCols ):
-  '''Function determining the numpy integer dtype necessary to hold the current nCols to reduce memory usage'''
-  if   ( nCols <= np.iinfo( np.uint16 ).max ): return ( np.uint16 )
-  elif ( nCols <= np.iinfo( np.uint32 ).max ): return ( np.uint32 ) # certainly sufficient in most cases
-  else: return ( np.uint64 )
-
 # ****************************************************************************** Squared norm function ********************************************************************************
 def Norm2( x, epsilon = 1e-12 ):
   ''' Dimension aware Squared euclidean norm, more efficient than using tor.norm and squaring due to no sqrt. Overwrites with fudge factor since norm are used as divisions'''

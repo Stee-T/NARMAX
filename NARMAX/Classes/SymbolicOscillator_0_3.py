@@ -7,7 +7,7 @@ from . import NonLinearity as NL
 from . import Parser_0_2 as Parser
 
 def ScopeLimitHF(): # Here to clarify that HF is only used for the device selection
-  from .. import HelperFuncs # Folder above
+  from .. import HelperFuncs # Parent folder
   return HelperFuncs.Set_Tensortype_And_Device()
 
 Device = ScopeLimitHF() # Done here to avoid calling it twice (here and in the main __init__.py)
