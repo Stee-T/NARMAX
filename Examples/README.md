@@ -15,12 +15,12 @@ In addition, the SymbolicOscillator object supports modulating the regression pa
 This system has two inputs $x_1$ and $x_2$ in addition to an internal noise channel $W[k]$ and a single output (MISO system).
 
 # Example 3: Rational System
-Is a short demonstration of how to fit rational models with the provided signal-constructor. It also contains some supplementary information about the arborescence fitting, including how to reliably reproduce results.
+Demonstrates how to fit rational models with the provided signal-constructor. It also contains some supplementary information about the arborescence fitting, including how to reliably reproduce results.
 
 **Fitted system**: $y\[k\]=\frac{0.6|x\[k\]|-0.35x^3\[k\]-0.3x\[k-1\]y\[k-2\]+0.1|y\[k-1\]|}{1-0.4|x\[k\]|+0.3|x\[k-1\]x\[k\]|-0.2x^3\[k-1\]+ 0.3y\[k-1\]x\[k-2\]}$
 
 # Example 4: Imposing Regressors
-Is a short demonstration of how to use the imposed regressor dictionary. This example illustrates how to fit a (linear) IIR filter of a desired order.
+Demonstrates how to use the imposed regressor dictionary. This example illustrates how to fit a (linear) IIR filter of a desired order.
 
 **Fitted system**: 5 parallel Biquadratic IIR filters (5 parallel Second Order Sections) fitted with a single IIR filter (ARX system).
 
@@ -39,4 +39,6 @@ $y_1\[k\] = 0.2 x_1\[k\] + 0.3 x_2^3\[k\] + 0.7 |x_3\[k\]| + 0.5 x_2\[k-3\] x_1\
 $y_2\[k\] = 0.3 x_1\[k-1\] + 0.5 x_3^3\[k\] + 0.7 |y_1\[k-1\]| + 0.6 y_1\[k-3\] x_1\[k-2\] - 0.4 y_1\[k-1\] x_3^2\[k-2\] - 0.9 |x_3\[k-1\] y_2\[k-2\]| - 0.7 x_3\[k-1\] x_2^2\[k-1\]$
 
 # Example 7: Binary System Fitting
-TODO: Add explanation
+Demonstrates how to fit binary systems and recapitulates the previous tutorials with an example from the paper: "Booler"-Ctor, MISO fitting & custom validation functions. It shows that very low error can be obtained, even if the retrieved equation is not the exact one of the system but an equivalent expression.
+
+**Fitted system**: $y[k] = ( !x1\[k\] \&\& x2\[k\] ) - ( x3\[k\] \lor x4\[k\] ) + ( x1\[k\] \|\| x3\[k-1\] ) + ( x2\[k\] \lor x4\[k-2\] ) - ( !x1\[k-2\] \&\& x2\[k\] ) - !x3\[k-2\] + !x2\[k-2\] + x4\[k-1\]$
