@@ -15,14 +15,14 @@ import torch as tor # general operations
 import numpy as np # needed for the duplicate elimination
 
 # ***************************************************************************** Set Tensortype And Device  ******************************************************************************
-def Set_Tensortype_And_Device():
+def Set_Tensortype_And_Device() -> str:
   '''Set the default dtype and device for torch tensors. Returns the device string for further use.
   
   ### Outputs
   - Device: String, either "cpu", "mps", "vulkan", "opencl" or "cuda"
   '''
   if ( tor.cuda.is_available() ):            Device = "cuda" # force new tensors to be on GPU
-  elif ( tor.backends.mps.is_available() ):    Device = "mps" # M1/M2 Macs
+  elif ( tor.backends.mps.is_available() ):  Device = "mps" # M1/M2 Macs
   # elif ( tor.has_opencl() ):                     Device = "opencl"  # Devices with OpenCL support
   # elif ( tor.backends.vulkan.is_available() ): Device = "vulkan"  # Vulkan devices
   # elif ( tor.backends.mkl.is_available() ):    Device = "mkl" # Intel MKL backend
@@ -37,14 +37,14 @@ def Set_Tensortype_And_Device():
   
 
 # *********************************************************************************** Combinations ****************************************************************************************
-def Combinations( N, k ):
+def Combinations( N: int, k: int ):
   '''From N chose k for positive values only'''
   if ( k > N ): return ( 0 ) # property of the operator
   if ( k < 0 or N < 0 ): raise ValueError( "N or k is negative, which is not supported" )
 
-  def factorial( n ):
-    fact = 1 # base case, guaranteed output even if looop not entered
-    for i in range( 2,int( n )+1 ): fact *= i # multiply upwards, +1 due to python indexing
+  def factorial( n: int ):
+    fact: int = 1 # base case, guaranteed output even if looop not entered
+    for i in range( 2, int( n ) + 1 ): fact *= i # multiply upwards, +1 due to python indexing
     return ( fact )
 
   return ( int( factorial( N ) / ( factorial( k ) * factorial( N - k ) ) ) ) # N!/( k!*( N-k )! )
