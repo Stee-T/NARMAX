@@ -1,4 +1,3 @@
-# ###################################################### Imports #######################################################
 import numpy as np
 import torch as tor
 import matplotlib.pyplot as plt
@@ -19,17 +18,26 @@ from . import Morpher
 from .. import HelperFuncs as HF
 from ..Validation import InitAndComputeBuffer
 
-# ##################################################### Arbo Class #####################################################
-class Arborescence:
+# Typing
+from typing import Optional, Tuple, Sequence, Union, Callable, Any
+from numpy.typing import NDArray
 
-  # ***************************************************** Init *********************************************************
-  def __init__( self, y = None, Ds = None, DsNames = None, Dc = None, DcNames = None, # Fitting Data
-                tolRoot = 0.001, tolRest = 0.001, MaxDepth = 5, # Arbo size influencers: rho 1 & 2
-                ValFunc = None, ValData = None, # Validation function and Data
-                Verbose = False, # rFOrLSR progess feedback
-                MorphDict = None, U = None,# Morphing related stuff
-                FileName = None, SaveFrequency = 0 # Arbo Backup Parameters
+# #################################################################################### Arbo Class ###################################################################################
+class Arborescence:
+  # ##################################################################################### Init #####################################################################################
+  
+  def __init__( self, y: Optional[ tor.Tensor ] = None, # System Response / Data
+                Ds: Optional[ tor.Tensor ] = None, DsNames: Optional[ NDArray[ np.str_ ] ] = None, # User Imposed Regressors: Dictionary of selected regressors
+                Dc: Optional[ tor.Tensor ] = None, DcNames: Optional[ NDArray[ np.str_ ] ] = None, # Fitting Data: dictionary of candidates
+                tolRoot: Optional[ float ] = 0.001, tolRest: Optional[ float ] = 0.001, MaxDepth: Optional[ int ] = 5, # Arbo size influencers: rho 1 & 2 and max number of levels
+                ValFunc: Optional[ Callable[ [ NDArray[ np.float64 ], NDArray[ np.int64 ], NDArray[ np.float64 ], NDArray[ np.str_ ], dict[ str, Any ], Optional[ NDArray[ np.int64 ] ]], np.float64 ] ] = None,
+                ValData: Optional[ dict[str, Any] ] = None, # Validation Data
+                Verbose: Optional[ bool ] = False, # rFOrLSR progess feedback
+                MorphDict: Optional[ dict[str, Any] ] = None, U: Optional[ Union[ NDArray[ np.int64 ], Sequence[ int ] ] ] = None, # Morphing related stuff
+                FileName: Optional[ str ] = None, SaveFrequency: Union[ float, int ] = 0 # Arbo Backup Parameters
               ):
+    
+    
     '''
     Class CTor. Can be called without any arguments if the object is supposed to be filled by the load() function.
 
@@ -49,14 +57,14 @@ class Arborescence:
     - `MorphDict`: (None or dict) containing the morphing parameters (see below for full expected content)
     - `U`: (None or list of int >=0) containing the indices of all Dc columns allowed as candidate regressors
     - `FileName`: (None or str) containing the path and file name to save the backups into
-    - `SaveFrequency`: (None or float/int) containing the frequency in minutes at which to save the backups (10 = every 10 minutes)
+    - `SaveFrequency`: (float/int) containing the frequency in minutes at which to save the backups (10 = every 10 minutes)
 
     ### MorphDict content:
     - `NonLinMap`: (list of int) containing the non-linearity indices of all Dc columns allowed to be morphed (0 for no-morphing)
     ### TODO
     '''
 
-    # ------------------------------------------------------------------------------------------ Type checks ---------------------------------------------------------------------------------
+    # --------------------------------------------------------------------------------- Type checks --------------------------------------------------------------------------------
 
     if ( ( y is not None ) and ( not isinstance( y, tor.Tensor ) ) ):
       raise ValueError( "y must be None or a torch.Tensor" )
@@ -100,37 +108,36 @@ class Arborescence:
     if ( ( FileName is not None ) and ( not isinstance( FileName, str ) ) ):
       raise ValueError( "FileName must be None or a str" )
 
-    if ( ( SaveFrequency is not None ) and ( not isinstance( SaveFrequency, float ) ) and ( not isinstance( SaveFrequency, int ) ) ):
+    if ( ( not isinstance( SaveFrequency, float ) ) and ( not isinstance( SaveFrequency, int ) ) ):
       raise ValueError( "SaveFrequency must be None a float or an int" )
 
 
-    # ------------------------------------------------------------------------------------------ Store Passed Arguments ---------------------------------------------------------------------------------
+    # --------------------------------------------------------------------------- Store Passed Arguments ---------------------------------------------------------------------------
     # Copy everything into the class
 
     if ( y is not None ): # Only when initializing empty arbo when loading from a file
-      self.y = tor.ravel( y - tor.mean( y ) ) # flatski to (p,) vector for rFOrLSR
+      self.y: Optional[ tor.Tensor ] = tor.ravel( y - tor.mean( y ) ) # flatski to (p,) vector for rFOrLSR
       if ( tor.isnan( tor.sum( self.y ) ) ): raise AssertionError( "Your system output y somehow yields NaNs, Bruh. We don't like that here" )
-    else: self.y = None
+    else: self.y: Optional[ tor.Tensor ] = None
 
-    self.Ds = Ds
-    self.Dc = Dc # columnwise centering and duplicate removal performed below
-    self.DcMeans = None # Overwritten below, when Dc's non-redundant size (nC) is known after filtering duplicate regressors
-    self.DcNames = DcNames
-    self.DcFilterIdx = None # indexset of all non-duplicate regressors in Dc, computed below
-    self.DsNames = DsNames
-    self.tolRoot = tolRoot
-    self.tolRest = tolRest
-    self.MaxDepth = MaxDepth
-    self.ValFunc = ValFunc
-    self.ValData = ValData
-    self.Verbose = Verbose
-    self.MorphDict = MorphDict
-    self.FileName = FileName
-    self.SaveFrequency = SaveFrequency * 60 # transform from minutes into seconds
+    self.Ds: Optional[ tor.Tensor ] = Ds
+    self.Dc: Optional[ tor.Tensor ] = Dc # columnwise centering and duplicate removal performed below
+    self.DcMeans: Optional[ NDArray[ np.float64 ] ] = None # Overwritten below, when Dc's non-redundant size (nC) is known after filtering duplicate regressors
+    self.DcNames: Optional[ NDArray[ np.str_ ] ] = DcNames
+    self.DcFilterIdx: Optional[ NDArray[ np.int64 ] ] = None # indexset of all non-duplicate regressors in Dc, computed below
+    self.DsNames: Optional[ NDArray[ np.str_ ] ] = DsNames
+    self.tolRoot: Optional[ float ] = tolRoot
+    self.tolRest: Optional[ float ] = tolRest
+    self.MaxDepth: Optional[ int ] = MaxDepth if MaxDepth is not None else 5
+    self.ValFunc: Optional[ Callable[ [ NDArray[ np.float64 ], NDArray[ np.int64 ], NDArray[ np.float64 ], NDArray[ np.str_ ], dict[ str, Any ], Optional[ NDArray[ np.int64 ] ]], np.float64 ] ] = ValFunc
+    self.ValData: Optional[ dict[ str, Any ] ] = ValData
+    self.Verbose: Optional[ bool ] = Verbose
+    self.MorphDict: Optional[ dict[ str, Any ] ] = MorphDict
+    self.FileName: Optional[ str ] = FileName
+    self.SaveFrequency: Optional[ Union[ float, int ] ] = SaveFrequency * 60 # transform from minutes into seconds
     self.INT_TYPE = np.int64 # default, if no DC present to overwrite it (thus not used since it only affects the arbo search)
 
-    # ---------------------------------------------- Argument Processing -----------------------------------------------
-
+    # ----------------------------------------------------------------------------- Argument Processing ----------------------------------------------------------------------------
     # ~~~~~~~~~~~~ DC Stuff
     if ( self.DcNames is not None ): # needs to be checked first since used in Dc processing -if below
       if ( len( self.DcNames ) != self.Dc.shape[1] ): raise TypeError( "DcNames must be None or a np.array of the same length as Dc" )
@@ -141,7 +148,7 @@ class Arborescence:
       self.Dc, self.DcNames, self.DcFilterIdx = HF.RemoveDuplicates( self.Dc, self.DcNames )
       self.DcMeans = tor.mean( self.Dc, axis = 0, keepdims = True ) # Store the means ( needed by the Morpher )
       self.Dc -= self.DcMeans # Columnwise centering
-      self.nC = self.Dc.shape[1] # store the updated number of regressors before Morphing
+      self.nC: int = self.Dc.shape[1] # store the updated number of regressors before Morphing
 
       # Determe the numpy integer dtype necessary to hold the current nCols to reduce memory usage
       if   ( self.Dc.shape[1] <= np.iinfo( np.uint16 ).max ): self.INT_TYPE = np.uint16
@@ -155,7 +162,7 @@ class Arborescence:
 
     if ( self.Ds is None ):
       if ( self.y is not None ): self.Ds = tor.empty( ( len( y ), 0 ) ) # create empty matrix, avoids some if/elses
-      else:                      self.Ds = tor.empty( ( 0, 0 ) ) # No information on shape available, will be overwritten by load
+      else:                      self.Ds = tor.empty( ( 0, 0 ) ) # No information on shape available, will be overwritten by load()
       self.DsNames = np.empty( ( 0, ) )  # simplifies the code
     
     else: # A Ds is passed
@@ -164,7 +171,7 @@ class Arborescence:
       self.Ds -= tor.mean( Ds, axis = 0, keepdims = True ) # Columnwise centering
       self.Ds, self.DsNames = HF.RemoveDuplicates( self.Ds, self.DsNames )[:2]
     
-    self.nS = self.Ds.shape[1] # number of columns ( zero if above if is true )
+    self.nS: int = self.Ds.shape[1] # number of columns ( zero if above if is true )
 
 
     # ~~~~~~~~~~~~ Morphing Dictionary
@@ -173,51 +180,52 @@ class Arborescence:
       if ( self.Dc is None ): raise AssertionError( "No Dc passed, so no regressors can be morphed. For imposed fitting only, don't pass Dc" )
 
       if ( "NonLinMap" not in self.MorphDict ): raise AssertionError( "MorphDict is missing the key 'NonLinMap', so no information exists on which regressors should be morphed" )
-      self.MorphDict["NonLinMap"] = list( np.array( self.MorphDict["NonLinMap"] )[self.DcFilterIdx] ) # Take allowed morphing term set passed by the user and filter deleted duplicates
+      self.MorphDict["NonLinMap"] = list( np.array( self.MorphDict[ "NonLinMap" ] )[ self.DcFilterIdx ] ) # Take allowed morphing term set passed by the user and filter deleted duplicates
 
       if ( self.Dc is not None ): self.MorphDict["nC"] = self.Dc.shape[1] # store the updated (duplicate filtering) number of regressors before Morphing
       else:                       self.MorphDict["nC"] = 0 # no candidate regs if no Dc passed
 
 
     # ~~~~~~~~~~~~ Other Stuff
+    # TODO: This shuold probably use the default validation instead
     if ( self.ValFunc is None ): # default to explained variance if no validation function is passed
       self.ValFunc = lambda theta, L, ERR, RegNames, ValidationData: 1 - tor.sum( tor.tensor( ERR ) ) 
     
     if ( U is not None ):
       if ( len( U ) <= self.MaxDepth ): raise ValueError( "U must contain at least MaxDepth + 1 elements for the arborescence to have MaxDepth Levels" )
       # TODO: Update all U indices to take into consideration the Dc duplicate filtering
-      self.U = U # Take unused index set passed by the user
+      self.U: Union[ Sequence[ int ], NDArray[ np.int64 ] ] = U # Take unused index set passed by the user
 
-    else: self.U = [ j for j in range( self.nC ) ] # Nothing was passed, so assume entire dictionary (filtered of duplicates) can be used
+    else: self.U: Union[ Sequence[ int ], NDArray[ np.int64 ] ] = [ j for j in range( self.nC ) ] # Nothing was passed, so assume entire dictionary (filtered of duplicates) can be used
 
   
-    # ------------------------------------------------------------------------------------------------ Internal Data ---------------------------------------------------------------------------------
+    # -------------------------------------------------------------------------------- Internal Data -------------------------------------------------------------------------------
     # the following variables are only used if Dc is not None
 
-    self.Q = Queue.Queue()
-    self.LG = MultiKeyHashTable.MultiKeyHashTable()
+    self.Q: Queue.Queue = Queue.Queue()
+    self.LG: MultiKeyHashTable.MultiKeyHashTable = MultiKeyHashTable.MultiKeyHashTable()
 
-    self.Abort = False # Toggle activated at MaxDepth to finish regressions early
+    self.Abort: bool = False # Toggle activated at MaxDepth to finish regressions early
 
-    self.MinLen = [] # overwritten by first iteration
-    self.nNodesInNextLevel = 0 # Nodes in next level, overwritten by first iteration
-    self.nNodesInCurrentLevel = 0 # Nodes in current level, overwritten by first iteration
-    self.nComputed = 0 # Nodes computed in current level, stores the current tqdm state
+    self.MinLen: list[ int ] = [] # overwritten by first iteration
+    self.nNodesInNextLevel: int = 0 # Nodes in next level, overwritten by first iteration
+    self.nNodesInCurrentLevel: int = 0 # Nodes in current level, overwritten by first iteration
+    self.nComputed: int = 0 # Nodes computed in current level, stores the current tqdm state
 
     # For stats only ( not needed by the arbo):
-    self.TotalNodes = 1 # Nodes in the arbo ( starts at 1 since root counts )
-    self.nNotSkippedNodes = 0 # Actually computed regressions ( =0 is used to detect if fit is called for the first time or not )
-    self.AbortedRegs = 0 # Not OOIT - computed regressions, since longer than shortest known
+    self.TotalNodes: int = 1 # Nodes in the arbo ( starts at 1 since root counts )
+    self.nNotSkippedNodes: int = 0 # Actually computed regressions ( =0 is used to detect if fit is called for the first time or not )
+    self.AbortedRegs: int = 0 # Not OOIT - computed regressions, since longer than shortest known
 
-    # ------------------------------------------------------------------------------------------------ Results ---------------------------------------------------------------------------------
+    # ----------------------------------------------------------------------------------- Results ----------------------------------------------------------------------------------
     # Data of the regressor selected by the validation
-    self.theta = None # theta is None is used as verification if the validation function has been done, so no-touchy. Internally a tor.Tensor but returned to the user as ndarray
-    self.ERR = None # nd-array
-    self.L = None # nd-array
+    self.theta: Optional[ tor.Tensor ] = None # theta as None is used as verification if the validation function has been done, so no-touchy. Internally a tor.Tensor but returned to the user as ndarray
+    self.ERR: Optional[ NDArray[ np.float64 ] ] = None
+    self.L: Optional[ NDArray[ self.INT_TYPE ] ] = None
 
 
-  # *********************************************************************************************** Memory dump **********************************************************************************
-  def MemoryDump( self, nComputed ):
+  ################################################################################### Memory dump ##################################################################################
+  def MemoryDump( self, nComputed: int ):
     '''
     Dumps the current Arborescence into a pickle file to load it later with load().
     '''
@@ -264,52 +272,53 @@ class Arborescence:
     ProgressCount.close()
 
 
-  # *********************************************************************************************** Memory Load **********************************************************************************
-  def load( self, FileName, Print = True ): 
+  ################################################################################### Memory Load ##################################################################################
+  def load( self, FileName: str, Print: bool = True ): 
     ''' Loads the Arbo from a file pickled by the dill module into the calling Arbo object to continue the traversal
     
     ### Inputs:
     - `FileName`: (str) FileName to the pickle file
     - `Print`: (bool) Print some stats
     '''
+    # Note all the below values are strictly speaking optionals, however here they are guaranteed to have a value
 
     with open( FileName, 'rb' ) as file:
 
       # User Inputs:
-      self.y = dill.load( file )
-      self.Ds = dill.load( file )
-      self.DcMeans = dill.load( file )
-      self.Dc = dill.load( file )
-      self.DcNames = dill.load( file )
-      self.DcFilterIdx = dill.load( file )
-      self.DsNames = dill.load( file )
-      self.tolRoot = dill.load( file )
-      self.tolRest = dill.load( file )
-      self.MaxDepth = dill.load( file )
-      self.ValFunc = dill.load( file )
-      self.ValData = dill.load( file )
-      self.Verbose = dill.load( file )
-      self.MorphDict = dill.load( file )
-      self.U = dill.load( file )
-      self.FileName = dill.load( file )
-      self.SaveFrequency = dill.load( file )
+      self.y: Optional[ tor.Tensor ] = dill.load( file )
+      self.Ds: Optional[ tor.Tensor ] = dill.load( file )
+      self.DcMeans: Optional[ tor.Tensor ] = dill.load( file )
+      self.Dc: Optional[ tor.Tensor ] = dill.load( file )
+      self.DcNames: Optional[ NDArray[ np.str_ ] ] = dill.load( file )
+      self.DcFilterIdx: Optional[ NDArray[ int ] ] = dill.load( file )
+      self.DsNames: Optional[ NDArray[ np.str_ ] ] = dill.load( file )
+      self.tolRoot: Optional[ float ] = dill.load( file )
+      self.tolRest: Optional[ float ] = dill.load( file )
+      self.MaxDepth: Optional[ int ] = dill.load( file )
+      self.ValFunc: Optional[ Callable[ [ NDArray[ np.float64 ], NDArray[ np.int64 ], NDArray[ np.float64 ], NDArray[ np.str_ ], dict[ str, Any ], Optional[ NDArray[ np.int64 ] ]], np.float64 ] ] = dill.load( file )
+      self.ValData: Optional[ dict[ str, Any ] ] = dill.load( file )
+      self.Verbose: Optional[ bool ] = dill.load( file )
+      self.MorphDict: Optional[ dict[ str, Any ] ] = dill.load( file )
+      self.U: Union[ Sequence[ int ], NDArray[ np.int64 ] ] = dill.load( file )
+      self.FileName: Optional[ str ] = dill.load( file )
+      self.SaveFrequency: Optional[ Union[ float, int ] ] = dill.load( file )
       self.INT_TYPE = dill.load( file )
 
       # Processing Data
-      self.nC = dill.load( file )
-      self.nS = dill.load( file )
-      self.Q = dill.load( file )
-      self.LG = dill.load( file )
-      self.Abort = dill.load( file )
+      self.nC: int = dill.load( file )
+      self.nS: int = dill.load( file )
+      self.Q: Queue.Queue = dill.load( file )
+      self.LG: MultiKeyHashTable.MultiKeyHashTable  = dill.load( file )
+      self.Abort: bool = dill.load( file )
 
       # Arbo Statistics
-      self.MinLen = dill.load( file )
-      self.nNodesInNextLevel = dill.load( file )
-      self.nNodesInCurrentLevel = dill.load( file )
-      self.nComputed = dill.load( file )
-      self.TotalNodes = dill.load( file )
-      self.nNotSkippedNodes = dill.load( file )
-      self.AbortedRegs = dill.load( file )
+      self.MinLen: list[ int ] = dill.load( file )
+      self.nNodesInNextLevel: int = dill.load( file )
+      self.nNodesInCurrentLevel: int = dill.load( file )
+      self.nComputed: int = dill.load( file )
+      self.TotalNodes: int = dill.load( file )
+      self.nNotSkippedNodes: int = dill.load( file )
+      self.AbortedRegs: int = dill.load( file )
 
       if ( Print ): # print some stats
         print( "\nTolerance: " + str(self.tolRest), "\nArboDepth:", self.MaxDepth, "\nCurrent Dict-shape:", self.Dc.shape,
@@ -318,8 +327,9 @@ class Arborescence:
         for i in range( len( self.Q.peek() ) ): print( f"Level { i }: { self.MinLen[i] }" ) 
         print() # print empty line
 
-  # ************************************************************************************** rFOrLSR **************************************************************************************
-  def rFOrLSR( self, y, Ds = None, Dc = None, U = None, tol = 0.001, MaxTerms = tor.inf, OutputAll = False, LI = None ):
+  ##################################################################################### rFOrLSR ####################################################################################
+  def rFOrLSR( self, y: tor.Tensor, Ds: Optional[ tor.Tensor ] = None, Dc: Optional[ tor.Tensor ] = None, U: Optional[ Sequence[ int ] ] = None,
+               tol: float = 0.001, MaxTerms: Union[ int, float ] = tor.inf, OutputAll: bool = False, LI: Optional[ Sequence[ int ] ] = None ):
     '''
     Recursive Forward Orthogonal Regression function with imposed regressors capabilities expecting the regressors to be computed in advance and h-stacked in a regressor torch.Tensor.
     The Ds ( pre-selected dictionary ) regressors (if present) are automatically accepted and orthogonalized in appearance order, then regressors selection is performed on Dc's columns
@@ -350,8 +360,8 @@ class Arborescence:
     - `ERR`: ( (nr,)-array of float ) containing the Error reduction ratios of all selected regressors ( Ds then Dc ), empty array if regression aborted
     '''
 
-    # ------------------------------------------------------------------------------------ 0. Init --------------------------------------------------------------------------------
-    MatSize = 0 # Solution matrix shape
+    # ----------------------------------------------------------------------------------- 0. Init ----------------------------------------------------------------------------------
+    MatSize: int = 0 # Solution matrix shape
     # all declared here since part of the output
     if ( self.Verbose ): ProgressCount = tqdm.tqdm( desc = "Current Regression", leave = False, unit = " Regressors" ) # define measuring progress bar
     
@@ -367,17 +377,17 @@ class Arborescence:
 
     if ( MatSize == 0 ): raise AssertionError( "Dc and Ds are None, thus no regressors were passed for the algorithm to process" )
     
-    L = [] # set of used regressor indices, needed for the output, even if Dc is None
-    A = [] # Custom sparse martix for unitriangular matrices, storing only the upper diagonal elements in a list
-    s2y = (y @ y).item() # mean free observation empiric variance
+    L: list[ int ] = [] # set of used regressor indices, needed for the output, even if Dc is None
+    A: list[ list[ int ] ] = [] # Custom sparse martix for unitriangular matrices, storing only the upper diagonal elements in a list
+    s2y: float = ( y @ y ).item() # mean free observation empiric variance
     ERR = [] # list of Error reduction ratios of all selected regressors ( Dc and Ds )
-    s = 1 # iteration/column count ( 1 since zero-based but only used at 1nd iteration = loop )
-    W = [] # Orthogonalized regressors coefficients
-    Psi = tor.empty( ( len( y ), 0 ) ); Psi_n = tor.empty( ( len( y ), 0 ) ) # Create empty ( p,0 )-sized matrices to simplify the code below
+    s: int = 1 # iteration/column count ( 1 since zero-based but only used at 1nd iteration = loop )
+    W: list[ float ] = [] # Orthogonalized regressors coefficients
+    Psi: tor.Tensor = tor.empty( ( len( y ), 0 ) ); Psi_n: tor.Tensor = tor.empty( ( len( y ), 0 ) ) # Create empty ( p,0 )-sized matrices to simplify the code below
     
     MOut = None # for the verification in case it's not overwritten by the morphing
 
-    #  ----------------------------------------------------------------------- 1. Imposed regressors orthogonalization ------------------------------------------------------------------------
+    # ------------------------------------------------------------------- 1. Imposed regressors orthogonalization ------------------------------------------------------------------
     
     if ( Ds is not None ): # A matrix was passed as Ds, thus there are pre-selected regressors which are taken in order
       # First iteration treated separately since no orthogonalization and no entry in A, and requires some reshapes
@@ -404,7 +414,7 @@ class Arborescence:
 
     # Term selecting iteration with orthogonalization
     if ( Dc is not None ):
-      # ---------------------------------------------------- 2. First iteration treated separately since no orthogonalization -----------------------------------------------------------
+      # ----------------------------------------------------- 2. First iteration treated separately since no orthogonalization -----------------------------------------------------
       if ( Ds is not None ): Omega = Dc[:, U] - Psi_n @ ( Psi.T @ Dc[:, U] ) # orthogonalize Dc w.r.t Ds
       else: Omega = Dc[:, U] # If no imposed term start with unorthogonalized dictionary
       
@@ -440,7 +450,7 @@ class Arborescence:
       U.remove( U[ell] ) # update unused indices list
       if ( self.Verbose ): ProgressCount.update()
 
-      # ------------------------------------------------------------------------ 3. Optimal regressor search loop ---------------------------------------------------------------------------
+      # --------------------------------------------------------------------- 3. Optimal regressor search loop ---------------------------------------------------------------------
       while ( ( 1 - np.sum( ERR ) > tol ) and ( s < MatSize ) ): # while not enough variance explained ( empty lists sum to zero ) and still regressors available ( nS + nC )
         
         if ( ( self.Abort and ( s > MaxTerms ) )): # for leaf nodes only
@@ -465,14 +475,14 @@ class Arborescence:
             self.MorphDict["DcNames"].append( MOut[2] ) # Parse Morphing Output
             L.append( Dc.shape[1] ) # append newly added Regressor
             Dc = tor.column_stack( ( Dc, MOut[1] ) ) # append morphed term to dictionary ( unorthogonalized )
-            Reg = MOut[1] - Psi_n @ ( Psi.T @ MOut[1] ) # orthogonalize ( no reshape needed )
-            n_Reg = HF.Norm2( Reg )  # squared euclidean norm of Reg or fudge factor
+            Reg: tor.Tensor = MOut[1] - Psi_n @ ( Psi.T @ MOut[1] ) # orthogonalize ( no reshape needed )
+            n_Reg: Union[ float, tor.Tensor ] = HF.Norm2( Reg )  # squared euclidean norm of Reg or fudge factor
 
         if ( ( self.MorphDict is None ) or ( MOut is None ) ): # no morphing, since either 1 ) deactivated or 2 ) not morphable
           L.append( U[ell] ) # add the unmorphed = original term to the regression
-          Reg = Omega[:, ell] # selected regressor
+          Reg: tor.Tensor = Omega[:, ell] # selected regressor
           if ( len( U ) > 1 ): n_Reg = n_Omega[0, ell].item() # selected Regressor norm
-          else: n_Reg = n_Omega # TODO check what's going on # must be an array not an int, holds for length zero and 1
+          else: n_Reg: Union[ float, tor.Tensor ] = n_Omega # TODO check what's going on # must be an array not a float, holds for length zero and 1
           # else: n_Reg = tor.tensor( [[n_Omega]] ) # must be an array not an int, holds for length zero and 1
 
         # 2. Data storage
@@ -486,7 +496,7 @@ class Arborescence:
         s += 1 # increment the A-matrix column count
         if ( self.Verbose ): ProgressCount.update()
          
-    # ------------------------------------------------------------------------ 4. Output generation ---------------------------------------------------------------------------
+    # ---------------------------------------------------------------------------- 4. Output generation ----------------------------------------------------------------------------
     if ( self.Verbose ): ProgressCount.close() # close tqdm counter
 
     if ( ( s > MaxTerms ) or ( OutputAll == False ) ):
@@ -496,13 +506,13 @@ class Arborescence:
       return ( HF.SolveSystem( A, W ), np.array( L, dtype = self.INT_TYPE ), np.array( ERR ) ) # R[4/4] return regression coeffs theta and used regressor names ( only selected from Dc )
 
 
-  # *********************************************************************************************** Actual ADMOrLSR Algorithm **********************************************************************************
-  def fit( self, FileName = None, SaveFrequency = 0 ):
+  ############################################################################ Actual ADMOrLSR Algorithm ###########################################################################
+  def fit( self, FileName: Optional[ str ] = None, SaveFrequency: Union[ int, float ] = 0 ):
     '''Breadth-first Search Arborescent rFOrLSR (AOrLSR)
     
     ### Inputs:
     - `FileName`: (None or str) FileName to the pickle file
-    - `SaveFrequency`: (int) frequency in seconds of saving the Arborescence content ( default: 0 for no saving)
+    - `SaveFrequency`: (int or float) frequency in seconds of saving the Arborescence content ( default: 0 for no saving)
     
     ### Output:
     (returns the validation/get_Results function)
@@ -520,13 +530,13 @@ class Arborescence:
       raise ValueError( "SaveFrequency must be an integer or a float" )
     
     if ( SaveFrequency < 0 ): raise ValueError( "SaveFrequency cannot be negative" )
-    else:                     self.SaveFrequency = SaveFrequency * 60 # overwrite if given, munlt by 60 to make it minutes
+    else:                     self.SaveFrequency = int( SaveFrequency ) * 60 # overwrite if given, munlt by 60 to make it minutes
 
     if ( FileName is not None ):
       if ( not isinstance( FileName, str ) ): raise ValueError( "FileName must be a string containing the pickle file" )  
       self.FileName = FileName # overwrite if given
 
-    # --------------------------------------------------------------------------------- Traversal Init ----------------------------------------------------------------------------
+    # ------------------------------------------------------------------------------- Traversal Init -------------------------------------------------------------------------------
     # Root Computation
     
     if ( self.Q.is_empty() and ( self.nNotSkippedNodes == 0 ) ): # only true if Arbo non-initialized (or if someone loads an ended arbo from a file, but what's the point?)
@@ -554,11 +564,11 @@ class Arborescence:
     
     ProgressBar = tqdm.tqdm( total = self.nNodesInCurrentLevel, desc = f"Arborescence Level { len( self.Q.peek() ) }", unit = " rFOrLSR" )  # Initialise progrssbar with known total number of iterations of first level 
     ProgressBar.update( self.nComputed ) # insert the correct progress
-    StartTime = timeit.default_timer() # start time counter for memory dumps
+    StartTime: float = timeit.default_timer() # start time counter for memory dumps
 
-    # --------------------------------------------------------------------------------- Arborescence Traversal ----------------------------------------------------------------------------
+    # --------------------------------------------------------------------------- Arborescence Traversal ---------------------------------------------------------------------------
     while ( not self.Q.is_empty() ):
-      LI = self.Q.get() # retrieve the next imposed index-set
+      LI: NDArray[ np.int64 ] = self.Q.get() # retrieve the next imposed index-set
 
       if ( ( self.SaveFrequency > 0 ) and ( timeit.default_timer() - StartTime > self.SaveFrequency ) ):
         self.MemoryDump( ProgressBar.n ) # Backup
@@ -572,7 +582,7 @@ class Arborescence:
       if ( ellG == [] ): # This indexset isn’t equal to a previous one, else pass and use returned index
         self.nNotSkippedNodes += 1 # just for statistics not needed for regression
 
-        U_tmp = self.U.copy() # copy required since else self.U is modified when passed to a function
+        U_tmp: list[ int ] = self.U.copy() # copy required since else self.U is modified when passed to a function
         for li in LI: 
           if ( li < self.nC ): U_tmp.remove( li ) # remove imposed indices, only not morphed regressors which are not present anyways ( they are however imposed, see above )
 
@@ -621,8 +631,8 @@ class Arborescence:
     if ( self.SaveFrequency > 0 ): self.MemoryDump( ProgressBar.n ) 
     return ( self.validate() ) # call validation member function itself calling the user vaildation function
 
-  # ***************************************** Best Model selection / Validation *****************************************
-  def validate( self ):
+  ######################################################################## Best Model selection / Validation #######################################################################
+  def validate( self ) -> Tuple[ NDArray[ np.float64 ], NDArray[ np.int64 ], NDArray[ np.float64 ], dict[str, Any], tor.Tensor, NDArray[ np.str_ ] ]:
     ''' "least regressors = selected" heuristics from iFOrLSR paper wich adds a selection based on the minimal MAE.
     Note: This function can be used to get intermediate results during an arborescence traversal since the search data is not overwritten.
 
@@ -646,15 +656,15 @@ class Arborescence:
           
           if ( self.Dc is not None ):
             theta, _, ERR, = self.rFOrLSR( self.y, tor.column_stack( ( self.Ds, self.Dc[:, reg.astype( np.int64 )] ) ), None, None, None, OutputAll = True )
-            RegNames = np.concatenate( ( self.DsNames, np.ravel( self.DcNames[reg] ) ) ) # pass only selected regressors' RegNames
+            RegNames: NDArray[ np.str_ ] = np.concatenate( ( self.DsNames, np.ravel( self.DcNames[reg] ) ) ) # pass only selected regressors' RegNames
           else: # for regression with imposed regressors only (no Dc)
             theta, _, ERR, = self.rFOrLSR( self.y, self.Ds, None, None, None, OutputAll = True )
-            RegNames = self.DsNames
+            RegNames: NDArray[ np.str_ ] = self.DsNames
           
-          if ( self.ValData is None ): Error = 1 - np.sum( ERR ) # take ERR if no validation dictionary is passed
-          else:                        Error = self.ValFunc( theta, reg, ERR, RegNames, self.ValData, self.DcFilterIdx ) # compute the passed custom error metric
+          if ( self.ValData is None ): Error: float = 1 - np.sum( ERR ) # take ERR if no validation dictionary is passed
+          else:                        Error: float = self.ValFunc( theta, reg, ERR, RegNames, self.ValData, self.DcFilterIdx ) # compute the passed custom error metric
 
-          if ( Error < MinError ): MinError = Error; self.theta = theta; self.L = reg.astype( np.int64 ); self.ERR = ERR # update best model
+          if ( Error < MinError ): MinError: float = Error; self.theta = theta; self.L = reg.astype( np.int64 ); self.ERR = ERR # update best model
 
     if ( MinError == tor.inf ):
       print( "\n\nValidation failed: All regressions yield inf as validation error. Outputtng one of minimal length\n\n" )
@@ -667,8 +677,8 @@ class Arborescence:
     return ( self.get_Results() )
 
 
-  # ******************************************** regression results getter *********************************************
-  def get_Results( self ):
+  ############################################################################ Regression Results getter ###########################################################################
+  def get_Results( self ) -> Tuple[ NDArray[ np.float64 ], NDArray[ np.int64 ], NDArray[ np.float64 ], dict[str, Any], tor.Tensor, NDArray[ np.str_ ] ]:
     ''' Returns the Arborescence results.
     
     ### Outputs:
@@ -684,8 +694,8 @@ class Arborescence:
     return ( self.theta.cpu().numpy(), self.L, self.ERR, self.MorphDict, self.Dc, self.DcNames )
   
 
-  # *************************************************************************** Helper function changing the Arbo depth if possible ***********************************************************************
-  def set_ArboDepth( self, Depth ):
+  ############################################################### Helper function changing the Arbo depth if possible ##############################################################
+  def set_ArboDepth( self, Depth: int ) -> None:
     '''Performs verifications before deciding if changing the Arbo depth is a good plan.'''
     # The order of the following checks is important to output the real error, as conditions overlap.
     if ( Depth < 0 ):                    raise AssertionError( "Depth can't be negative" )
@@ -699,8 +709,8 @@ class Arborescence:
     self.MaxDepth = Depth # nothing talks against it, if we arrived until here :D
 
 
-  # ************************************************** Plot and Print **************************************************
-  def PlotAndPrint( self, ValData, PrintRegressor = True ):
+  ################################################################################## Plot and Print ################################################################################
+  def PlotAndPrint( self, ValData: dict[str, Any], PrintRegressor: bool = True ):
     ''' Function displaying the regression results in form of two plots (1. Signal comparison, 2. Error distribution) and printing the regressors and their coefficients.
     The second plot (ERR vs MEA) is slightly meaning-less since the ERR and the MAE reduction of each term depends on their position in the BVS.
     Also their order in the BVS is arbitrary since imposed and sorted by the AOrLSR but whatever.
@@ -713,20 +723,20 @@ class Arborescence:
     if ( self.L is None ): raise AssertionError( "The fitting hasn't been finished, thus no regression results are available."
                                                  "To get intermediate results, trigger the validation procedure" )
 
-    # ------------------------------------------- Figure 1. Signal comparison ------------------------------------------
+    # ------------------------------------------------------------------------- Figure 1. Signal comparison ------------------------------------------------------------------------
 
-    if ( self.Dc is not None ): RegNames = np.concatenate( ( self.DsNames, np.ravel( self.DcNames[ self.L ] ) ) ) # avoids incorrect indexation with L.shape == (0,) and Dc = None
-    else:                       RegNames = self.DsNames # only a Ds exists
+    if ( self.Dc is not None ): RegNames: NDArray[ np.str_ ] = np.concatenate( ( self.DsNames, np.ravel( self.DcNames[ self.L ] ) ) ) # avoids incorrect indexation with L.shape == (0,) and Dc = None
+    else:                       RegNames: NDArray[ np.str_ ] = self.DsNames # only a Ds exists
   
     # Initialize the model
-    if ( "OutputVarName" not in ValData.keys() ): OutputVarName = "y" # default if not passed
-    else:                                         OutputVarName = ValData["OutputVarName"]
+    if ( "OutputVarName" not in ValData.keys() ): OutputVarName: str = "y" # default if not passed
+    else:                                         OutputVarName: str = ValData["OutputVarName"]
 
-    Model = SymbolicOscillator( ValData["InputVarNames"], ValData["NonLinearities"], RegNames, self.theta, OutputVarName )
-    yHat = InitAndComputeBuffer( Model, ValData["y"][0], ValData["Data"][0] )
+    Model: SymbolicOscillator = SymbolicOscillator( ValData["InputVarNames"], ValData["NonLinearities"], RegNames, self.theta, OutputVarName )
+    yHat: tor.Tensor = InitAndComputeBuffer( Model, ValData["y"][0], ValData["Data"][0] )
 
-    yNorm = tor.max( tor.abs( ValData["y"][0] ) ) # Compute Model, norming factor to keep the display in % the the error
-    Error = ( ValData["y"][0] - yHat ) / yNorm # divide by max abs to norm with the max amplitude
+    yNorm: float = tor.max( tor.abs( ValData["y"][0] ) ).item() # Compute Model, norming factor to keep the display in % the the error
+    Error: tor.Tensor = ( ValData["y"][0] - yHat ) / yNorm # divide by max abs to norm with the max amplitude
     
     # Metrics
     AbsError = tor.abs( Error )
@@ -753,14 +763,14 @@ class Arborescence:
     Ax[1].grid( which = 'both', alpha = 0.5 )
     Fig.tight_layout() # prevents the plot from clipping ticks
     
-    # ----------------------------------- Figure 2. ERR stem plots with MAE reduction ----------------------------------
+    # ----------------------------------------------------------------- Figure 2. ERR stem plots with MAE reduction ----------------------------------------------------------------
     # Arg Sort ERR and impose same order on L
-    MAE = [] # list containing the MAE values from the models progressively build up
-    Order = np.flip( np.argsort( self.ERR ) )
-    SortedERR = self.ERR[ Order ]; RegNames = RegNames[Order] # impose same order on all datastructures
+    MAE: list[ float ] = [] # list containing the MAE values from the models progressively build up
+    Order: NDArray[ np.int64 ] = np.flip( np.argsort( self.ERR ) )
+    SortedERR: NDArray[ np.float64 ] = self.ERR[ Order ]; RegNames: NDArray[ np.str_ ] = RegNames[ Order ] # impose same order on all datastructures
     
-    if ( self.Dc is not None ): Imposed = tor.column_stack( ( self.Ds, self.Dc[:, self.L[ Order ] ] ) ) # invalid indexation if Dc is empty or None
-    else:                       Imposed = self.Ds
+    if ( self.Dc is not None ): Imposed: tor.Tensor = tor.column_stack( ( self.Ds, self.Dc[:, self.L[ Order ] ] ) ) # invalid indexation if Dc is empty or None
+    else:                       Imposed: tor.Tensor = self.Ds
 
     # The procedure doesn't discriminate between Ds and Dc, since Ds might also contain AR terms which must thus be processed
     for i in tqdm.tqdm( range( 1, SortedERR.shape[0] + 1 ), desc = "MAE: Estimating Sub-Models ", leave = False ):
@@ -785,7 +795,7 @@ class Arborescence:
     Fig2.tight_layout() # prevents the plot from clipping ticks
     plt.subplots_adjust( hspace = 0.001 )
     
-    # ------------------------------------------------ Console Printing ------------------------------------------------
+    # ------------------------------------------------------------------------------ Console Printing ------------------------------------------------------------------------------
     # print summary to console
     print( Imposed.shape[1], "Terms yielding an Mean absolute Error (MAE) of", MeanAbsErrorStr + "% and a maximal deviation of", MaxDeviationStr +
           "% and a Median Absolute Deviation (MAD) of", MedianAbsDerivationStr )

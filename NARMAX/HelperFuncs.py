@@ -14,21 +14,24 @@ The danger is unleashed only if you substantially disturb this place physically.
 import torch as tor # general operations
 import numpy as np # needed for the duplicate elimination
 
-# ***************************************************************************** Set Tensortype And Device  ******************************************************************************
+from typing import Sequence, Union
+from numpy.typing import NDArray
+
+############################################################################# Set Tensortype And Device ############################################################################
 def Set_Tensortype_And_Device() -> str:
   '''Set the default dtype and device for torch tensors. Returns the device string for further use.
   
   ### Outputs
   - Device: String, either "cpu", "mps", "vulkan", "opencl" or "cuda"
   '''
-  if ( tor.cuda.is_available() ):            Device = "cuda" # force new tensors to be on GPU
-  elif ( tor.backends.mps.is_available() ):  Device = "mps" # M1/M2 Macs
-  # elif ( tor.has_opencl() ):                     Device = "opencl"  # Devices with OpenCL support
-  # elif ( tor.backends.vulkan.is_available() ): Device = "vulkan"  # Vulkan devices
-  # elif ( tor.backends.mkl.is_available() ):    Device = "mkl" # Intel MKL backend
+  if ( tor.cuda.is_available() ):            Device: str = "cuda" # force new tensors to be on GPU
+  elif ( tor.backends.mps.is_available() ):  Device: str = "mps" # M1/M2 Macs
+  # elif ( tor.has_opencl() ):                     Device: str = "opencl"  # Devices with OpenCL support
+  # elif ( tor.backends.vulkan.is_available() ): Device: str = "vulkan"  # Vulkan devices
+  # elif ( tor.backends.mkl.is_available() ):    Device: str = "mkl" # Intel MKL backend
   else:
     print( "\n\nYour python installation didn't detect a hardware-accelerator (CUDA, MPS, Vulkan), so this will run on CPU which is a lot slower\n\n" )
-    Device = "cpu" # force new tensors to be on CPU
+    Device: str = "cpu" # force new tensors to be on CPU
   
   tor.set_default_device( Device )
   tor.set_default_dtype( tor.float64 ) # force new tensors to be 64-bit floats irrespective of CPU/GPU/M1/M2
@@ -36,8 +39,8 @@ def Set_Tensortype_And_Device() -> str:
   return ( Device )
   
 
-# *********************************************************************************** Combinations ****************************************************************************************
-def Combinations( N: int, k: int ):
+#################################################################################### Combinations ##################################################################################
+def Combinations( N: int, k: int ) -> int:
   '''From N chose k for positive values only'''
   if ( k > N ): return ( 0 ) # property of the operator
   if ( k < 0 or N < 0 ): raise ValueError( "N or k is negative, which is not supported" )
@@ -50,13 +53,13 @@ def Combinations( N: int, k: int ):
   return ( int( factorial( N ) / ( factorial( k ) * factorial( N - k ) ) ) ) # N!/( k!*( N-k )! )
 
 
-# *********************************************************************************** CutY ****************************************************************************************
-def CutY( y, Lags ):
+####################################################################################### CutY #######################################################################################
+def CutY( y: tor.Tensor, Lags: Union[ int, Sequence[ int ] ] ) -> tor.Tensor:
   '''Function to trim the y vector data to the maximum lag in Lags. The front is cut as would do the Lagger CTor
   
   ### Inputs
   - y: (1D torch tensor) containing the system output
-  - Lags: (int or iterable of ints) containing the maximum lags of each system input
+  - Lags: (int or sequence of ints) containing the maximum lags of each system input
   
   ### Outputs
   - y: (1D torch tensor) cut to Maxlags
@@ -68,30 +71,30 @@ def CutY( y, Lags ):
   q = 0 # Maximum lag to trim all regressors to
   for lag in Lags:
     if ( isinstance( lag, int ) ): q = max( q, lag )
-    else:                          q = max( q, max( lag ) ) # iterable can contain whatever
+    else:                          q = max( q, max( lag ) ) # sequence can contain whatever
 
   return ( y[ q : ] )
 
-# ****************************************************************************** Squared norm function ********************************************************************************
-def Norm2( x, epsilon = 1e-12 ):
+############################################################################### Squared norm function ##############################################################################
+def Norm2( x: tor.Tensor, epsilon: float = 1e-12 ) -> Union[ float, tor.Tensor ]:
   ''' Dimension aware Squared euclidean norm, more efficient than using tor.norm and squaring due to no sqrt. Overwrites with fudge factor since norm are used as divisions'''
   if ( ( x.ndim == 1 ) or ( x.ndim == 2 and x.shape[1] == 1 ) ): return ( max( [tor.sum( x**2 ).item(), epsilon] ) ) # Single (p,)-array or column ( p,1 ) array, return scalar
   if ( x.ndim == 2 ):
-    Out = tor.sum( x**2, axis = 0, keepdims = True ) # columnwise for matrices, return ( 1,n ) array being one norm per column
+    Out: tor.Tensor = tor.sum( x**2, axis = 0, keepdims = True ) # columnwise for matrices, return ( 1,n ) array being one norm per column
     Out[Out < epsilon] = epsilon # replace near zero values by a fudge factor to prevent division by zero
     return ( Out )
   else: raise AssertionError( "This function isn't supposed to get any tensors of degree > 2" )
 
 
-# ************************************************************************************************ Column deleter function (used by recusrive FOrLSr matrix update) ********************************************************************************
-def DeleteColumn( Tensor, index ):
+########################################################## Column deleter function (used by recusrive FOrLSr matrix update) ########################################################
+def DeleteColumn( Tensor: tor.Tensor, index: int ) -> tor.Tensor:
   '''Deletes a column from a torch tensor, since that doesn't seem to exist in pytorch'''
   if ( index == Tensor.shape[1] - 1 ): return ( Tensor[:, :-1] ) # exclude last column
   else: return ( tor.hstack( (Tensor[:, :index], Tensor[:, index+1:]) ) ) # concat around missing column
 
 
-# ************************************************************************************************ SolveSuystem (used by recusrive FOrLSr) ********************************************************************************
-def SolveSystem( A_List, W ):
+###################################################################### SolveSuystem (used by recusrive FOrLSr) #####################################################################
+def SolveSystem( A_List: list[ tor.Tensor ], W: list[ float ] ) -> tor.Tensor:
   '''Gets A in the 1-tensor per column format and solves the sparse upper unitriangular system.
   
   ### Output:
@@ -99,13 +102,13 @@ def SolveSystem( A_List, W ):
 
   A_Mat = tor.eye( len( A_List ) + 1 ) # square matrix, has one more row+col than A_List, since the first entry is a 1 ( unidiagonal )
   for col in range( 1, A_Mat.shape[1] ): A_Mat[:col, col] = tor.ravel( A_List[col-1] ) # Copy into upper triangular matrix
-  theta = tor.linalg.solve_triangular( A_Mat, tor.tensor( W ).view(-1,1), upper = True, unitriangular = True ) # Get regressor coefficients
+  theta: tor.Tensor = tor.linalg.solve_triangular( A_Mat, tor.tensor( W ).view(-1,1), upper = True, unitriangular = True ) # Get regressor coefficients
 
   return ( tor.ravel( theta ) )
 
 
-# ************************************************************************************************ RemoveDuoplicates ********************************************************************************
-def RemoveDuplicates( RegMat, RegNames ):
+################################################################################# Remove Duplicates ################################################################################
+def RemoveDuplicates( RegMat: tor.Tensor, RegNames: NDArray[ np.str_ ] ) -> tuple[ tor.Tensor, NDArray[ np.str_ ], NDArray[ np.int64 ] ]:
   '''This function is required since torch unique sorts the data (might change though)
   ### Inputs:
   - `RegMat`: ( ( n, p )-sized float torch tensor ) containing the regressors columnwise
@@ -117,10 +120,10 @@ def RemoveDuplicates( RegMat, RegNames ):
   - `DcFilterIdx`: Indexset of the remaining regressors
   '''
   # Clean the dictionary of equivalent entries to speed up the search and avoid ( +inf - inf ) problems during fitting
-  nCols = RegMat.shape[1]
-  TempData = ( RegMat.cpu().numpy() ).T # copy to CPU memory (if necessary) and Cast to numpy
+  nCols: int = RegMat.shape[1]
+  TempData: NDArray[ np.float64 ] = ( RegMat.cpu().numpy() ).T # copy to CPU memory (if necessary) and Cast to numpy
   b = np.ascontiguousarray( TempData ).view( np.dtype( ( np.void, TempData.dtype.itemsize * TempData.shape[1] ) ) ) # black magic recast
-  _, DcFilterIdx, indices = np.unique( b, return_index = True, return_inverse = True )
+  _, DcFilterIdx, _ = np.unique( b, return_index = True, return_inverse = True )
   DcFilterIdx = np.sort( DcFilterIdx ) # keep the original Data order
 
   if ( len( DcFilterIdx ) < nCols ): # Dictionary (Ds or Dc) was filtered, warn user.
@@ -130,13 +133,13 @@ def RemoveDuplicates( RegMat, RegNames ):
   return ( ( RegMat.T[DcFilterIdx] ).T, RegNames[DcFilterIdx], DcFilterIdx ) # Apply filter on original GPU tensor
 
 
-# ******************************************************************************************** All Combinations ********************************************************************************************
-def AllCombinations( ImposedRegs, InputSeq, INT_TYPE ): 
+################################################################################# All Combinations #################################################################################
+def AllCombinations( ImposedRegs: NDArray[ np.int64 ], InputSeq: NDArray[ np.int64 ], INT_TYPE: np.dtype ) -> NDArray[ np.int64 ]: 
   '''Helper function creating all combiantions of imposed Regressors to construct the current node's children. Assumes that InputSeq has been flattened'''
   InputSeq = np.setdiff1d( InputSeq, ImposedRegs, True ) # make sure InputSeq doesn't contain the imposed terms (only needed for OOIT-predicted matches)
   # TODO this works but verify that OOIT predicted matches have the property that the imposed terms aren't necessary in the beginning
 
-  Out = np.empty( ( len( InputSeq ), len( ImposedRegs ) + 1 ), dtype = INT_TYPE ) # dimensions are ( nNewRegressors=nCombinations, Combination lengh )
+  Out: NDArray[ np.int64 ] = np.empty( ( len( InputSeq ), len( ImposedRegs ) + 1 ), dtype = INT_TYPE ) # dimensions are ( nNewRegressors=nCombinations, Combination lengh )
   Out[:, :-1] = ImposedRegs # all rows start with the imposed terms
   Out[:, -1] = InputSeq # the last columns are the new regressors
   return ( Out )

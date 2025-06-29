@@ -4,11 +4,15 @@ import torch as tor
 from .Classes.NonLinearity import NonLinearity # for typechecking
 from .Classes.SymbolicOscillator_0_3 import SymbolicOscillator # for Default Validation
 
-# ############################################ Compute NARMAX Output #############################################
-def InitAndComputeBuffer( Model, y, Data ):
+from typing import Optional, Sequence, Any
+from numpy.typing import NDArray
+from numpy import float64, int64, str_ # for typechecking only no numpy dependency here
+
+############################################################################### Compute NARMAX Output ##############################################################################
+def InitAndComputeBuffer( Model: SymbolicOscillator, y: tor.Tensor, Data: list[ tor.Tensor ] ) -> tor.Tensor:
   '''Helper function initializing the NARMAX model and generating its output from the passed data.'''
 
-  StartIdx = max( Model.get_MaxNegOutputLag(), Model.get_MaxNegInputLag() ) # essentially q = max(qx, qy) as usual
+  StartIdx: int = max( Model.get_MaxNegOutputLag(), Model.get_MaxNegInputLag() ) # essentially q = max(qx, qy) as usual
 
   Model.set_OutputStorage( y[ : Model.get_MaxNegOutputLag() ].clone() ) # set previous y[k-j] states
   Model.set_InputStorage( tor.vstack( [ input[ : Model.get_MaxNegInputLag() ] for input in Data ] ) ) # set previous phi[k-j] states
@@ -19,8 +23,9 @@ def InitAndComputeBuffer( Model, y, Data ):
   
   return ( yHat )
 
-# ############################################ Default Validation procedure #############################################
-def DefaultValidation( theta, L, ERR, RegNames, ValData, DcFilterIdx = None ):
+############################################################################ Default Validation procedure ##########################################################################
+def DefaultValidation( theta: NDArray[ float64 ], L: NDArray[ int64 ], ERR: NDArray[ float64 ], RegNames: NDArray[ str_ ],
+                      ValData: dict[ str, Any ], DcFilterIdx: Optional[ NDArray[ int64 ] ] = None ) -> float64:
   '''
   Default Validation function based on time domain MAE.
   
