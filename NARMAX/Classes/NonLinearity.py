@@ -1,9 +1,9 @@
 import torch as tor
 
 class NonLinearity:
-  def __init__( self, Name, f, fPrime = None, fSecond = None, IsMorphable = True ):
+  ###################################################################################### Init ######################################################################################
+  def __init__( self, Name, f, fPrime = None, fSecond = None, IsMorphable = None ):
 
-    # Check if the passed string is non-empty
     if ( ( not Name ) or ( not isinstance( Name, str ) ) ): raise ValueError( "Name must be a non-empty string." )
 
 
@@ -57,10 +57,20 @@ class NonLinearity:
     self.fPrime = fPrime
     self.fSecond = fSecond
 
-    if ( ( fPrime is None ) or ( fSecond is None ) ): self.IsMorphable = False
-    else:                                             self.IsMorphable = IsMorphable # Allows the user to not morph that non-linearity
+    if ( ( fPrime is None ) or ( fSecond is None ) ):
+      if ( IsMorphable is not None ):
+        if ( IsMorphable is True ): raise ValueError( "If fPrime or fSecond is None, then IsMorphable must be False, as wee need those for the morphing" )
+        else:                       self.IsMorphable: bool = False # User precised that no morphing is necessary, useless but legal
+      else: self.IsMorphable: bool = False
 
-  # Getters for function pointers and other attributes
+    else: # fPrime and fSecond are both passed and valid
+      if ( IsMorphable is None ):
+        print("\n\n WARNING: fPrime and fSecond were passed but no information if morphing is desired was given. Defaults to false\n\n")
+        self.IsMorphable: bool = False
+      else: self.IsMorphable: bool = IsMorphable # Allows the user to not morph that non-linearity
+ 
+  ############################################################### Getters for function pointers and other attributes ###############################################################
+  # No setters defined making th objecst implicitly const
   def get_f( self ):        return ( self.f )
   def get_fPrime( self ):   return ( self.fPrime )
   def get_fSecond( self ):  return ( self.fSecond )
