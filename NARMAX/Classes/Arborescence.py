@@ -541,7 +541,7 @@ class Arborescence:
     
     if ( self.Q.is_empty() and ( self.nNotSkippedNodes == 0 ) ): # only true if Arbo non-initialized (or if someone loads an ended arbo from a file, but what's the point?)
       print( "Performing root regression" )
-      theta, L, ERR = self.rFOrLSR( self.y, self.Ds, self.Dc, self.U.copy(), self.tolRoot, OutputAll = True ) # create new temp data, use classe's Dc
+      _, L, _ = self.rFOrLSR( self.y, self.Ds, self.Dc, self.U.copy(), self.tolRoot, OutputAll = True ) # create new temp data, use classe's Dc
 
       self.nNotSkippedNodes = 1 # Root is always computed
 
@@ -661,6 +661,7 @@ class Arborescence:
             theta, _, ERR, = self.rFOrLSR( self.y, self.Ds, None, None, None, OutputAll = True )
             RegNames: NDArray[ np.str_ ] = self.DsNames
           
+          # TODO: remove this and let validate default to the default validation function.
           if ( self.ValData is None ): Error: float = 1 - np.sum( ERR ) # take ERR if no validation dictionary is passed
           else:                        Error: float = self.ValFunc( theta, reg, ERR, RegNames, self.ValData, self.DcFilterIdx ) # compute the passed custom error metric
 

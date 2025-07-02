@@ -1,8 +1,12 @@
 import torch as tor
+from typing import Optional, Callable
 
 class NonLinearity:
   ###################################################################################### Init ######################################################################################
-  def __init__( self, Name, f, fPrime = None, fSecond = None, IsMorphable = None ):
+  def __init__( self, Name: str,
+                f: Callable[ [ tor.Tensor ], tor.Tensor], # The function itself
+                fPrime: Optional[ Callable[ [ tor.Tensor ], tor.Tensor] ] = None, fSecond: Optional[ Callable[ [ tor.Tensor ], tor.Tensor] ] = None, # First and second derivatives
+                ToMorph: Optional[ bool ] = None ) -> None:
 
     if ( ( not Name ) or ( not isinstance( Name, str ) ) ): raise ValueError( "Name must be a non-empty string." )
 
@@ -52,22 +56,22 @@ class NonLinearity:
       raise AssertionError( f"f from { Name } should be elementwise, thus not have time dependencies." )
 
 
-    self.Name = Name
-    self.f = f
-    self.fPrime = fPrime
-    self.fSecond = fSecond
+    self.Name: str = Name
+    self.f: Callable[ [ tor.Tensor ], tor.Tensor ] = f
+    self.fPrime: Optional[ Callable[ [ tor.Tensor ], tor.Tensor ] ] = fPrime
+    self.fSecond: Optional[ Callable[ [ tor.Tensor ], tor.Tensor ] ] = fSecond
 
     if ( ( fPrime is None ) or ( fSecond is None ) ):
-      if ( IsMorphable is not None ):
-        if ( IsMorphable is True ): raise ValueError( "If fPrime or fSecond is None, then IsMorphable must be False, as wee need those for the morphing" )
-        else:                       self.IsMorphable: bool = False # User precised that no morphing is necessary, useless but legal
-      else: self.IsMorphable: bool = False
+      if ( ToMorph is not None ):
+        if ( ToMorph is True ): raise ValueError( "If fPrime or fSecond is None, then ToMorph must be False, as wee need those for the morphing" )
+        else:                       self.ToMorph: bool = False # User precised that no morphing is necessary, useless but legal
+      else: self.ToMorph: bool = False
 
     else: # fPrime and fSecond are both passed and valid
-      if ( IsMorphable is None ):
+      if ( ToMorph is None ):
         print("\n\n WARNING: fPrime and fSecond were passed but no information if morphing is desired was given. Defaults to false\n\n")
-        self.IsMorphable: bool = False
-      else: self.IsMorphable: bool = IsMorphable # Allows the user to not morph that non-linearity
+        self.ToMorph: bool = False
+      else: self.ToMorph: bool = ToMorph # Allows the user to not morph that non-linearity
  
   ############################################################### Getters for function pointers and other attributes ###############################################################
   # No setters defined making th objecst implicitly const
@@ -75,4 +79,4 @@ class NonLinearity:
   def get_fPrime( self ):   return ( self.fPrime )
   def get_fSecond( self ):  return ( self.fSecond )
   def get_Name( self ):     return ( self.Name )
-  def is_morphable( self ): return ( self.IsMorphable )
+  def to_Morph( self ): return ( self.ToMorph )

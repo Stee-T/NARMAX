@@ -6,58 +6,60 @@ import torch as tor
 from . import NonLinearity as NL
 from . import Parser_0_2 as Parser
 
-def ScopeLimitHF(): # Here to clarify that HF is only used for the device selection
+from typing import Optional, Sequence
+
+def ScopeLimitHF() -> str : # Here to clarify that HF is only used for the device selection
   from .. import HelperFuncs # Parent folder
   return HelperFuncs.Set_Tensortype_And_Device()
 
-Device = ScopeLimitHF() # Done here to avoid calling it twice (here and in the main __init__.py)
+Device: str = ScopeLimitHF() # Done here to avoid calling it twice (here and in the main __init__.py)
 
-########################################################################################################################
-#####                                            Processing functions                                              #####
-########################################################################################################################
+####################################################################################################################################################################################
+#####                                                                          Processing functions                                                                            #####
+####################################################################################################################################################################################
 # This sections contains everything involving the transformation from the parsed expression a NARMAX lambda can can be evaluated.
 # Those are only called by the SymbolicOscillator CTor and were initially part of it.
 # They were separated from the class to make the unit tests simpler, since no default object exists to prgressively call them.
 
-# ################################################### Create EvalStr ###################################################
-def ParsedReg2EvalStr( RegStr: Parser.ParsedReg, VarName2Idx: dict, NonLinName2Idx: dict, OutputVarName = 'y' ):
+# ################################################################################# Create EvalStr #################################################################################
+def ParsedReg2EvalStr( RegStr: Parser.ParsedReg, VarName2Idx: dict[ str, int ], NonLinName2Idx: dict[ str, int ], OutputVarName: str = 'y' ) -> tuple[ str, bool ]:
   """
   Transform the expression into a string that can be evaluated by the python interpreter.
   Spam everything with parentheses to be sure the evaluation order is correct.
   """
-  isAR = False # Flag tracking if the current regressor contains the output varaible making it auto-regressive
+  is_AR: bool = False # Flag tracking if the current regressor contains the output varaible making it auto-regressive
 
-  # --------------------------- A. Function name / constant coefficient handling
-  OutStr = "" # Covers the case of RegStr.FuncName is None
+  # -------------------------------- A. Function name / constant coefficient handling
+  OutStr: str = "" # Covers the case of RegStr.FuncName is None
   if ( RegStr.FuncName is not None ):
-    if ( RegStr.FuncName in ["~/", "1/"] ): # Those exact names: fractional/denominator with no supplementary Non-lin
+    if ( RegStr.FuncName in [ "~/", "1/" ] ): # Those exact names: fractional/denominator with no supplementary Non-lin
       OutStr += RegStr.FuncName # no further processing needed
     elif ( ( len( RegStr.FuncName ) > 2 ) and ( RegStr.FuncName[:2] in ["~/", "1/"] ) ): # fractional/denominator non-lin
-      OutStr += RegStr.FuncName[:2] + f"NonLinList[{ NonLinName2Idx[RegStr.FuncName[2:]] }].get_f()" # look-up without, but prepend
+      OutStr += RegStr.FuncName[:2] + f"NonLinList[{ NonLinName2Idx[ RegStr.FuncName[2:] ] }].get_f()" # look-up without, but prepend
     else: # Non-fractional aka Numerator expression
       OutStr += f"NonLinList[{ NonLinName2Idx[RegStr.FuncName] }].get_f()"
 
-  # --------------------------- B. Subexpression handling
+  # -------------------------------- B. Subexpression handling
   OutStr += "("
   for i in range( len( RegStr.SubExpressions ) ):
-    if ( RegStr.SubExpressions[i].VarName is not None ):
-      TempSubExpr = copy.deepcopy( RegStr.SubExpressions[i] )
+    if ( RegStr.SubExpressions[i].VarName is not None ): # Not a constant
+      TempSubExpr: Parser.SubExpression = copy.deepcopy( RegStr.SubExpressions[i] )
 
       if ( RegStr.SubExpressions[i].VarName == OutputVarName ):
         TempSubExpr.VarName = "OutVec" # reserve name to allow user to have y as variable
-        isAR = True
-      else: TempSubExpr.VarName = f"Data[{ VarName2Idx[TempSubExpr.VarName] }]" # MA
+        is_AR = True
+      else: TempSubExpr.VarName = f"Data[{ VarName2Idx[ TempSubExpr.VarName ] }]" # MA
       OutStr += f"({ TempSubExpr })"
     
     else: OutStr += f"({ RegStr.SubExpressions[i] })" # don't copy and process the variable if const or y
 
     if ( i != len( RegStr.Operators ) ): OutStr += " " + RegStr.Operators[i] + " " # one less oàperator than variables
 
-  return ( OutStr + ")", isAR )
+  return ( OutStr + ")", is_AR )
 
 
-# ############################################### Verify the Expression ##############################################
-def VerifyParsedReg( Regressor: Parser.ParsedReg, NonLinNames, InputVarNames, OutputVarName = 'y' ):
+############################################################################### Verify the Expression ##############################################################################
+def VerifyParsedReg( Regressor: Parser.ParsedReg, NonLinNames: list[ str ], InputVarNames: list[ str ], OutputVarName: str = 'y' ) -> None:
   """Verifies that:
   - All used variables names are declared (contained into InputVarNames)
   - All used non-linearity names are declared (contained into NonLinNames)
@@ -71,7 +73,7 @@ def VerifyParsedReg( Regressor: Parser.ParsedReg, NonLinNames, InputVarNames, Ou
 
   # Check if the needed non-linearity exist
   if ( Regressor.FuncName is not None ):
-    CurrentName = Regressor.FuncName
+    CurrentName: str = Regressor.FuncName
     if ( ( CurrentName[:2] == '~/' ) or ( CurrentName[:2] == '1/' ) ): CurrentName = CurrentName[2:] # fractions are never stored as separate functions
     if ( ( CurrentName != '' ) and ( CurrentName not in NonLinNames ) ): # empty string if fraction/denominator term without non-lin
       raise ValueError( f"Non-linearity '{ CurrentName }' is not a declared Non-linearity" )
@@ -85,12 +87,12 @@ def VerifyParsedReg( Regressor: Parser.ParsedReg, NonLinNames, InputVarNames, Ou
 
     if ( subexp.VarName in OutputVarName ):
       if ( subexp.Lag is None ): raise ValueError( f"No lag for output variable '{ OutputVarName }', as found in the expression { subexp } is not supported (non-causality)" )
-      if( subexp.Lag is not None ):
+      if ( subexp.Lag is not None ):
         if ( subexp.Lag >= 0 ): raise ValueError( f"Positive lag for output variable '{ OutputVarName }' as found in expression { subexp } is not supported (non-causality)" )
 
 
-# ############################################## Make Buffer Start System ##############################################
-def Make_BufferStartSystem( Expr ):
+############################################################################# Make Buffer Start System #############################################################################
+def Make_BufferStartSystem( Expr: str ) -> str:
 
   Output = re.sub( r'Data\[(\d+)\]\[k(([-+])(\d+))?\]', # Regexp recognizing Data = Input regressors
                   lambda match: f"Toggle(0, { int( match.group(1) ) }, k{ match.group(2) if match.group(2) is not None else '' }, Data)",
@@ -105,30 +107,30 @@ def Make_BufferStartSystem( Expr ):
   return ( Output )
 
 
-# ################################################ Make System Lambdas #################################################
-def Make_SystemLambdas( InputVarNames, OutputVarName, NonLinName2Idx, VarName2Idx, RegStrList ):
-  # ----------------------------------------------- 0. Verify Regressors -----------------------------------------------
+################################################################################ Make System Lambdas ###############################################################################
+def Make_SystemLambdas( InputVarNames: list[ str ], OutputVarName: str, NonLinName2Idx: dict[ str, int ], VarName2Idx: dict[ str, int ], RegStrList: list[ Parser.ParsedReg ] ):
+  # ----------------------------------------------------------------------------- 0. Verify Regressors -----------------------------------------------------------------------------
   for reg in RegStrList:
     VerifyParsedReg( reg, NonLinName2Idx.keys(), InputVarNames, OutputVarName ) # Are all required variables & nonLins passed + no sus lags?
 
-  # --------------------------------------------- 1. Create System strings ---------------------------------------------
+  # --------------------------------------------------------------------------- 1. Create System strings ---------------------------------------------------------------------------
   # System subexpressions, both Den expressions remain '' for non-rational systems
-  MA_NumExpr = ''; MA_DenExpr = ''; AR_NumExpr = ''; AR_DenExpr = ''
+  MA_NumExpr: str = ''; MA_DenExpr: str = ''; AR_NumExpr: str = ''; AR_DenExpr: str = ''
 
   for idx, reg in enumerate( RegStrList ):
-    CurrentExpr, isAR = ParsedReg2EvalStr( reg, VarName2Idx, NonLinName2Idx, OutputVarName )
+    CurrentExpr, is_AR = ParsedReg2EvalStr( reg, VarName2Idx, NonLinName2Idx, OutputVarName )
 
     if ( reg.FuncName is None ): # Automatically a numerator term, as '~/' is considered a function name
-      if ( isAR ): AR_NumExpr +=  f"theta[{ idx }]*{ CurrentExpr } + "
-      else:        MA_NumExpr +=  f"theta[{ idx }]*{ CurrentExpr } + "
+      if ( is_AR ): AR_NumExpr +=  f"theta[{ idx }]*{ CurrentExpr } + "
+      else:         MA_NumExpr +=  f"theta[{ idx }]*{ CurrentExpr } + "
   
     else: # Potentially denominator term
       if ( reg.FuncName[:2] == '~/' ):
-        if ( isAR ): AR_DenExpr += f"theta[{ idx }]*{ CurrentExpr.replace( '~/', '' ) } + "
-        else:        MA_DenExpr += f"theta[{ idx }]*{ CurrentExpr.replace( '~/', '' ) } + "
+        if ( is_AR ): AR_DenExpr += f"theta[{ idx }]*{ CurrentExpr.replace( '~/', '' ) } + "
+        else:         MA_DenExpr += f"theta[{ idx }]*{ CurrentExpr.replace( '~/', '' ) } + "
       else:
-        if ( isAR ): AR_NumExpr += f"theta[{ idx }]*{ CurrentExpr } + "
-        else:        MA_NumExpr += f"theta[{ idx }]*{ CurrentExpr } + "
+        if ( is_AR ): AR_NumExpr += f"theta[{ idx }]*{ CurrentExpr } + "
+        else:         MA_NumExpr += f"theta[{ idx }]*{ CurrentExpr } + "
   
   # remove the last ' + ' on all strings
   if ( MA_NumExpr != ''): MA_NumExpr = MA_NumExpr[:-3]
@@ -151,7 +153,7 @@ def Make_SystemLambdas( InputVarNames, OutputVarName, NonLinName2Idx, VarName2Id
     elif ( AR_DenExpr == '' ): DenExpr = f"1.0 + MA_Den[k]"
     else:                      DenExpr = f"1.0 + MA_Den[k] + { AR_DenExpr }"
 
-  # --------------------------------------------- 2. Create System lambdas ---------------------------------------------
+  # --------------------------------------------------------------------------- 2. Create System lambdas ---------------------------------------------------------------------------
 
   # Bufferstart has no OutVec since accessed as class member
   Make_MA_System = lambda Expr: re.sub( r'Data\[(\d+)\]\[k(([-+])(\d+))?\]', # Regexp recognizing Data = Input regressors
@@ -180,13 +182,14 @@ def Make_SystemLambdas( InputVarNames, OutputVarName, NonLinName2Idx, VarName2Id
   return ( SubSystem_MA_Num, SubSystem_MA_Den, System_BufferStart, System_Main )
 
 
-########################################################################################################################
-#####                                             SYMBOLIC OSCILLATOR                                              #####
-########################################################################################################################
+####################################################################################################################################################################################
+#####                                                                           SYMBOLIC OSCILLATOR                                                                            #####
+####################################################################################################################################################################################
 class SymbolicOscillator:
 
-  # ####################################################### CTor #######################################################
-  def __init__( self, InputVarNames, NonLinearities, ExprList, theta, OutputVarName = 'y', dtype = tor.float64, device = Device ):
+  ###################################################################################### CTor ######################################################################################
+  def __init__( self, InputVarNames: list[ str ], NonLinearities: list[ NL.NonLinearity ], ExprList: list[ str ],
+                theta: tor.Tensor, OutputVarName: str = 'y', dtype: tor.dtype = tor.float64, device: str = Device ) -> None:
     """Generates the Regressor strings contained in the RegStr
     
     ### Inputs:
@@ -198,7 +201,7 @@ class SymbolicOscillator:
     - `dtype`: (torch.dtype = torch.float64) containing the type of the output variable
     - `device`: (torch.device = rFOrLSr.device) containing the device of the output buffer
     """
-    # --------------------------------------------------- Input checks ---------------------------------------------------
+    # -------------------------------------------------------------------------------- Input checks --------------------------------------------------------------------------------
     if ( len( InputVarNames ) == 0 ):  raise ValueError( "No Input variables were declared" )
     for i in range( len( InputVarNames ) ):
       if ( not isinstance( InputVarNames[i], str ) ): raise ValueError( f"InputVarNames[{ i }] is not of type 'str'" )
@@ -219,55 +222,55 @@ class SymbolicOscillator:
 
     # Just Poker that the passed device is valid, torch will certainly complain otherwise
 
-    # -------------------------------------------------- Data Storage --------------------------------------------------
+    # -------------------------------------------------------------------------------- Data Storage --------------------------------------------------------------------------------
     # The Class stores only the data needed to oscillate, everything else is discarded
 
     # Processing parameters
-    self.theta = theta.cpu()
-    self.NonLinearities = NonLinearities
-    self.nExpressions = len( ExprList )
-    self.nInputVars = len( InputVarNames ) if ( OutputVarName not in InputVarNames ) else len( InputVarNames ) - 1 # Don't count the output variable, it has own buffer
+    self.theta: tor.Tensor = theta.cpu()
+    self.NonLinearities: list[ NL.NonLinearity ] = NonLinearities
+    self.nExpressions: int = len( ExprList )
+    self.nInputVars: int = len( InputVarNames ) if ( OutputVarName not in InputVarNames ) else len( InputVarNames ) - 1 # Don't count the output variable, it has own buffer
 
     # Output Data parameters
-    self.dtype = dtype
-    self.device = device # only needed for the output data, since internally teh SymOsc uses the CPU
+    self.dtype: tor.dtype = dtype
+    self.device: str = device # only needed for the output data, since internally the SymOsc uses the CPU
 
-    # Systems Lambdas
+    # Systems Lambdas: all are Optional[ Callable ] of different but very long types
     self.SubSystem_MA_Num = None # Non-recursive Numerator part (GPU)
     self.SubSystem_MA_Den = None # Non-recursive Denominator part (GPU)
     self.System_BufferStart = None # Full system for buffer start, calls AR_Toggle to dispatch between storage and input (CPU)
     self.System_Main = None # Full system for main buffer (CPU)
 
     # MaxLags data for the current system. Uninitialized since strings not yet parsed
-    self.MaxNegLag = 0 # Maximum negative delay for input data
-    self.MaxPosLag = 0 # To support acausal systems (in non-Output terms, since for Outputs VerifyExpression throws for lags >= 0)
-    self.MaxOutputLag = 0 # Maximum negative delay for the output data
+    self.MaxNegLag: int = 0 # Maximum negative delay for input data
+    self.MaxPosLag: int = 0 # To support acausal systems (in non-Output terms, since for Outputs VerifyExpression throws for lags >= 0)
+    self.MaxOutputLag: int = 0 # Maximum negative delay for the output data
     
     # Internal storage for in/out past states to bridge buffer ends
-    # Note: one can't use negative indices for the OutVec in python, since the user might use lags greater than the buffer or resize the buffer, which reinitializes it
-    self.InputStorage = None # for any variable indexed by k-j with j > 0
-    self.OutputStorage = None # for OutVec[k-j] with j > 0
+    # Note: One can't use negative indices for the OutVec in python, since the user might use lags greater than the buffer or resize the buffer, which reinitializes it
+    self.InputStorage: Optional[ tor.Tensor ] = None # 2D Tensor (nInputs x MaxNegLag): for any variable indexed by k-j with j > 0
+    self.OutputStorage: Optional[ tor.Tensor] = None # for OutVec[k-j] with j > 0
     
-    self.OutVec = tor.zeros( 8, dtype = self.dtype, device = "cpu" ) # arbitrary length as placeholder: only known when user calls Oscillate()
+    self.OutVec: tor.Tensor = tor.zeros( 8, dtype = self.dtype, device = "cpu" ) # arbitrary length as placeholder: only known when user calls Oscillate()
 
-    # --------------------------------------- Convertion Dicts and Reg validation --------------------------------------
-    NonLinName2Idx = {} # key: name, value: index in NonLinearities
-    for idx in range( len( NonLinearities ) ): NonLinName2Idx[ NonLinearities[idx].get_Name() ] = idx
+    # --------------------------------------------------------------------- Convertion Dicts and Reg validation --------------------------------------------------------------------
+    NonLinName2Idx: dict[ str, int ] = {} # key: name, value: index in NonLinearities
+    for idx in range( len( NonLinearities ) ): NonLinName2Idx[ NonLinearities[ idx ].get_Name() ] = idx
 
-    VarName2Idx = {} # key: name, value: index in Data
-    for idx in range( len( InputVarNames ) ): VarName2Idx[ InputVarNames[idx] ] = idx
+    VarName2Idx: dict[ str, int ] = {} # key: name, value: index in Data
+    for idx in range( len( InputVarNames ) ): VarName2Idx[ InputVarNames[ idx ] ] = idx
     
-    OutVecError = "The name 'OutVec' is reserved for internal processing, plase rename that "
+    OutVecError: str = "The name 'OutVec' is reserved for internal processing, plase rename that "
     if ( "OutVec" in VarName2Idx.keys() ):    raise ValueError( OutVecError + "Variable" )
     if ( "OutVec" in NonLinName2Idx.keys() ): raise ValueError( OutVecError + "NonLinearity" )
 
-    RegStrList = [ Parser.ExpressionParser( expr ) for expr in ExprList ] # Parsed Regressor Objects
+    RegStrList: list[ Parser.ParsedReg ] = [ Parser.ExpressionParser( expr ) for expr in ExprList ]
 
-    # ---------------------------------------------- Generate Expressions ----------------------------------------------
+    # ---------------------------------------------------------------------------- Generate Expressions ----------------------------------------------------------------------------
     self.SubSystem_MA_Num, self.SubSystem_MA_Den, self.System_BufferStart, self.System_Main = \
       Make_SystemLambdas( InputVarNames, OutputVarName, NonLinName2Idx, VarName2Idx, RegStrList )
 
-    # ----------------------------------------- Find Maxlags and create buffers ----------------------------------------
+    # ----------------------------------------------------------------------- Find Maxlags and create buffers ----------------------------------------------------------------------
     for reg in RegStrList:
       for se in reg.SubExpressions:
         if ( ( se.Lag is None ) or ( se.Lag == 0 ) ): continue # Coeff which has no lag, also se.VarName is None
@@ -281,8 +284,8 @@ class SymbolicOscillator:
     self.InputStorage = tor.zeros( ( self.nInputVars, self.MaxNegLag ), dtype = self.dtype, device = "cpu" )
 
 
-  # ################################################### theta setter ###################################################
-  def set_theta( self, theta ):
+  ################################################################################## theta setter ##################################################################################
+  def set_theta( self, theta: tor.Tensor ) -> None:
     '''Setter for the regression coefficients.
 
     ### Input:
@@ -292,8 +295,8 @@ class SymbolicOscillator:
     self.theta = theta.cpu()
   
 
-  # ################################################### theta getter ###################################################
-  def get_theta( self ):
+  ################################################################################## theta getter ##################################################################################
+  def get_theta( self ) -> tor.Tensor:
     '''Getter for the regression coefficients.
 
     ### Output:
@@ -301,8 +304,8 @@ class SymbolicOscillator:
     return ( self.theta.to( self.device ) )
 
 
-  # ############################################### Output Storage setter ##############################################
-  def set_OutputStorage( self, PreviousOutput ):
+  ############################################################################## Output Storage setter #############################################################################
+  def set_OutputStorage( self, PreviousOutput: tor.Tensor ) -> None:
     '''Setter for the output storage. Allows to give the system information about its outputs generated before the to-be-passed data. (y[k-j])
 
     ### Input:
@@ -313,84 +316,89 @@ class SymbolicOscillator:
     self.OutputStorage = PreviousOutput.cpu()
 
 
-  # ############################################### Output Storage getter ##############################################
-  def get_OutputStorage( self ):
+  ############################################################################## Output Storage getter #############################################################################
+  def get_OutputStorage( self ) -> tor.Tensor:
     '''Getter for the storage vector containing the required last buffer's past values required for system operation.
 
     ### Output:
     - ( (nr,)-sized float torch.tensor ) containing the estimated regression coefficients
     '''
+    if ( self.OutputStorage is None ): raise ValueError( "Accessing empty OutputStorage" ) # Impossible since OutputStorage is initialized in __init__
     return ( self.OutputStorage.to( self.device ) )
   
 
-  # ############################################### Input Storage setter ###############################################
-  def set_InputStorage( self, InputStorage ):
+  ############################################################################## Input Storage setter ##############################################################################
+  def set_InputStorage( self, InputStorage: tor.Tensor ) -> None:
     '''Setter for the input storage. Allows to give the system information about its inputs before the to-be-passed data. (x[k-j])
 
     ### Input:
     - `InputStorage`: ( (nr,)-sized float torch.tensor ) containing the estimated regression coefficients'''
-    if ( InputStorage.shape != self.InputStorage.shape ): raise ValueError( f"InputStorage has wrong dimension, expected { self.InputStorage.shape }" )
-    if ( self.InputStorage.dtype != InputStorage.dtype ): raise ValueError( f"InputStorage has wrong data type, expected { self.InputStorage.dtype }" )
+
+    if ( self.InputStorage is not None ): # Check valid dimensions only if existing buffer. Normally always the case since set by __init__
+      if ( InputStorage.shape != self.InputStorage.shape ): raise ValueError( f"InputStorage has wrong dimension, expected { self.InputStorage.shape }" )
+      if ( self.InputStorage.dtype != InputStorage.dtype ): raise ValueError( f"InputStorage has wrong data type, expected { self.InputStorage.dtype }" )
     self.InputStorage = InputStorage.cpu()
 
 
-  # ############################################### Input Storage getter ###############################################
-  def get_InputStorage( self ):
+  ############################################################################## Input Storage getter ##############################################################################
+  def get_InputStorage( self ) -> tor.Tensor:
     '''Getter for the input storage vector containing the required last buffer's past values required for system operation.
 
     ### Output:
     - ( (nr,)-sized float torch.tensor ) containing the estimated regression coefficients'''
+    if ( self.InputStorage is None ): raise ValueError( "Accessing empty InputStorage" ) # Impossible since InputStorage is initialized in __init__
     return ( self.InputStorage.to( self.device ) )
 
 
-  # ################################################### flushBuffers ###################################################
-  def zeroInternalStorage( self ):
+  ################################################################################## flushBuffers ##################################################################################
+  def zeroInternalStorage( self ) -> None:
     '''Zeros the internal buffers, such that the system isn't influenced by previous buffer's data'''
+    # TODO: use the getters for the dimensions such that this also work in the None case
     self.InputStorage =  tor.zeros( self.InputStorage.shape,  dtype = self.dtype, device = "cpu" )
     self.OutputStorage = tor.zeros( self.OutputStorage.shape, dtype = self.dtype, device = "cpu" )
 
 
-  # ############################################# get number of regressors #############################################
-  def get_nRegressors( self ): 
+  ############################################################################ get number of regressors ############################################################################
+  def get_nRegressors( self ) -> int: 
     '''Returns the number of regressors (int)'''
     return ( self.nExpressions )
   
 
-  # ########################################### get number of input variables ###########################################
-  def get_nInputVars( self ):
+  ########################################################################## get number of input variables #########################################################################
+  def get_nInputVars( self ) -> int:
     '''Returns the number of input variables (int)'''
     return ( self.nInputVars )
   
 
-  # ############################################ largest negative input lag ############################################
-  def get_MaxNegInputLag( self ):
+  ########################################################################### largest negative input lag ###########################################################################
+  def get_MaxNegInputLag( self ) -> int:
     '''Returns the largest negative input lag (int)'''
     return ( self.MaxNegLag )
 
 
-  # ############################################ largest positive input lag ############################################
-  def get_MaxPosInputLag( self ):
+  ########################################################################### largest positive input lag ###########################################################################
+  def get_MaxPosInputLag( self ) -> int:
     '''Returns the largest positive lag (int)'''
     return ( self.MaxPosLag )
   
 
-  # ########################################### largest negative output lag ############################################
-  def get_MaxNegOutputLag( self ):
+  ########################################################################## largest negative output lag ###########################################################################
+  def get_MaxNegOutputLag( self ) -> int:
     '''Returns the largest negative output lag (int)'''
     return ( self.MaxOutputLag )
   
 
-  # ################################################## Buffer Toggle ###################################################
-  def Buffer_Toggle( self, VarNumber, k, Data ):
-    if ( k < 0 ): return tor.concat( [ self.InputStorage[ VarNumber, k: ].to( Data[ VarNumber ].device ), 
+  ################################################################################# Buffer Toggle ##################################################################################
+  def Buffer_Toggle( self, VarNumber: int, k: int, Data: Sequence[ tor.Tensor ] ) -> tor.Tensor:
+    if ( k < 0 ): return tor.concat( [ self.InputStorage[ VarNumber, k: ].to( Data[ VarNumber ].device ), # can't use get_InputStorage since it might move unnecessarily device
                                          Data[ VarNumber ][ :k ] ]
                                    )
     elif ( k == 0 ): return Data[ VarNumber ]
     else:         raise ValueError( "Lag must be negative or zero" )
 
 
-  # ################################################## Scalar Toggle ###################################################
-  def Scalar_Toggle( self, DataOrOutVec, VarNumber, k, Data ):
+  ################################################################################# Scalar Toggle ##################################################################################
+  def Scalar_Toggle( self, DataOrOutVec: bool, VarNumber: int, k: int, Data: Sequence[ tor.Tensor ] ) -> tor.Tensor:
     """ Helper function which toggles between the stored internal system state for k < 0 and incomming data for k >= 0.
     VarNumber is the index of the variable in the Data array, Later for -MO-systems it will also be used for OutVec
     """
@@ -398,24 +406,24 @@ class SymbolicOscillator:
       if ( k >= 0 ): return Data[ VarNumber ][ k ] # normal indexing since k >= 0
       else:          return self.InputStorage[ VarNumber, k ] # k is negative: indexing from the end
 
-    elif ( DataOrOutVec == 1 ): # 1 forOoutput, same as above but without variable dispaching (currently only one output supported)
+    elif ( DataOrOutVec == 1 ): # 1 for Output, same as above but without variable dispaching (currently only one output supported)
       if ( k >= 0 ): return self.OutVec[ k ]
       else:          return self.OutputStorage[ k ]
 
     else: raise ValueError( "Internal Error, please report this bug: 'DataOrOutVec is neither Data nor OutVec'" )
   
 
-  # ##################################################### Oscillate ####################################################
-  def Oscillate( self, Data, theta = None, DsData = None ):
+  #################################################################################### Oscillate ###################################################################################
+  def Oscillate( self, Data: Sequence[ tor.Tensor ], theta: Optional[ tor.Tensor ] = None, DsData: Optional[ tor.Tensor ] = None ) -> tor.Tensor:
     """ Function applying the NARMAX-system to the input data.
     DsData can is allowed to change the number of columns it has (if correctly mirrored in theta), since the system has no concept of it.
 
     ### Inputs:
-    - `Data`: (iterable of 1D-torch.tensors having all the same length) containing the input variable vectors
+    - `Data`: (sequence of 1D-torch.tensors having all the same length) containing the input variable vectors
     - `theta`: (optional (DsData.shape[1] + len( ExprList)),)-shaped torch.tensor) containing the regression Coefficients allowing to modulate theta
     - `DsData`: (optional 1D-tensor) containing any signal to be directly (no scaling, processing or storage) injected into the system
     """
-    # -------------------------------------------- System Parameter Update ---------------------------------------------
+    # --------------------------------------------------------------------------- System Parameter Update --------------------------------------------------------------------------
     
     if ( DsData is not None ):
       if ( DsData.ndim != 1 ): raise ValueError( "DsData must be 1D" )
@@ -429,7 +437,7 @@ class SymbolicOscillator:
     if ( self.MaxNegLag + self.MaxPosLag > Data[0].shape[0] ):
       raise ValueError( f"Input buffer-size is smaller than the system's total lag range of { self.MaxNegLag + self.MaxPosLag }. Not illegal but not supported yet." )
 
-    # --------------------------------------------------- Processing ---------------------------------------------------
+    # --------------------------------------------------------------------------------- Processing ---------------------------------------------------------------------------------
     if ( DsData is not None ): self.OutVec = DsData.clone().cpu() # pre-allocate for performance
     else:                      self.OutVec = tor.zeros( Data[0].shape, dtype = self.dtype, device = "cpu" )
 
@@ -442,7 +450,7 @@ class SymbolicOscillator:
       MA_Den = self.SubSystem_MA_Den( self.theta, Data, self.NonLinearities, self.Buffer_Toggle ).cpu()
     else: MA_Den = None
 
-    Data = [x.cpu() for x in Data] # force all to CPU
+    Data = [ x.cpu() for x in Data ] # force all to CPU
 
     for k in range( 0, self.MaxNegLag ): # Buffer start procedure, with dispatch to internal state via toggle
       self.OutVec[k] += self.System_BufferStart( k, self.theta, Data, self.NonLinearities, MA_Num, MA_Den, self.Scalar_Toggle )
@@ -450,10 +458,10 @@ class SymbolicOscillator:
     for k in range( self.MaxNegLag, Data[0].shape[0] - self.MaxPosLag ): # Fully swung-in state
       self.OutVec[k] += self.System_Main( k, self.theta, Data, self.NonLinearities, MA_Num, MA_Den, self.OutVec)
 
-    # --------------------------------------------- Internal State Update ----------------------------------------------
+    # ---------------------------------------------------------------------------- Internal State Update ---------------------------------------------------------------------------
     if ( self.MaxNegLag > 0 ): # This doesn't trigger for systems being memoryless in the input terms (only x[k] terms)
       for input in range ( len( Data ) ): # Must iterate one by one since Data is an arbirtary iterable not necessarily a 2D Tensor
-        if ( Data[input].ndim != 1 ): raise ValueError( f"Input Data must be 1D. The { input }-th input is not" )
+        if ( Data[ input ].ndim != 1 ): raise ValueError( f"Input Data must be 1D. The { input }-th input is not" )
         self.InputStorage[ input ] = Data[ input ][ -self.MaxNegLag : ].clone()
     
     if ( self.MaxOutputLag > 0 ): # This doesn't trigger for non-recursive systems
@@ -462,9 +470,9 @@ class SymbolicOscillator:
     return ( self.OutVec.to( self.device ) )
 
 
-########################################################################################################################
-#####                                                  UNIT TESTS                                                  #####
-########################################################################################################################
+####################################################################################################################################################################################
+#####                                                                                UNIT TESTS                                                                                #####
+####################################################################################################################################################################################
 
 if ( __name__ == '__main__' ):
   pass

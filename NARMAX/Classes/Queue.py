@@ -11,8 +11,8 @@ class Queue:
   '''
 
   def __init__( self ) -> None:
-    self.data = deque()
-    self.count = 0
+    self.data: deque[ NDArray[ int64 ] ] = deque()
+    self.count: int = 0
 
   def put( self, item: NDArray[ int64 ] ) -> None:
     '''Put the item on the queue.'''
@@ -21,7 +21,7 @@ class Queue:
 
   def get( self ) -> NDArray[ int64 ]:
     '''Remove and return an item from the queue '''
-    if ( self.count<1 ): raise AssertionError( "The Queue is empty" )
+    if ( self.count < 1 ): raise AssertionError( "The Queue is empty" )
     self.count -= 1 # increment the length counter
     return ( self.data.popleft() )
 

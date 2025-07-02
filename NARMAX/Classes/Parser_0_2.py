@@ -1,22 +1,24 @@
 import re
 from dataclasses import dataclass
 
-########################################################################################################################
-#####                                                   STRUCTS                                                    #####
-########################################################################################################################
+from typing import Optional
 
-# ################################################### Sub Expression ###################################################
+####################################################################################################################################################################################
+#####                                                                                 STRUCTS                                                                                  #####
+####################################################################################################################################################################################
+
+################################################################################### Sub Expression #################################################################################
 @dataclass
 class SubExpression:
-  Coeff: float = None # multiplicative coefficient, if Variable is None then Subexpression is a constant
-  VarName: str = None
-  Lag: int = None
-  Exponent: float = None
+  Coeff: Optional[ float ] = None # multiplicative coefficient, if VarName is None then Subexpression is a constant
+  VarName: Optional[ str ] = None
+  Lag: Optional[ int ] = None
+  Exponent: Optional[ float ] = None
 
-  def __str__( self ): # Allows to print the object
-    Out = "" # Everything is optional, so check if initialized
+  def __str__( self ) -> str: # Allows to print the object
+    Out: str = "" # Everything is optional, so check if initialized
     if ( self.VarName is not None ): Out = self.VarName
-    if ( self.Coeff is not None ):    Out = f"{ self.Coeff }*" + Out # prepend
+    if ( self.Coeff is not None ):   Out = f"{ self.Coeff }*" + Out # prepend
     if ( self.VarName is None ):     Out = Out[:-1] # remove the '*' for scalars
 
     if ( self.VarName is not None ): # only add lag info for non-constants
@@ -26,32 +28,32 @@ class SubExpression:
     if ( self.Exponent is not None ): Out += f"**{ self.Exponent }" # append
     return ( Out )
   
-  def __eq__( self, other ): # Comparison operator
+  def __eq__( self, other: object ) -> bool: # Comparison operator
     return ( self.__dict__ == other.__dict__ )
 
 
-# ############################################## Regressor in String form ##############################################
+############################################################################## Regressor in String form ############################################################################
 @dataclass
 class ParsedReg:
-  FuncName: str
-  SubExpressions: list # List of 'SubExpression' variables
-  Operators: list # List of strings
+  FuncName: Optional[ str ]
+  SubExpressions: list[ SubExpression ] # List of 'SubExpression' variables
+  Operators: list[ str ] # List of strings
 
-  def __str__( self ): # Allows to print the object
-    sub_expressions = ', '.join( [ str( se ) for se in self.SubExpressions] )
-    operators = ', '.join( self.Operators )
+  def __str__( self ) -> str: # Allows to print the object
+    sub_expressions: str = ', '.join( [ str( se ) for se in self.SubExpressions ] )
+    operators: str = ', '.join( self.Operators )
     return ( f"FuncName: { self.FuncName }\nSubExpressions: [{ sub_expressions }]\nOperators: [{ operators }]\n" )
   
-  def __eq__( self, other ): # Comparison operator
+  def __eq__( self, other: object ) -> bool: # Comparison operator
     return ( self.__dict__ == other.__dict__ )
 
 
-########################################################################################################################
-#####                                                    PARSER                                                    #####
-########################################################################################################################
+####################################################################################################################################################################################
+#####                                                                                  PARSER                                                                                  #####
+####################################################################################################################################################################################
 
-# ################################################# Expression Cleaner #################################################
-def CleanExpression( InputExpr: str ):
+# ############################################################################### Expression Cleaner ###############################################################################
+def CleanExpression( InputExpr: str ) -> tuple[ Optional[ str ], str ]:
   if ( not isinstance( InputExpr, str ) ): raise ValueError( f"Passed Expression '{ InputExpr }' is not a string" )
 
   # check for fractional lags and throw
@@ -60,7 +62,7 @@ def CleanExpression( InputExpr: str ):
     for lag in Lags:
       if ( lag[2] != '' ): raise ValueError( f"Expression: '{ InputExpr }' contains fractional lags, which is not supported as array index" )
   
-  Expr = InputExpr.replace( '**', '^' ) # flatten potential python powers to normal powers
+  Expr: str = InputExpr.replace( '**', '^' ) # flatten potential python powers to normal powers
 
   # Handle missing spaces, excludes +,-,^ on purpose since this ruins the lags and exponents analysis
   for op in [ '*', '/' ]: Expr = Expr.replace( op, ' ' + op + ' ' )
@@ -78,15 +80,15 @@ def CleanExpression( InputExpr: str ):
   Expr = re.sub( r' (-?[\d.]+)\s*\* ([a-zA-Z_])', r' \1*\2', Expr ) # requires a space before the number to avoid matches like x^2 * y
   if ( Expr[0] == ' ' ): Expr = Expr[1:] # Remove the space (generated by the above, since otherwise eliminated by split)
 
-  Parts = Expr.split( '(' ) # Splitting the expression into function and its arguments → assume no parentheses
+  Parts: list[ str ] = Expr.split( '(' ) # Splitting the expression into function and its arguments → assume no parentheses
 
   if ( len( Parts ) == 1 ): # Split contains a single segment → no split performed = no function
-    function_name = None
+    function_name: Optional[ str ] = None
     args = Parts[0]
   
   elif ( len( Parts ) == 2 ): # 'func' + '(' + 'args' + ')' case
-    function_name = Parts[0]
-    args = Parts[1][:-1] # Removing the closing parenthesis
+    function_name: Optional[ str ] = Parts[0]
+    args: str = Parts[1][:-1] # Removing the closing parenthesis
 
   else:  # anything else lol
     raise ValueError( f"Expression: '{ InputExpr }' contains multiple parentheses, which is currently not supported" )
@@ -94,13 +96,13 @@ def CleanExpression( InputExpr: str ):
   return ( function_name, args )
 
 
-# ################################################# Expression Parser ##################################################
-def ExpressionParser( InputExpr: str ):
+################################################################################# Expression Parser ################################################################################
+def ExpressionParser( InputExpr: str ) -> ParsedReg:
   """Parses an expression and returns thecorresponding RegressorStr struct function name and a list of subexpressions"""
   function_name, args = CleanExpression( InputExpr ) # Pre-Process for clean parsing
 
-  Subexpressions = []
-  Operators = []
+  Subexpressions: list[ SubExpression ] = []
+  Operators: list[ str ] = []
 
   for arg in args.split(): # Requires that all arguments be separated by spaces
     # every 2nd element in arg should be an operator but better check
@@ -132,8 +134,8 @@ def ExpressionParser( InputExpr: str ):
   return ( ParsedReg( function_name, Subexpressions, Operators ) )
 
 
-# ################################################ Expression Debugger #################################################
-def DebugExpression( InputExpr: str ):
+################################################################################ Expression Debugger ###############################################################################
+def DebugExpression( InputExpr: str ) -> None:
   Regressor = ExpressionParser( InputExpr )
   print( "Parsing: ", InputExpr )
   print( "Function Name: ", Regressor.FuncName )
@@ -147,9 +149,9 @@ def DebugExpression( InputExpr: str ):
       print ( "Operator:", Regressor.Operators[pos] )
 
 
-########################################################################################################################
-#####                                                  UNIT TESTS                                                  #####
-########################################################################################################################
+####################################################################################################################################################################################
+#####                                                                                UNIT TESTS                                                                                #####
+####################################################################################################################################################################################
 
 if ( __name__ == '__main__' ):
 
@@ -179,24 +181,24 @@ if ( __name__ == '__main__' ):
   ]
 
   ParsedExpressions = [
-    ParsedReg( 'sin',  [ SubExpression( 0.957, 'x', -1, 3.0 ) ], [] ),
-    ParsedReg( None,   [ SubExpression( 0.6, 'x1', 2, 11.0 ) ], [] ),
-    ParsedReg( None,   [ SubExpression( -0.6, 'x9', None, 2.0 ) ], [] ),
-    ParsedReg( None,   [ SubExpression( -0.5, 'x', -11, None ), SubExpression( 3.0, 'y', -1, None ) ], ['^'] ),
-    ParsedReg( 'exp',  [ SubExpression( 0.8, 'x_2', -4, None ), SubExpression( -0.6, 'x_1', None, 2.0 ), SubExpression( None, 'y', -2, None ) ], ['+', '*'] ),
-    ParsedReg( None,   [ SubExpression( -1.0, 'y', -2, None ),  SubExpression( -0.6, 'x1', -2, 3.0 ) ], ['+'] ),
-    ParsedReg( 'sin',  [ SubExpression( 0.8, 'x1', -1, 3.0 ),   SubExpression( -0.2, None, None, None ) ], ['+'] ),
-    ParsedReg( '~/',   [ SubExpression( None, 'x1', -1, None ), SubExpression( 0.8, 'x2', -4, None ) ], ['+'] ),
-    ParsedReg( None,   [ SubExpression( 0.9, 'x1', -1, 3.0 ),   SubExpression( 0.6, 'x1', -2, 3.0 ) ], ['/'] ),
-    ParsedReg( None,   [ SubExpression( 0.9, 'x1', None, 3.0 ), SubExpression( 0.679, 'x1', -2, 3.5 ) ], ['/'] ),
-    ParsedReg( '~/abs',[ SubExpression( None, 'x1', -1, None ), SubExpression( 0.8, 'x2', -4, None ) ], ['+'] ),
-    ParsedReg( '1/abs',[ SubExpression( 0.2, 'x', None, None ), SubExpression( 0.8, 'y2', -4, None ) ], ['+'] ),
-    ParsedReg( '32*sin',[SubExpression( 0.9, 'x1', -1, 3.0 ),   SubExpression( 0.6, 'x1', -2, 3.0 ) ], ['+'] ),
+    ParsedReg( 'sin',   [ SubExpression( 0.957, 'x', -1, 3.0 ) ], [] ),
+    ParsedReg( None,    [ SubExpression( 0.6, 'x1', 2, 11.0 ) ], [] ),
+    ParsedReg( None,    [ SubExpression( -0.6, 'x9', None, 2.0 ) ], [] ),
+    ParsedReg( None,    [ SubExpression( -0.5, 'x', -11, None ), SubExpression( 3.0, 'y', -1, None ) ], ['^'] ),
+    ParsedReg( 'exp',   [ SubExpression( 0.8, 'x_2', -4, None ), SubExpression( -0.6, 'x_1', None, 2.0 ), SubExpression( None, 'y', -2, None ) ], ['+', '*'] ),
+    ParsedReg( None,    [ SubExpression( -1.0, 'y', -2, None ),  SubExpression( -0.6, 'x1', -2, 3.0 ) ], ['+'] ),
+    ParsedReg( 'sin',   [ SubExpression( 0.8, 'x1', -1, 3.0 ),   SubExpression( -0.2, None, None, None ) ], ['+'] ),
+    ParsedReg( '~/',    [ SubExpression( None, 'x1', -1, None ), SubExpression( 0.8, 'x2', -4, None ) ], ['+'] ),
+    ParsedReg( None,    [ SubExpression( 0.9, 'x1', -1, 3.0 ),   SubExpression( 0.6, 'x1', -2, 3.0 ) ], ['/'] ),
+    ParsedReg( None,    [ SubExpression( 0.9, 'x1', None, 3.0 ), SubExpression( 0.679, 'x1', -2, 3.5 ) ], ['/'] ),
+    ParsedReg( '~/abs', [ SubExpression( None, 'x1', -1, None ), SubExpression( 0.8, 'x2', -4, None ) ], ['+'] ),
+    ParsedReg( '1/abs', [ SubExpression( 0.2, 'x', None, None ), SubExpression( 0.8, 'y2', -4, None ) ], ['+'] ),
+    ParsedReg( '32*sin',[ SubExpression( 0.9, 'x1', -1, 3.0 ),   SubExpression( 0.6, 'x1', -2, 3.0 ) ], ['+'] ),
   ]
 
-  DebugExpression( Expressions[0] ) # just to test that function
+  DebugExpression( Expressions[ 0 ] ) # just to test that function
 
-  Fail = False
+  Fail: bool = False
   for test in range( len( Expressions ) ):
     if ( ExpressionParser( Expressions[ test ] ) != ParsedExpressions[ test ] ):
       Fail = True; print( 'ERROR: ' + Expressions[ test ] )
