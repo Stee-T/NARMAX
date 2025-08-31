@@ -75,7 +75,7 @@ def Bool_MAE( theta, L, ERR, RegNames, ValDic,  DcFilterIdx = None ): # The arbo
     RegMat, _ = NARMAX.CTors.Booler( RegMat, RegNames ) # create data
 
     if ( DcFilterIdx is not None ): RegMat = RegMat[:, DcFilterIdx] # Filter out same regressors as for the regression    
-    yHat = RegMat[:, L.astype( np.int64 ) ].to( tor.float64 ) @ theta # legal since MA system
+    yHat = RegMat[:, L.astype( np.int64 ) ].to( tor.get_default_dtype() ) @ theta # legal since MA system
 
     Error += tor.mean( tor.abs( ValDic["y"][i] - yHat ) / tor.mean( tor.abs( ValDic["y"][i] ) ) ).item() # relative MAE
     
@@ -83,8 +83,8 @@ def Bool_MAE( theta, L, ERR, RegNames, ValDic,  DcFilterIdx = None ): # The arbo
 
 
 # ---------------------------------------------------- 5. Running the Arborescence
-Arbo = NARMAX.Arborescence( y.to( tor.float64 ),
-                            Dc = RegMat.to( tor.float64 ), DcNames = RegNames, # Dc & Regressor names, being dictionnary of candidate regerssors (phi)
+Arbo = NARMAX.Arborescence( y.to( tor.get_default_dtype() ),
+                            Dc = RegMat.to( tor.get_default_dtype() ), DcNames = RegNames, # Dc & Regressor names, being dictionnary of candidate regerssors (phi)
                             tolRoot = tol, tolRest = tol, # \rho tolerances
                             MaxDepth = ArboDepth, # Maximal number of levels
                             ValFunc = Bool_MAE, ValData = ValidationDict, # Validation function and dictionary
@@ -99,7 +99,7 @@ print( "System: y[k] = ( !x1[k] && x2[k] ) - ( x3[k] ^ x4[k] ) + ( x1[k] || x3[k
 for i in range( len( theta ) ): print( theta[i], RegNames[ L[i] ] )
 
 Fig, Ax = plt.subplots()
-Ax.plot( y.cpu().numpy() - RegMat[:, L.astype( np.int64 ) ].to( tor.float64 ).cpu().numpy() @ theta, marker = '.', markersize = 6 )
+Ax.plot( y.cpu().numpy() - RegMat[:, L.astype( np.int64 ) ].to( tor.get_default_dtype() ).cpu().numpy() @ theta, marker = '.', markersize = 6 )
 Ax.grid( which = 'both' )
 Ax.legend( [ "y - yHat" ] )
 Fig.tight_layout()

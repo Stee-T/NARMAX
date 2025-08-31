@@ -189,7 +189,7 @@ class SymbolicOscillator:
 
   ###################################################################################### CTor ######################################################################################
   def __init__( self, InputVarNames: list[ str ], NonLinearities: list[ NL.NonLinearity ], ExprList: list[ str ],
-                theta: tor.Tensor, OutputVarName: str = 'y', dtype: tor.dtype = tor.float64, device: str = Device ) -> None:
+                theta: tor.Tensor, OutputVarName: str = 'y', dtype: tor.dtype = tor.get_default_dtype(), device: str = Device ) -> None:
     """Generates the Regressor strings contained in the RegStr
     
     ### Inputs:

@@ -24,17 +24,24 @@ def Set_Tensortype_And_Device() -> str:
   ### Outputs
   - Device: String, either "cpu", "mps", "vulkan", "opencl" or "cuda"
   '''
-  if ( tor.cuda.is_available() ):            Device: str = "cuda" # force new tensors to be on GPU
-  elif ( tor.backends.mps.is_available() ):  Device: str = "mps" # M1/M2 Macs
-  # elif ( tor.has_opencl() ):                     Device: str = "opencl"  # Devices with OpenCL support
+  if ( tor.cuda.is_available() ):
+    Device: str = "cuda" # force new tensors to be on GPU
+    tor.set_default_dtype( tor.float64 ) # force new tensors to be 64-bit floats
+
+  elif ( tor.backends.mps.is_available() ):
+    Device: str = "mps" # M1/M2 Macs
+    tor.set_default_dtype( tor.float32 ) # force new tensors to be 32-bit floats, M1/M2 doesn't support 64-bit
+    
+  # elif ( tor.has_opencl() ):                   Device: str = "opencl"  # Devices with OpenCL support
   # elif ( tor.backends.vulkan.is_available() ): Device: str = "vulkan"  # Vulkan devices
   # elif ( tor.backends.mkl.is_available() ):    Device: str = "mkl" # Intel MKL backend
+
   else:
     print( "\n\nYour python installation didn't detect a hardware-accelerator (CUDA, MPS, Vulkan), so this will run on CPU which is a lot slower\n\n" )
     Device: str = "cpu" # force new tensors to be on CPU
+    tor.set_default_dtype( tor.float64 ) # force new tensors to be 64-bit floats irrespective of CPU/GPU/M1/M2
   
   tor.set_default_device( Device )
-  tor.set_default_dtype( tor.float64 ) # force new tensors to be 64-bit floats irrespective of CPU/GPU/M1/M2
 
   return ( Device )
   
