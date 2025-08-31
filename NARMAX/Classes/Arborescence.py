@@ -67,8 +67,12 @@ class Arborescence:
     # --------------------------------------------------------------------------------- Type checks --------------------------------------------------------------------------------
 
     if ( ( y is not None ) and ( not isinstance( y, tor.Tensor ) ) ):
-      raise ValueError( "y must be None or a torch.Tensor" )
-
+      raise ValueError( "y must be None or a 1D-torch.Tensor" )
+    
+    if ( y is not None ):
+      if not ( y.ndim == 1 or ( y.ndim == 2 and y.shape[1] == 1 ) ):
+        raise ValueError( f"y must be None or of shape (p,) or (p,1), got { tuple( y.shape ) }" )
+      
     if ( ( Ds is not None ) and ( not isinstance( Ds, tor.Tensor ) ) ):
       raise ValueError( "Ds must be None or a torch.Tensor" )
 
