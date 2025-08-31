@@ -10,7 +10,7 @@ x1: tor.Tensor = ( 2 * InputAmplitude ) * ( tor.rand( p ) - 0.5 ) # Mean not sub
 x2: tor.Tensor = ( 2 * InputAmplitude ) * ( tor.rand( p ) - 0.5 )
 
 def UserFunction( x: tor.Tensor ) -> tor.Tensor:
-  return ( tor.max( tor.Tensor( [ 0 ] ), tor.sin( 2 * x ) ) ) # whatever really
+  return ( tor.max( tor.tensor( [ 0 ] ), tor.sin( 2 * x ) ) ) # whatever really
 
 def System( y: tor.Tensor, x1: tor.Tensor, x2: tor.Tensor, W: tor.Tensor, theta: tor.Tensor,
             StartIdx: int, EndIdx: int ) -> tor.Tensor:
