@@ -102,11 +102,12 @@ To illustrate, a small symbolic model explaining 70% of the data variance, could
 
 As described above, the library makes optimal sparse least squares fitting of any vectors / regressors $\underline{\varphi}_k \in \mathbb{R}^{p}$ passed by the user for the given system response $\underline{y}\in \mathbb{R}^{p}$. All provided examples are with severely non-linear auto-regressive systems, however, the user can pass dictionaries containing any type of functions (multivariate, discontinuous, discrete, acausal, etc. - whatever that outputs vectors with numbers really). This is thus a very general mathematical framework supporting for example FIR/MA, IIR/AR, wavelet-, RBF, polynomial, etc. fitting.
 
-## Installation & Usage
-**Installation:** The library is currently unfinished and has thus not yet been made available through pip install. This will be done soon when the morphing part is finished. Same for the docs, in the meantime, please refer to the examples (see NARMAX section above), which are representative of the average usage and well commented.
-
-**Usage:** Currently, the library folder can be downloaded and copy-pasted in the same folder as the script calling it. The import is as usual for python packages.
-
+## Installation
+Clone the repository and install locally with pip:
+```
+git clone https://github.com/Stee-T/NARMAX.git
+pip install ./NARMAX
+```
 
 ## Library content
 
