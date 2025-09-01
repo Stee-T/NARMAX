@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "NARMAX"
+version = "0.1.0"
+description = "Machine learning library for symbolic fitting"
+authors = [{name = "Sté Thunus", email = "144615547+Stee-T@users.noreply.github.com"}]
+dependencies = [
+    "numpy",
+    "scipy",
+    "matplotlib",
+    "dill",
+    "tqdm",
+    "torch"
+]
+readme = "README.md"
+requires-python = ">=3.8"
+
+[project.optional-dependencies]
+dev = []
+
+[tool.setuptools]
+package-dir = {"" = "."}
+packages = ["NARMAX"]
