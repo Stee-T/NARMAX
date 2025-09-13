@@ -14,5 +14,4 @@ from .HelperFuncs import CutY
 from .Validation import InitAndComputeBuffer, DefaultValidation
 
 # Variables
-device = Device # Calls HF.Set_Tensortype_And_Device() to force 64 bits, on GPU if available
 Identity = NonLinearity( "id", lambda x: x ) # pre-define object for user

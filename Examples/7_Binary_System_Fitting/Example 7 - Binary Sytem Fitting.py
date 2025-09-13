@@ -19,10 +19,10 @@ ArboDepth = 3 # maximum number of levels the arborescence can have
 while ( 5 ): # 5 is the absolute truth, do while y contains no nan
 
   # random binary sequences
-  x1 = tor.randint( 0, 2, size = (p,), device = NARMAX.device, dtype = tor.bool )
-  x2 = tor.randint( 0, 2, size = (p,), device = NARMAX.device, dtype = tor.bool )
-  x3 = tor.randint( 0, 2, size = (p,), device = NARMAX.device, dtype = tor.bool )
-  x4 = tor.randint( 0, 2, size = (p,), device = NARMAX.device, dtype = tor.bool )
+  x1 = tor.randint( 0, 2, size = (p,), device = NARMAX.Device, dtype = tor.bool )
+  x2 = tor.randint( 0, 2, size = (p,), device = NARMAX.Device, dtype = tor.bool )
+  x3 = tor.randint( 0, 2, size = (p,), device = NARMAX.Device, dtype = tor.bool )
+  x4 = tor.randint( 0, 2, size = (p,), device = NARMAX.Device, dtype = tor.bool )
 
   x1, x2, x3, x4, y, W = Test_Systems.Binary_MISO_System( x1, x2, x3, x4, W, Print = False )
   if ( not tor.isnan( tor.sum( y ) ) ): break
@@ -42,10 +42,10 @@ ValidationDict = { # contains essentially everything passed to the CTors to reco
 }
 
 for i in range( 5 ): # Fill the validation dict's data entry with randomly generated validation data
-  x1_val = tor.randint( 0, 2, size = ( int( p / 2 ), ), device = NARMAX.device, dtype = tor.bool )
-  x2_val = tor.randint( 0, 2, size = ( int( p / 2 ), ), device = NARMAX.device, dtype = tor.bool )
-  x3_val = tor.randint( 0, 2, size = ( int( p / 2 ), ), device = NARMAX.device, dtype = tor.bool )
-  x4_val = tor.randint( 0, 2, size = ( int( p / 2 ), ), device = NARMAX.device, dtype = tor.bool )
+  x1_val = tor.randint( 0, 2, size = ( p // 2, ), device = NARMAX.Device, dtype = tor.bool )
+  x2_val = tor.randint( 0, 2, size = ( p // 2, ), device = NARMAX.Device, dtype = tor.bool )
+  x3_val = tor.randint( 0, 2, size = ( p // 2, ), device = NARMAX.Device, dtype = tor.bool )
+  x4_val = tor.randint( 0, 2, size = ( p // 2, ), device = NARMAX.Device, dtype = tor.bool )
 
   _, _, _, _, y_val, W = NARMAX.Test.Binary_MISO_System( x1_val, x2_val, x3_val, x4_val, W, Print = False )
   
