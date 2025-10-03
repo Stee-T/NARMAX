@@ -443,11 +443,11 @@ class SymbolicOscillator:
 
     # MA parts as block-operations (stay on user-given device, hopefully GPU)
     if ( self.SubSystem_MA_Num is not None ):
-      MA_Num = self.SubSystem_MA_Num( self.theta, Data, self.NonLinearities, self.Buffer_Toggle ).cpu()
+      MA_Num = self.SubSystem_MA_Num( self.theta.to( self.device, self.dtype ), Data, self.NonLinearities, self.Buffer_Toggle ).cpu()
     else: MA_Num = None
 
     if ( self.SubSystem_MA_Den is not None ):
-      MA_Den = self.SubSystem_MA_Den( self.theta, Data, self.NonLinearities, self.Buffer_Toggle ).cpu()
+      MA_Den = self.SubSystem_MA_Den( self.theta.to( self.device, self.dtype ), Data, self.NonLinearities, self.Buffer_Toggle ).cpu()
     else: MA_Den = None
 
     Data = [ x.cpu() for x in Data ] # force all to CPU
