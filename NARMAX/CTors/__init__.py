@@ -38,6 +38,8 @@ def Lagger( Data: Sequence[ tor.Tensor ], Lags: Sequence[ Union[ int, Sequence[ 
   '''
   
   # --------------------------------------------------------------------------- A) # Bullshit prevention ---------------------------------------------------------------------------
+  if len( Data ) == 0: raise ValueError( "Data must contain at least one regressor Matrix." )
+
   if ( len( Data ) != len( Lags ) ):              raise AssertionError( "The numbers of regressors and lags don't correspond" )
   
   if ( RegNames is not None ):
@@ -53,7 +55,8 @@ def Lagger( Data: Sequence[ tor.Tensor ], Lags: Sequence[ Union[ int, Sequence[ 
     if ( isinstance( Lags[ i ], int ) ):
       if ( Lags[ i ] < 0 ):                         raise AssertionError( f"Integer Lags elements must be >= 0, which is not the case for the { i }-th element" )
 
-    elif ( isinstance( Lags[ i ], list ) ): # if list verify that all elements are integers
+    elif ( isinstance( Lags[ i ], ( list, tuple ) ) ): # if sequence verify that all elements are integers
+      if ( len( Lags[ i ] ) == 0 ):                       raise ValueError( f"Lags[ { i } ] must not be an empty sequence." )
       for j in range( len( Lags[ i ] ) ):
         if ( not isinstance( Lags[ i ][ j ], int ) ): raise AssertionError( f"All Lags-sublist elements must be integers, which is not the case for Lags[{ i }][{ j }]" )
         if ( Lags[ i ][ j ] < 0 ):                    raise AssertionError( f"All Lags-sublist elements must be integers >= 0, which is not the case for Lags[{ i }][{ j }]" )
@@ -65,12 +68,12 @@ def Lagger( Data: Sequence[ tor.Tensor ], Lags: Sequence[ Union[ int, Sequence[ 
     if ( len( Data ) <= 3 ): RegNames = [ "x", "y", "e" ][ : len( Data ) ]
     else:                    raise AssertionError( "No regressor names were passed and len( Data ) > 3. Thus x, y, e can't be assumed and RegNames must be passed" )
 
-  q = 0 # Maximum lag to trim all regressors to
+  q: int = 0 # Maximum lag to trim all regressors to
   for lag in Lags:
     if ( isinstance( lag, int ) ): q = max( q, lag )
     else:                          q = max( q, max( lag ) ) # sequence can contain whatever
 
-  p = Data[ 0 ].view( -1, 1 ).shape[ 0 ] # number of samples in the regressors, all guaranteed to be the same
+  p: int = Data[ 0 ].view( -1, 1 ).shape[ 0 ] # number of samples in the regressors, all guaranteed to be the same
 
   RegMat: list[ tor.Tensor ] = [] # Regressor matrix big enough for all simple and optionally combined swung-in terms
   OutNames: list[ str ] = [] # Regressor RegNames
@@ -79,7 +82,9 @@ def Lagger( Data: Sequence[ tor.Tensor ], Lags: Sequence[ Union[ int, Sequence[ 
   for reg in range( len( Data ) ):
 
     if ( isinstance( Lags[ reg ], int ) ): LagList: list[ int ] = [ i for i in range( Lags[ reg ] + 1 ) ] # upperbound passed, so take all lags, +1 to include the passed Maxlag
-    else:                                LagList: Sequence[ int ] = Lags[ reg ] # pre-determined list
+    else:                                  LagList: list[ int ] = list( Lags[ reg ] ) # pre-determined list (copy to avoid mutating original if needed)
+
+    if ( len( set( LagList ) ) != len( LagList ) ): raise ValueError( f"Duplicate lag values found in Lags[{ reg }] (regressor '{ RegNames[ reg ] }'). Each lag must be unique." )
 
     for lag in LagList: 
       RegMat.append( Data[ reg ].view( -1 )[ q - lag : p - lag ] ) # flatten and take needed slice
@@ -106,7 +111,7 @@ def Lagger( Data: Sequence[ tor.Tensor ], Lags: Sequence[ Union[ int, Sequence[ 
     
     if ( y is None ): y = Data[ yPos ].view( -1 )[ q : p ] # same as above but lag = 0
 
-  return ( y, tor.column_stack( RegMat ), np.array( OutNames ) )
+  return ( y, tor.column_stack( RegMat ), np.array( OutNames, dtype = np.str_ ) )
 
 
 # ############################################################################### Monomial Expansion ###############################################################################
@@ -129,7 +134,7 @@ def Expander( Data: tor.Tensor, RegNames: Union[ Sequence[ str ], NDArray[ np.st
   
   '''
   
-  if ( ( ExpansionOrder < 1 ) or ( not isinstance( ExpansionOrder, int ) ) ): raise ValueError( "ExpansionOrder should be an int >= 1" )
+  if ( ( ExpansionOrder < 1 ) or ( not isinstance( ExpansionOrder, ( int, np.integer ) ) ) ): raise ValueError( "ExpansionOrder should be an int >= 1" )
   if ( ExpansionOrder == 1 ): return ( Data, np.array( RegNames ) ) # Nothing happens for 1-order polynomial expansion
 
   if ( Data.ndim != 2 ): raise ValueError( "Data should be 2-dimensional with regressors as columns" )
