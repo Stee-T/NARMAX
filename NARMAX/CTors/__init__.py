@@ -198,7 +198,7 @@ def Expander( Data: tor.Tensor, RegNames: Union[ Sequence[ str ], NDArray[ np.st
 # ########################################################################### Regressor Matrix Transform ###########################################################################
 def NonLinearizer( y: Optional[ tor.Tensor ], Data: tor.Tensor, RegNames: Union[ Sequence[ str ], NDArray[ np.str_ ] ],
                    Functions: Sequence[ NonLinearity ], MakeRational: Optional[ Sequence[ bool ] ] = None
-                 ) -> tuple[ tor.Tensor, NDArray[ np.str_ ], Optional[ list[ int ] ] ]:
+                 ) -> tuple[ tor.Tensor, NDArray[ np.str_ ], list[ int ] ]:
   ''' Applies the list of passed functions elementwise on the passed data and relabels the columns to take that into account if the first two arguments are not [].
   If no functions are passed and if MakeRational is None, nothing will happen adn a warning is printed
   
@@ -215,29 +215,41 @@ def NonLinearizer( y: Optional[ tor.Tensor ], Data: tor.Tensor, RegNames: Union[
   - `M`: (list of ints ) containing the indices of the applied functions for each created term. Length: Data.shape[ 1 ] * ( len(Functions) + sum(MakeRational) )
   '''
   # ----------------------------------------------------------------------------- Bullshit prevention ------------------------------------------------------------------------------
-  # Data-type tests
-  if ( not isinstance( Data, tor.Tensor ) ):        raise AssertionError( "The Input data must be a torch.Tensor" )
+  # Data tests
+  if ( not isinstance( Data, tor.Tensor ) ): raise AssertionError( "The Input data must be a torch.Tensor" )
+  if ( Data.ndim != 2 ):                     raise AssertionError( "The Input data 'Data' must be a 2D torch.Tensor. Reshape if single vector" )
   
   # Functions
-  if ( not isinstance( Functions, list ) ): raise AssertionError( "The 'Functions'argument name must be a list of NARMAX.NonLinearity objects" )
-  if ( len( Functions ) == 0 ):             raise AssertionError( "The 'Functions'argument must be a non-empty list of NARMAX.NonLinearity objects" )
-  if ( Functions[ 0 ].get_Name() != "id" ): raise AssertionError( "The first function in the Functions list must be 'id' per convention" )
+  if ( not isinstance( Functions, list ) ):  raise AssertionError( "The 'Functions'argument name must be a list of NARMAX.NonLinearity objects" )
+  if ( len( Functions ) == 0 ):              raise AssertionError( "The 'Functions'argument must be a non-empty list of NARMAX.NonLinearity objects" )
+  if ( Functions[ 0 ].get_Name() != "id" ):  raise AssertionError( "The 0th function in the 'Functions' list must be 'id' per my convention that I decided. Thanks" )
 
-  # Length tests
+  # MakeRational tests: flatten empty sequences to None to simplify procedure
+  if ( ( MakeRational is not None ) and len( MakeRational ) == 0 ): MakeRational = None # use AND short circuiting to prevent type error for length
+
   if ( MakeRational is not None ): # check first since None has no length
     if ( len( Functions ) != len( MakeRational ) ): raise AssertionError( "The length of MakeRational doesn't match that of Functions" )
+  else: # MakeRational is None, thus no rational fitting
+    if ( len( Functions ) == 1 ): # Functions only contains "id" → identity
+      print( "WARNING: No transformations (Functions) or MakeRational instructions were passed, which is sus as CTor.Lagger, thus, does nothing" )
 
-  if ( ( len( Functions ) == 1 ) and MakeRational is None): # only contains id
-    print( "WARNING: No transformations (Functions) or MakeRational instructions were passed, which is sus as this CTor will not do anything" )
-
-  if ( MakeRational == [] ): MakeRational = None # Must be here since MR = None is checked below
-
+  # RegNames tests
+  if ( not isinstance( RegNames, np.ndarray ) ): RegNames = np.array( RegNames )
+  if ( RegNames.ndim != 1 ):                     raise AssertionError( "The RegNames argument must be a 1D array of strings" )
+  if ( len( RegNames ) != Data.shape[ 1 ] ):     raise AssertionError( "The RegNames argument must have the same length as Data's columns" )
+  
+  # y Tests
   if ( y is not None ):
-    y = y.view( -1 ) # flatten as security
-    if ( len( y ) != Data.shape[ 0 ] ):               raise AssertionError( "y's length does not match the Regressors' length" )
+    if ( not isinstance( y, tor.Tensor ) ):         raise AssertionError( "The 'y' argument must be a torch.Tensor" )
+    if ( y.ndim == 0 ): raise AssertionError("'y' must not be a scalar")
+    if ( y.ndim > 2 ):  raise AssertionError("'y' must be 1D or a 2D tensor with a single row/column")
+    if ( y.ndim == 2 ):
+        if ( y.shape[0] != 1 ) and ( y.shape[1] != 1 ): raise AssertionError("'y' must be a column vector (p,1) or row vector (1,p), got shape {}".format(y.shape))
+    y = y.view( -1 ) # flatten as security, since it's some transpose of 1D
+    if ( len( y ) != Data.shape[ 0 ] ):                 raise AssertionError( "y's length does not match the Regressors' length" )
   
   else: # y is None
-    if ( MakeRational is not None ):                raise AssertionError( "y must be passed if MakeRational is not None" )
+    if ( MakeRational is not None ):                    raise AssertionError( "y must be passed if MakeRational is not None" )
   
   # -------------------------------------------------------------------- A) Pre-Processing & B) Transformations --------------------------------------------------------------------
 
@@ -245,7 +257,7 @@ def NonLinearizer( y: Optional[ tor.Tensor ], Data: tor.Tensor, RegNames: Union[
   nRegs: int = Data.shape[ 1 ]
   DataList: list[ tor.Tensor ] = [ Data ]
   OutNames: list[ Sequence[ str ] ] = [ RegNames ]
-  M: list[ int ] = [ 0 ] * nRegs # Morphing meta data containing the index of the applied non-linearity (id for all un-processed terms)
+  M: list[ int ] = [ 0 ] * nRegs # Morphing meta-data containing the index of the applied non-linearity (id for all un-processed terms)
 
   # B) Compute the transformations and append to the list to finally horizontally concatenate into a single matrix  
   for func in range( 1, len( Functions ) ): # start at 1 to ignore the identity function, skips the loop if Func only contains identity
