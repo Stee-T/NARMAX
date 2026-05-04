@@ -40,28 +40,28 @@ def Lagger( Data: Sequence[ tor.Tensor ], Lags: Sequence[ Union[ int, Sequence[ 
   # --------------------------------------------------------------------------- A) # Bullshit prevention ---------------------------------------------------------------------------
   if len( Data ) == 0: raise ValueError( "Data must contain at least one regressor Matrix." )
 
-  if ( len( Data ) != len( Lags ) ):              raise AssertionError( "The numbers of regressors and lags don't correspond" )
+  if ( len( Data ) != len( Lags ) ): raise AssertionError( "The numbers of regressors and lags don't correspond" )
   
   if ( RegNames is not None ):
-    if ( len( Data ) != len( RegNames ) ):        raise AssertionError( "The numbers of regressors and RegNames don't correspond" )
+    if ( len( Data ) != len( RegNames ) ): raise AssertionError( "The numbers of regressors and RegNames don't correspond" )
 
   for i in range( len( Data ) ):
-    if ( not tor.isfinite( Data[ i ] ).all() ):     raise AssertionError( f"Data[ { i } ] contains inf or nans. The to-be-fitted system is unstable in general or for this particular sequence. Try a new one" )
+    if ( not tor.isfinite( Data[ i ] ).all() ): raise AssertionError( f"Data[ { i } ] contains inf or nans. The to-be-fitted system is unstable in general or for this particular sequence. Try a new one" )
   
   for i in range( 1, len( Data ) ): 
-    if ( len( Data[ 0 ] ) != len( Data[ i ] ) ):      raise AssertionError( "All regressors must have the same lenght" )
+    if ( len( Data[ 0 ] ) != len( Data[ i ] ) ): raise AssertionError( "All regressors must have the same lenght" )
 
   for i in range( len( Lags ) ):
     if ( isinstance( Lags[ i ], int ) ):
-      if ( Lags[ i ] < 0 ):                         raise AssertionError( f"Integer Lags elements must be >= 0, which is not the case for the { i }-th element" )
+      if ( Lags[ i ] < 0 ): raise AssertionError( f"Integer Lags elements must be >= 0, which is not the case for the { i }-th element" )
 
     elif ( isinstance( Lags[ i ], ( list, tuple ) ) ): # if sequence verify that all elements are integers
-      if ( len( Lags[ i ] ) == 0 ):                       raise ValueError( f"Lags[ { i } ] must not be an empty sequence." )
+      if ( len( Lags[ i ] ) == 0 ): raise ValueError( f"Lags[ { i } ] must not be an empty sequence." )
       for j in range( len( Lags[ i ] ) ):
         if ( not isinstance( Lags[ i ][ j ], int ) ): raise AssertionError( f"All Lags-sublist elements must be integers, which is not the case for Lags[{ i }][{ j }]" )
         if ( Lags[ i ][ j ] < 0 ):                    raise AssertionError( f"All Lags-sublist elements must be integers >= 0, which is not the case for Lags[{ i }][{ j }]" )
     
-    else:                                         raise AssertionError( f"All MaxLags elements must be integers or Lists, which is not the case for Lags[{ i }]" )
+    else:                                             raise AssertionError( f"All MaxLags elements must be integers or Lists, which is not the case for Lags[{ i }]" )
   
   # ------------------------------------------------------------------------------- B) Initialization ------------------------------------------------------------------------------
   if ( RegNames is None ):
@@ -74,6 +74,7 @@ def Lagger( Data: Sequence[ tor.Tensor ], Lags: Sequence[ Union[ int, Sequence[ 
     else:                          q = max( q, max( lag ) ) # sequence can contain whatever
 
   p: int = Data[ 0 ].view( -1, 1 ).shape[ 0 ] # number of samples in the regressors, all guaranteed to be the same
+  if ( q >= p ): raise ValueError( f"At least one lag (q = { q }) is greater than the number of samples (p = { p }). Not enough Data to create desired lags" )
 
   RegMat: list[ tor.Tensor ] = [] # Regressor matrix big enough for all simple and optionally combined swung-in terms
   OutNames: list[ str ] = [] # Regressor RegNames
@@ -111,7 +112,11 @@ def Lagger( Data: Sequence[ tor.Tensor ], Lags: Sequence[ Union[ int, Sequence[ 
     
     if ( y is None ): y = Data[ yPos ].view( -1 )[ q : p ] # same as above but lag = 0
 
-  return ( y, tor.column_stack( RegMat ), np.array( OutNames, dtype = np.str_ ) )
+  # Avoid column_stack on empty list (only the case if RegMat containing only y[k] is passed, which is eliminated above)
+  if ( not RegMat ): RegMatTensor = tor.empty( ( p - q, 0 ) )
+  else:              RegMatTensor = tor.column_stack( RegMat )
+
+  return ( y, RegMatTensor, np.array( OutNames, dtype = np.str_ ) )
 
 
 # ############################################################################### Monomial Expansion ###############################################################################
@@ -212,9 +217,11 @@ def NonLinearizer( y: Optional[ tor.Tensor ], Data: tor.Tensor, RegNames: Union[
   # ----------------------------------------------------------------------------- Bullshit prevention ------------------------------------------------------------------------------
   # Data-type tests
   if ( not isinstance( Data, tor.Tensor ) ):        raise AssertionError( "The Input data must be a torch.Tensor" )
-  if ( not isinstance( Functions, list ) ):         raise AssertionError( "The 'Functions'argument name must be a list of function pointers" )
   
-  if ( Functions[ 0 ].get_Name() != "id" ):           raise AssertionError( "The first function in the Functions list must be 'id' per convention" )
+  # Functions
+  if ( not isinstance( Functions, list ) ): raise AssertionError( "The 'Functions'argument name must be a list of NARMAX.NonLinearity objects" )
+  if ( len( Functions ) == 0 ):             raise AssertionError( "The 'Functions'argument must be a non-empty list of NARMAX.NonLinearity objects" )
+  if ( Functions[ 0 ].get_Name() != "id" ): raise AssertionError( "The first function in the Functions list must be 'id' per convention" )
 
   # Length tests
   if ( MakeRational is not None ): # check first since None has no length
