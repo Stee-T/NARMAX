@@ -72,7 +72,7 @@ def test_symbolic_oscillator_set_theta() -> None:
 
     new_theta = tor.tensor( [ 1.0, 2.0, 3.0, 4.0, 5.0, 6.0 ] )
     model.set_theta( new_theta )
-    assert tor.allclose( model.get_theta().cpu(), new_theta )
+    assert tor.allclose( model.get_theta(), new_theta )
 
     with pytest.raises( ValueError, match = "theta must be a torch.Tensor" ):
         model.set_theta( [ 1.0, 2.0, 3.0, 4.0, 5.0, 6.0 ] )
@@ -97,11 +97,11 @@ def test_symbolic_oscillator_storage() -> None:
 
     new_input = tor.tensor( [ [ 1.0, 2.0, 3.0 ], [ 4.0, 5.0, 6.0 ] ] )
     model.set_InputStorage( new_input )
-    assert tor.allclose( model.get_InputStorage().cpu(), new_input )
+    assert tor.allclose( model.get_InputStorage().cpu(), new_input.cpu() )
 
     new_output = tor.tensor( [ 7.0 ] )
     model.set_OutputStorage( new_output )
-    assert tor.allclose( model.get_OutputStorage().cpu(), new_output )
+    assert tor.allclose( model.get_OutputStorage().cpu(), new_output.cpu() )
 
     with pytest.raises( ValueError, match = "wrong dimension" ):
         model.set_InputStorage( tor.tensor( [ 1.0, 2.0 ] ) )
@@ -230,7 +230,7 @@ def test_symbolic_oscillator() -> None:
     assert Model.get_nInputVars() == 2
     assert Model.get_MaxInputLag() == 3
     assert Model.get_MaxOutputLag() == 1
-    assert tor.allclose( Model.get_theta().cpu(), theta[ -1 ] )
+    assert tor.allclose( Model.get_theta().cpu(), theta[ -1 ].cpu() )
 
     np.testing.assert_allclose(
         diff.detach().cpu().numpy(),

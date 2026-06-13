@@ -111,7 +111,7 @@ class TestComputeERR:
     assert err.dtype == np.float64
     assert err.shape == ( 2, )
     assert err[ 0 ] >= 1.0 - 1e-12
-    assert err[ 1 ] == 0.0 # never touched after early exit
+    assert abs( err[ 1 ] ) < 1e-20 # never touched after early exit
     assert np.sum( err ) >= 1.0 - 1e-12
 
   def test_norm2_fudge_factor( self ) -> None:

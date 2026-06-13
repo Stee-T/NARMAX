@@ -6,7 +6,7 @@ from NARMAX.HelperFuncs import Set_Tensortype_And_Device
 class TestSetTensortypeAndDevice:
   '''Tests for Set_Tensortype_And_Device.'''
 
-  VALID_DEVICES: set = { "cpu", "cuda", "mps" }
+  VALID_DEVICES: set = { "cpu", "cuda", "cuda:0", "mps" }
 
   # ------------------------------------------------------------------
   # Fixtures
@@ -61,7 +61,7 @@ class TestSetTensortypeAndDevice:
   def test_sets_default_dtype_for_cpu_or_cuda( self ) -> None:
     '''On cpu or cuda the default dtype must be float64.'''
     result = Set_Tensortype_And_Device()
-    if result in ( "cpu", "cuda" ):
+    if result.startswith( "cuda" ) or result == "cpu":
       assert tor.get_default_dtype() == tor.float64, (
         f"Expected float64 on { result }, got { tor.get_default_dtype() }"
       )
@@ -108,7 +108,7 @@ class TestSetTensortypeAndDevice:
     assert str( t.device ) == result, (
       f"New tensor is on { t.device } but defaults were set to { result }"
     )
-    if result in ( "cpu", "cuda" ):
+    if result.startswith( "cuda" ) or result == "cpu":
       assert t.dtype == tor.float64, (
         f"New tensor dtype is { t.dtype } but float64 expected on { result }"
       )

@@ -20,31 +20,28 @@ from numpy.typing import NDArray
 
 ############################################################################# Set Tensortype And Device ############################################################################
 def Set_Tensortype_And_Device() -> str:
-  '''Set the default dtype and device for torch tensors. Returns the device string for further use.
+  '''Set the default dtype and device for newly created torch tensors. Returns the device string for further use.
 
   ### Outputs
   - Device: String, either "cpu", "mps", "vulkan", "opencl" or "cuda"
   '''
   if ( tor.cuda.is_available() ):
-    Device: str = "cuda" # force new tensors to be on GPU
-    tor.set_default_dtype( tor.float64 ) # force new tensors to be 64-bit floats
+    tor.set_default_dtype( tor.float64 )
+    tor.set_default_device( "cuda" )
 
   elif ( tor.backends.mps.is_available() ):
-    Device: str = "mps" # Mac with MXXX (M1, etc.)
-    tor.set_default_dtype( tor.float32 ) # force new tensors to be 32-bit floats doesn't support 64-bit
+    tor.set_default_dtype( tor.float32 ) # doesn't support 64-bit
+    tor.set_default_device( "mps" )
 
   # elif ( tor.has_opencl() ):                   Device: str = "opencl"  # Devices with OpenCL support
   # elif ( tor.backends.vulkan.is_available() ): Device: str = "vulkan"  # Vulkan devices
   # elif ( tor.backends.mkl.is_available() ):    Device: str = "mkl" # Intel MKL backend
-
   else:
     print( "\n\nYour python installation didn't detect a hardware-accelerator (CUDA, MPS, Vulkan), so this will run on CPU which is a lot slower\n\n" )
-    Device: str = "cpu" # force new tensors to be on CPU
-    tor.set_default_dtype( tor.float64 ) # force new tensors to be 64-bit floats irrespective of CPU/GPU/M1/M2
+    tor.set_default_dtype( tor.float64 )
+    tor.set_default_device( "cpu" )
 
-  tor.set_default_device( Device )
-
-  return ( Device )
+  return ( str( tor.get_default_device() ) ) # safer since device might be cuda:0 instead of just cuda
 
 
 #################################################################################### Combinations ##################################################################################

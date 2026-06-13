@@ -34,10 +34,14 @@ def test_binary_miso_system() -> None:
   with open( data_path, "rb" ) as f:
     data = dill.load( f )
 
-  y = data[ "y" ]
-  RegMat = data[ "RegMat" ]
+  y = data[ "y" ].to( device = tor.get_default_device() )
+  RegMat = data[ "RegMat" ].to( device = tor.get_default_device() )
   RegNames = data[ "RegNames" ]
   ValidationDict = data[ "ValidationDict" ]
+  ValidationDict[ "y" ] = [ v.to( device = tor.get_default_device() ) for v in ValidationDict[ "y" ] ]
+  ValidationDict[ "Data" ] = [
+      [ t.to( device = tor.get_default_device() ) for t in group ] for group in ValidationDict[ "Data" ]
+  ]
   expected_theta = data[ "expected_theta" ]
   expected_L = data[ "expected_L" ]
   expected_names = data[ "expected_names" ]
