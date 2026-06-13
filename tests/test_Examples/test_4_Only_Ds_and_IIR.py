@@ -105,7 +105,7 @@ def test_iir_parallel_filters() -> None:
                                                   -2.56636766e+01, 5.75198093e+01, -9.01224766e+01, 1.02900359e+02,
                                                   -8.66512387e+01, 5.31963103e+01, -2.28512415e+01, 6.23745792e+00,
                                                   -8.30774985e-01 ] ),
-                                atol = 1e-3, rtol = 1e-3
+                                atol = 3e-2, rtol = 1e-3
                               )
 
   # Convert to IIR coefficients

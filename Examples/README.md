@@ -2,6 +2,8 @@
 
 Welcome to the example / tutorial section. Each example folder contains a python script with the fitting code and an explanation README file displayed as github page.
 
+# TODO: Example 0
+
 # Example 1: Basics & Linear-in-the-parameter system
 Covers the basics of the library (functions, algorithm hyper-parameters, etc) and demonstrates how to use the most common signal-constructors and the arborescence.
 
