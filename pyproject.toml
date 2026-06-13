@@ -16,7 +16,7 @@ dependencies = [
     "torch"
 ]
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.13"
 
 [project.optional-dependencies]
 dev = []
@@ -24,3 +24,7 @@ dev = []
 [tool.setuptools]
 package-dir = {"" = "."}
 packages = ["NARMAX"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+filterwarnings = ["ignore:No operations and AllowNegation = False:UserWarning"]

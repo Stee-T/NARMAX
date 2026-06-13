@@ -14,4 +14,4 @@ from .HelperFuncs import CutY
 from .Validation import InitAndComputeBuffer, DefaultValidation
 
 # Variables
-Identity = NonLinearity( "id", lambda x: x ) # pre-define object for user
+Identity: NonLinearity = NonLinearity( "id", lambda x: x ) # pre-define object for user

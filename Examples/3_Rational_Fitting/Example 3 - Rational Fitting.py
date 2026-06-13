@@ -1,11 +1,9 @@
 # ---------------------------------------------------- 1. Imports
 import torch as tor
-
 import matplotlib.pyplot as plt
-plt.style.use( 'dark_background' ) # black graphs <3
 
 import NARMAX
-import NARMAX.Test as Test_Systems
+import NARMAX.TestSystems as Test_Systems
 
 # ---------------------------------------------------- 2. Hyper-parameters
 p = 2_500 # Dataset size
@@ -54,9 +52,9 @@ for i in range( 5 ): # Fill the validation dict's data entry with randomly gener
     x_val -= tor.mean( x_val ) # CENTER!!!
     x_val, y_val, W = Sys( x_val, W, Print = False ) # _val to avoid overwriting the training y
     if ( not tor.isnan( tor.sum( y_val ) ) ): break # Remain in the loop until no NaN
-  
-  ValidationDict["y"].append( y_val ) # Cuts the y to the right size (avois a warning)
-  ValidationDict["Data"].append( [ x_val ] ) # List of only input terms
+
+  ValidationDict[ "y" ].append( y_val ) # Cuts the y to the right size (avois a warning)
+  ValidationDict[ "Data" ].append( [ x_val ] ) # List of only input terms
 
 
 # ---------------------------------------------------- 5. Running the Arborescence
@@ -81,7 +79,7 @@ Arbo.fit()
 # Arbo.fit() # resume fitting
 
 Figs, Axs = Arbo.PlotAndPrint( ValidationDict ) # returns both figures and axes for further processing, as as the zoom-in below
-Axs[0][0].set_xlim( [0, 500] ) # Force a zoom-in
+Axs[ 0 ][ 0 ].set_xlim( [ 0, 500 ] ) # Force a zoom-in
 
 theta, L, ERR, _, RegMat, RegNames = Arbo.get_Results()
 
@@ -91,19 +89,20 @@ TestInput -= TestInput.mean() # center
 
 _, y, W = Sys( TestInput, W, Print = True ) # Original for-loop
 
-Model = NARMAX.SymbolicOscillator( [ "x", "y" ], NonLinearities, RegNames[ L ], tor.tensor( theta ) )
+Model = NARMAX.SymbolicOscillator( [ "x", "y" ], NonLinearities, RegNames[ L ], theta )
 
 # Prefill the internal state to perfectly emulate the ground truth y
-Model.set_InputStorage( TestInput[ None, :Model.get_MaxNegInputLag() ].clone() ) # corresponds to qx in this example
-Model.set_OutputStorage( y[ :Model.get_MaxNegOutputLag() ].clone() ) # corresponds to qy in this example
-yHat = Model.Oscillate( [ TestInput[ -len( y ): ] ] ) # generate data
+Model.set_InputStorage( TestInput[ None, : Model.get_MaxInputLag() ].clone() ) # corresponds to qx in this example
+Model.set_OutputStorage( y[ : Model.get_MaxOutputLag() ].clone() ) # corresponds to qy in this example
+yHat = Model.Oscillate( [ TestInput[ -len( y ) : ] ] ) # generate data
 
 # Note: We cut the input w.r.t. len( y ), since the generated model might have different lags.
 # Otherwise max( Model.get_MaxNegOutputLag(), Model.get_MaxNegInputLag() ) is the way to go##
 
-Fig, Ax = plt.subplots()
-Ax.plot( (y - yHat )[10:].cpu().numpy(), label = "y - yHat" )
-Ax.grid( which = "both", alpha = 0.3 )
+with plt.style.context( 'dark_background' ):
+  Fig, Ax = plt.subplots()
+  Ax.plot( ( y - yHat )[ 10 : ].cpu().numpy(), label = "y - yHat" )
+  Ax.grid( which = "both", alpha = 0.3 )
 
 
 plt.show()

@@ -11,10 +11,9 @@ This example / tutorial illustrates
 
 
 ## 1. Imports
-The main dependency is PyTorch which is used to do matrix operations on the GPU. Make sure that CUDA or MPS (M1/M2 Macs) is installed and that your PyTorch installation recognizes it. The library will issue a warning if no GPU is usable, as the fitting will be much slower.
+The main dependency is PyTorch which is used to do matrix operations on the GPU. Make sure that CUDA or MPS (Mac) is installed and that your PyTorch installation recognizes it. The library will issue a warning if no GPU is usable, as the fitting will be much slower.
 
 A list of dependencies is available on [the main git page](https://github.com/Stee-T/NARMAX/tree/main).  
-We also tell matplotlib to use a dark background, because it's no longer the 90s and we don't like looking at the sun.  
 The NARMAX.Test_Systems contains many systems to demonstrate the library. In real word usage, the system is the system under investigation.
 
 
@@ -22,7 +21,6 @@ The NARMAX.Test_Systems contains many systems to demonstrate the library. In rea
 import torch as tor
 
 import matplotlib.pyplot as plt
-plt.style.use( 'dark_background' ) # black graphs <3
 
 import NARMAX
 import NARMAX.Test as Test_Systems

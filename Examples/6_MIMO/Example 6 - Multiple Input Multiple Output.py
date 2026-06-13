@@ -1,21 +1,19 @@
 import NARMAX
-import NARMAX.Test as Test_Systems
+import NARMAX.TestSystems as Test_Systems
 
 import matplotlib.pyplot as plt
-plt.style.use( 'dark_background' ) # black graphs <3
-
 import torch as tor
 import copy
 
 # ################################################################################ Inputs creation ################################################################################
 # Sigmoids data generation
-p = 2_000 # dataset size 
+p = 2_000 # dataset size
 ExpansionOrder = 3 # allow up to x^3
 InputAmplitude = 1.5 # Set Noise amplitude
 tol = 1e-9 # Desired tolerance
 ArboDepth = 4 # maximum number of levels the arborescence can have
 W = None
-Lags = ( 3, 3, 3, [1, 2, 3], [1, 2, 3] ) # x1, x2, x3, y1, y2. Exclude y1[k] and y2[k]
+Lags = ( 3, 3, 3, [ 1, 2, 3 ], [ 1, 2, 3 ] ) # x1, x2, x3, y1, y2. Exclude y1[k] and y2[k]
 
 # Generate x and y data
 while ( 5 ): # 5 is the absolute truth, do while y contains no nan
@@ -26,7 +24,7 @@ while ( 5 ): # 5 is the absolute truth, do while y contains no nan
   x1 -= tor.mean( x1 ) # important as always
   x2 -= tor.mean( x2 ) # important as always
   x3 -= tor.mean( x3 ) # important as always
-  
+
   x1, x2, x3, y1, y2, W = Test_Systems.ThreeInputMIMO( x1, x2, x3, W, Print = True ) # apply selected system
   if ( not tor.isnan( tor.sum( y1 ) ) and not tor.isnan( tor.sum( y2 ) ) ): break
 
@@ -53,8 +51,8 @@ ValidationDict1 = { # contains essentially everything passed to the CTors to rec
 }
 
 ValidationDict2 = copy.deepcopy( ValidationDict1 )
-ValidationDict2["OutputVarName"] = "y2"
-ValidationDict2["InputVarNames"] = [ "x1", "x2", "x3", "y1", "y2" ] # here again, output put as last entry
+ValidationDict2[ "OutputVarName" ] = "y2"
+ValidationDict2[ "InputVarNames" ] = [ "x1", "x2", "x3", "y1", "y2" ] # here again, output put as last entry
 
 for i in range( 5 ): # Fill the validation dict's data entry with randomly generated validation data
   while ( 5 ): # 5 is the absolute truth
@@ -70,14 +68,14 @@ for i in range( 5 ): # Fill the validation dict's data entry with randomly gener
     x1_val, x2_val, x3_val, y1_val, y2_val, W = Test_Systems.ThreeInputMIMO( x1_val, x2_val, x3_val, W, Print = False ) # _val to avoid overwriting the training y
 
     if ( not tor.isnan( tor.sum( y1_val ) ) and not tor.isnan( tor.sum( y2_val ) ) ): break # Remain in the loop until no NaN
-  
+
   # Each system output needs its final output
-  ValidationDict1["y"].append( y1_val )
-  ValidationDict2["y"].append( y2_val )
-  
+  ValidationDict1[ "y" ].append( y1_val )
+  ValidationDict2[ "y" ].append( y2_val )
+
   # Both system output require the full data and the other channel's output. For simplicity, we add the same data to both
-  ValidationDict1["Data"].append( [ x1_val, x2_val, x3_val, y2_val ] )
-  ValidationDict2["Data"].append( [ x1_val, x2_val, x3_val, y1_val ] )
+  ValidationDict1[ "Data" ].append( [ x1_val, x2_val, x3_val, y2_val ] )
+  ValidationDict2[ "Data" ].append( [ x1_val, x2_val, x3_val, y1_val ] )
 
 
 # ---------------------------------------------------- 5. Running the Arborescences
@@ -87,7 +85,7 @@ Arbo_1 = NARMAX.Arborescence( y1,
                               MaxDepth = ArboDepth, # Maximal number of levels
                               ValFunc = NARMAX.DefaultValidation, ValData = ValidationDict1, # Validation function and dictionary
                             )
-Arbo_1.fit() # Don't overwrite RegMat, since it is used in the next Arbo
+_ = Arbo_1.fit() # Don't overwrite RegMat, since it is used in the next Arbo
 
 
 Arbo_2 = NARMAX.Arborescence( y2,
@@ -96,13 +94,13 @@ Arbo_2 = NARMAX.Arborescence( y2,
                               MaxDepth = ArboDepth, # Maximal number of levels
                               ValFunc = NARMAX.DefaultValidation, ValData = ValidationDict2, # Validation function and dictionary
                             )
-Arbo_2.fit()
+_ = Arbo_2.fit()
 
 
 Figs, Axs = Arbo_1.PlotAndPrint( ValidationDict1 ) # returns both figures and axes for further processing, as as the zoom-in below
-Axs[0][0].set_xlim( [0, 500] ) # Force a zoom-in
+Axs[ 0 ][ 0 ].set_xlim( [ 0, 500 ] ) # Force a zoom-in
 
 Figs, Axs = Arbo_2.PlotAndPrint( ValidationDict2 ) # returns both figures and axes for further processing, as as the zoom-in below
-Axs[0][0].set_xlim( [0, 500] ) # Force a zoom-in
+Axs[ 0 ][ 0 ].set_xlim( [ 0, 500 ] ) # Force a zoom-in
 
 plt.show()

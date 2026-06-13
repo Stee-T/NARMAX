@@ -1,18 +1,17 @@
 # ---------------------------------------------------- 1. Imports
 from typing import Any, Optional
 import torch as tor
-
 import matplotlib.pyplot as plt
-plt.style.use( 'dark_background' ) # black graphs <3
+
 
 import NARMAX
-import NARMAX.Test as Test_Systems
+import NARMAX.TestSystems as Test_Systems
 
 # ---------------------------------------------------- 2. Hyper-parameters
 p: int = 2_500 # Dataset size
 InputAmplitude: float = 1.0
 tol: float = 0.0001 # Fitting tolerance in %, so multiply by 100
-W: Optional[tor.Tensor] = None # Noise
+W: Optional[ tor.Tensor ] = None # Noise
 qx: int = 4; qy: int = 4 # maximum x and y delays
 ExpansionOrder: int = 3 # monomial expansion order
 ArboDepth: int = 4 # maximum number of levels the arborescence can have
@@ -57,9 +56,9 @@ for i in range( 5 ): # Fill the validation dict's data entry with randomly gener
     x_val -= tor.mean( x_val ) # center
     x_val, y_val, W = Sys( x_val, W, Print = False ) # _val to avoid overwriting the training y
     if ( not tor.isnan( tor.sum( y_val ) ) ): break # Remain in the loop until no NaN
-  
-  ValidationDict["y"].append( y_val )
-  ValidationDict["Data"].append( [ x_val ] ) # must be in a list. Only pass input variables
+
+  ValidationDict[ "y" ].append( y_val )
+  ValidationDict[ "Data" ].append( [ x_val ] ) # must be in a list. Only pass input variables
 
 
 # ---------------------------------------------------- 5. Running the Arborescence
@@ -84,7 +83,7 @@ Arbo.fit()
 # Arbo.fit() # resume fitting
 
 Figs, Axs = Arbo.PlotAndPrint( ValidationDict ) # returns both figures and axes for further processing, as as the zoom-in below
-Axs[0][0].set_xlim( [0, 500] ) # Force a zoom-in
+Axs[ 0 ][ 0 ].set_xlim( [ 0, 500 ] ) # Force a zoom-in
 
 theta, L, ERR, _, RegMat, RegNames = Arbo.get_Results() # See Tutorial 2 for how use that data!
 

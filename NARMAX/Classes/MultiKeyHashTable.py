@@ -4,8 +4,9 @@ from typing import Union, Sequence
 from numpy.typing import NDArray
 
 class MultiKeyHashTable:
-  """Class used for LG which contains a list storing the data and a hash table containing the keys to list-index mapping"""
+  '''Class used for LG which contains a list storing the data and a hash table containing the keys to list-index mapping'''
   def __init__( self ) -> None:
+    '''Initialize an empty MultiKeyHashTable.'''
     self.Data: list[ NDArray[ np.int64 ] ] = [] # List for data storage
     self.LookUpDict: dict[ tuple[ int ], int ] = {} # HashTable for quick lookup
 
@@ -19,31 +20,31 @@ class MultiKeyHashTable:
   def SameStart( self, Item: NDArray[ np.int64 ] ) -> Union[ list[ int ], int ]:
     ''' Getter retrieving an item from the Data list indirectly via the LookUpDict by checking if Item matches the start of any element.
     This is the check performed before node creations and during the rFOrLSR.
-    
+
     ### Input:
     - `Item`: 1D int array
 
     ### Output:
-    - `Out`: If a corresponding LG element is found, return it (int) else an empty list ([])
+    - `Out`: If a corresponding LG element is found, return it (int) else an empty list ([]) # R[1/3]
     '''
     key = tuple( np.sort( Item ) )
-    if ( key in self.LookUpDict ): return ( self.LookUpDict[ key ] ) # return index in Data
-    else: return ( [] ) # no matching term was found during the iteration
+    if ( key in self.LookUpDict ): return ( self.LookUpDict[ key ] ) # R[2/3] return index in Data
+    else: return ( [] ) # R[3/3] no matching term was found during the iteration
 
 
   # ----------------------------------------------------- Add Data -----------------------------------------------------
   def AddData( self, Item: NDArray[ np.int64 ] ) -> int:
     '''Add an item to the LG
-    
+
     ### Input:
     - `Item`: 1D int array to be added to the Data list
 
     ### Output:
     - `Out`: (int) index where the item was added in the data list
     '''
-    self.Data.append( Item )
+    self.Data.append( Item.copy() )
     return ( len( self.Data ) - 1 ) # ( -1 since zero-based )
-  
+
 
   # ---------------------------------------------------- Create Keys ---------------------------------------------------
   def CreateKeys( self, MinLen: int, IndexSet: Union[ Sequence[ int ], NDArray[ np.int64 ] ], Value: int ) -> None:
@@ -54,13 +55,13 @@ class MultiKeyHashTable:
     - `Value`: (int) containing the value to be stored in the LookUpDict, being the index in the Data list
     '''
     if ( MinLen == 0 ): MinLen = 1 # Root only, prevents [:0] from creating empty tuple. no terms are lost due to the +1 in the loop
-    
+
     for i in range( MinLen, len( IndexSet ) + 1 ): # Create entries of all allowed lengths, +1 to compensate the [:i] eliminating one element
-      key = tuple( np.sort( IndexSet[:i] ) ) # Make the key permutaion invariant
+      key = tuple( np.sort( IndexSet[ : i ] ) ) # Make the key permutation invariant
       if ( ( key not in self.LookUpDict ) or ( len( self.Data[ self.LookUpDict[ key ] ] ) > len( IndexSet ) ) ): # if unknown or inserted is shorter: overwrite
         self.LookUpDict[ key ] = Value # append the sorted list to lookup dictionary with self.LG's last index
-    
-    
+
+
   # ------------------------------------------------ Delete All Of Size ------------------------------------------------
   def DeleteAllOfSize( self, n: int ) -> None:
     '''Delete all Look-up table items with size n. Used at the end of every arbo level to gain a bit of memory.

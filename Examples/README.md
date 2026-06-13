@@ -61,3 +61,5 @@ Demonstrates how to fit binary systems and recapitulates the previous tutorials 
 $y[k] = ( !x_1\[k\]$ \&\& $x_2\[k\] ) - ( x_3\[k\] \land x_4\[k\] ) + ( x_1\[k\]$ || $x_3\[k-1\] ) + ( x_2\[k\] \land x_4\[k-2\] ) - ( !x_1\[k-2\]$ \&\& $x_2\[k\] ) - !x_3\[k-2\] + !x_2\[k-2\] + x_4\[k-1\]$
 
 <div align="justify">
+
+# TODO: Example 8
