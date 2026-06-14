@@ -1696,5 +1696,182 @@ class TestMultiKeyHashTableInteraction:
     idx = arbo_with_dc.LG.AddData( data )
     arbo_with_dc.LG.CreateKeys( MinLen = 1, IndexSet = data, Value = idx )
     arbo_with_dc.LG.DeleteAllOfSize( 2 )
-    # Keys of length <= 2 should be gone
-    assert arbo_with_dc.LG.SameStart( np.array( [ 0, 1 ], dtype = np.int64 ) ) == []
+    # Keys of length 2 should be gone
+    assert arbo_with_dc.LG.SameStart( np.array( [ 0, 1 ], dtype = np.int64 ) ) is None
+
+
+# =====================================================================================================================
+# MultiKeyHashTable Semantic Correctness Tests
+# These tests verify that the open-addressing MKHT matches dict-based semantics
+# for all SameStart/AddData/CreateKeys/DeleteAllOfSize operations.
+# =====================================================================================================================
+
+class TestMultiKeyHashTableSemantics:
+    """Verify MKHT semantic invariants for BFS cache correctness."""
+
+    def test_samestart_returns_hit_for_registered_li(self):
+        """SameStart must return the correct index for a previously registered LI."""
+        lg = MultiKeyHashTable()
+        LI = np.array([1, 2, 3], dtype=np.int32)
+        Output = [np.array([4, 5], dtype=np.int32)]
+        ellG = np.concatenate((np.sort(LI), Output[0]))
+        Value = lg.AddData(np.array(ellG, dtype=lg.int_type))
+        lg.CreateKeys(MinLen=len(LI), IndexSet=ellG, Value=Value)
+        result = lg.SameStart(LI)
+        assert result is not None, "SameStart returned None for a registered LI"
+        assert result == Value, f"SameStart returned {result}, expected {Value}"
+
+    def test_samestart_returns_miss_for_unregistered_li(self):
+        """SameStart must return None for a LI that was never registered."""
+        lg = MultiKeyHashTable()
+        LI = np.array([1, 2, 3], dtype=np.int32)
+        result = lg.SameStart(LI)
+        assert result is None, "SameStart should return None for unregistered LI"
+
+    def test_samestart_no_false_positive_different_li(self):
+        """SameStart must not return a hit for a different LI at the same level."""
+        lg = MultiKeyHashTable()
+        LI_1 = np.array([1, 2, 3], dtype=np.int32)
+        LI_2 = np.array([4, 5, 6], dtype=np.int32)
+        Output = [np.array([7, 8], dtype=np.int32)]
+        ellG = np.concatenate((np.sort(LI_1), Output[0]))
+        Value = lg.AddData(np.array(ellG, dtype=lg.int_type))
+        lg.CreateKeys(MinLen=len(LI_1), IndexSet=ellG, Value=Value)
+        result = lg.SameStart(LI_2)
+        assert result is None, "SameStart should return None for a different LI"
+
+    def test_samestart_matches_across_levels(self):
+        """SameStart at level n+1 must match a prefix registered by CreateKeys at level n.
+        This tests the cross-level prefix registration (CreateKeys at level n stores
+        prefixes for levels n, n+1, ..., len(IndexSet))."""
+        lg = MultiKeyHashTable()
+        LI = np.array([1, 2, 3], dtype=np.int32)
+        Output = [np.array([4, 5], dtype=np.int32)]
+        ellG = np.concatenate((np.sort(LI), Output[0]))
+        Value = lg.AddData(np.array(ellG, dtype=lg.int_type))
+        lg.CreateKeys(MinLen=len(LI), IndexSet=ellG, Value=Value)
+        # LI at level n+1 that matches the n+1-prefix from CreateKeys
+        LI_next = np.array([1, 2, 3, 4], dtype=np.int32)
+        result = lg.SameStart(LI_next)
+        assert result is not None, f"SameStart returned None for cross-level LI {LI_next}, expected hit"
+        assert result == Value, f"SameStart returned {result}, expected {Value}"
+
+    def test_samestart_cross_level_with_output_smaller_than_li(self):
+        """SameStart at level n+1 must still match when Output contains elements
+        smaller than LI elements. This was a bug: stored format [sorted_LI, Output]
+        made prefix verification at level n+1 fail when Output[0] < some LI element."""
+        lg = MultiKeyHashTable()
+        LI = np.array([3, 1, 2], dtype=np.int32)  # sorted: [1, 2, 3]
+        Output = [np.array([0, 5, 4], dtype=np.int32)]  # contains 0 < 1, 2, 3
+        ellG = np.concatenate((np.sort(LI), Output[0]))
+        Value = lg.AddData(np.array(ellG, dtype=lg.int_type))
+        lg.CreateKeys(MinLen=len(LI), IndexSet=ellG, Value=Value)
+        # LI at level n+1 matching the n+1-prefix: elements {1,2,3,0}
+        LI_next = np.array([1, 2, 3, 0], dtype=np.int32)
+        result = lg.SameStart(LI_next)
+        assert result is not None, (
+            f"SameStart returned None for cross-level LI {LI_next} "
+            f"when Output[0] < LI elements. This means the fingerprint-based "
+            f"SameStart verification is broken."
+        )
+        assert result == Value, f"SameStart returned {result}, expected {Value}"
+
+    def test_add_data_stores_and_retrieves(self):
+        """AddData stores data and __getitem__ retrieves it correctly."""
+        lg = MultiKeyHashTable()
+        data = np.array([1, 2, 3], dtype=lg.int_type)
+        idx = lg.AddData(data)
+        assert idx == 0, f"First AddData should return 0, got {idx}"
+        retrieved = lg[idx]
+        assert np.array_equal(retrieved, data), f"Retrieved {retrieved}, expected {data}"
+        assert len(lg) == 1, f"Length should be 1, got {len(lg)}"
+
+    def test_create_keys_multiple_prefixes(self):
+        """CreateKeys registers all prefixes from MinLen to len(IndexSet)."""
+        lg = MultiKeyHashTable()
+        LI = np.array([1, 2], dtype=np.int32)
+        Output = [np.array([3, 4, 5], dtype=np.int32)]
+        ellG = np.concatenate((np.sort(LI), Output[0]))
+        Value = lg.AddData(np.array(ellG, dtype=lg.int_type))
+        lg.CreateKeys(MinLen=len(LI), IndexSet=ellG, Value=Value)
+        for length in range(len(LI), len(ellG) + 1):
+            prefix = np.sort(ellG[:length])
+            result = lg.SameStart(prefix)
+            assert result is not None, f"SameStart returned None for prefix of length {length}"
+            assert result == Value, f"SameStart returned {result}, expected {Value} for prefix of length {length}"
+
+    def test_delete_all_of_size_removes_correct_level(self):
+        """DeleteAllOfSize(n) removes only entries at level n.
+        Higher-level entries (from CreateKeys at i > MinLen) survive."""
+        lg = MultiKeyHashTable()
+        LI_l1 = np.array([1], dtype=np.int32)
+        LI_l2 = np.array([2, 3], dtype=np.int32)
+        Output = [np.array([4], dtype=np.int32)]
+        ellG_l1 = np.concatenate((np.sort(LI_l1), Output[0]))
+        ellG_l2 = np.concatenate((np.sort(LI_l2), Output[0]))
+        V1 = lg.AddData(np.array(ellG_l1, dtype=lg.int_type))
+        lg.CreateKeys(MinLen=len(LI_l1), IndexSet=ellG_l1, Value=V1)
+        V2 = lg.AddData(np.array(ellG_l2, dtype=lg.int_type))
+        lg.CreateKeys(MinLen=len(LI_l2), IndexSet=ellG_l2, Value=V2)
+        # Both levels should have entries
+        assert lg.SameStart(LI_l1) is not None, "LI_l1 should be found before deletion"
+        assert lg.SameStart(LI_l2) is not None, "LI_l2 should be found before deletion"
+        # Delete level 1 only
+        lg.DeleteAllOfSize(1)
+        # Level 1 entries must be gone
+        if (len(LI_l1) < len(lg.tables)):
+            assert lg.SameStart(LI_l1) is None, "LI_l1 should be removed after DeleteAllOfSize(1)"
+        # Level 2 entries must survive (they were registered at level 2 by CreateKeys)
+        if (len(LI_l2) < len(lg.tables)):
+            assert lg.SameStart(LI_l2) is not None, "LI_l2 should survive DeleteAllOfSize(1)"
+
+    def test_delete_all_of_size_oob_is_noop(self):
+        """DeleteAllOfSize with n >= len(tables) or n < 0 should be a no-op."""
+        lg = MultiKeyHashTable()
+        LI = np.array([1, 2, 3], dtype=np.int32)
+        Output = [np.array([4], dtype=np.int32)]
+        ellG = np.concatenate((np.sort(LI), Output[0]))
+        Value = lg.AddData(np.array(ellG, dtype=lg.int_type))
+        lg.CreateKeys(MinLen=len(LI), IndexSet=ellG, Value=Value)
+        assert lg.SameStart(LI) is not None
+        lg.DeleteAllOfSize(100)
+        assert lg.SameStart(LI) is not None
+        lg.DeleteAllOfSize(-1)
+        assert lg.SameStart(LI) is not None
+
+    def test_same_li_different_output_both_registered(self):
+        """Same LI with different Output values creates separate regressions
+        (different AddData indices). CreateKeys registers the LI prefix for both."""
+        lg = MultiKeyHashTable()
+        LI = np.array([1, 2], dtype=np.int32)
+        Output_1 = [np.array([3], dtype=np.int32)]
+        Output_2 = [np.array([4], dtype=np.int32)]
+        ellG_1 = np.concatenate((np.sort(LI), Output_1[0]))
+        ellG_2 = np.concatenate((np.sort(LI), Output_2[0]))
+        V1 = lg.AddData(np.array(ellG_1, dtype=lg.int_type))
+        lg.CreateKeys(MinLen=len(LI), IndexSet=ellG_1, Value=V1)
+        V2 = lg.AddData(np.array(ellG_2, dtype=lg.int_type))
+        lg.CreateKeys(MinLen=len(LI), IndexSet=ellG_2, Value=V2)
+        # SameStart for LI should find one of them (the first one inserted)
+        result = lg.SameStart(LI)
+        assert result is not None
+        assert result == V1, "SameStart should return the first registered Value for the same LI"
+
+    def test_multiple_levels_independent(self):
+        """Different levels behave independently (level table partitioning)."""
+        lg = MultiKeyHashTable()
+        LI_1 = np.array([1], dtype=np.int32)
+        LI_2 = np.array([2, 3], dtype=np.int32)
+        Output = [np.array([9], dtype=np.int32)]
+        ellG_1 = np.concatenate((np.sort(LI_1), Output[0]))
+        ellG_2 = np.concatenate((np.sort(LI_2), Output[0]))
+        V1 = lg.AddData(np.array(ellG_1, dtype=lg.int_type))
+        lg.CreateKeys(MinLen=len(LI_1), IndexSet=ellG_1, Value=V1)
+        V2 = lg.AddData(np.array(ellG_2, dtype=lg.int_type))
+        lg.CreateKeys(MinLen=len(LI_2), IndexSet=ellG_2, Value=V2)
+        assert lg.SameStart(LI_1) is not None
+        assert lg.SameStart(LI_2) is not None
+        retrieved_1 = lg[lg.SameStart(LI_1)]
+        retrieved_2 = lg[lg.SameStart(LI_2)]
+        assert np.array_equal(retrieved_1, ellG_1.astype(lg.int_type))
+        assert np.array_equal(retrieved_2, ellG_2.astype(lg.int_type))
