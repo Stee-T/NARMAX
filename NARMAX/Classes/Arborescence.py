@@ -469,7 +469,7 @@ class Arborescence:
       # --------------------------------------------------------------------- 3. Optimal regressor search loop ---------------------------------------------------------------------
       while ( ( 1 - np.sum( ERR ) > tol ) and ( s < MatSize ) ): # while not enough variance explained ( empty lists sum to zero ) and still regressors available ( nS + nC )
 
-        if ( ( self.Abort and ( s > MaxTerms ) ) ): return ( tuple( [ np.array( L, dtype = self.INT_TYPE ) ] ) ) # R[1/4] for leaf nodes only
+        if ( ( self.Abort and ( s > MaxTerms ) ) ): return ( tuple( [ np.array( L, dtype = self.INT_TYPE ) ] ) ) # R[1/4] for leaf nodes only. valid L, disqualified as solution candidate being already too long
 
         if ( LI is not None ):
           RegIdx = self.LG.SameStart( np.concatenate( ( LI, L ) ) ) # check if regression is to be continued (doesn't contain Ds content, since no index)
