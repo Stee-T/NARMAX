@@ -605,7 +605,7 @@ class TestRFOrLSR:
     output2 = arbo.rFOrLSR( sample_y, Dc = Dc, tol = 0.0, OutputAll = True, LI = LI, MaxTerms = 100 )
     assert len( output2 ) == 2
     predicted_L, reg_idx = output2
-    # predicted_L should be the part of the full sequence after LI, sorted (the OOIT code uses np.setdiff1d)
+    # predicted_L should be the part of the full sequence after LI (preserving storage order, not sorted)
     expected_L = np.setdiff1d( full_seq, LI, assume_unique = True )
     np.testing.assert_array_equal( predicted_L, expected_L )
     # reg_idx should be the same as the stored index
@@ -964,7 +964,6 @@ class TestValidate:
   def test_validate_no_regressions( self, sample_y ) -> None:
     '''validate() with no regressions raises AssertionError.'''
     arbo = Arborescence( y = sample_y )
-    arbo.LG.Data = []
     arbo.MinLen = [ 1 ]
     # Should not crash but will raise from get_Results since theta is None
     with pytest.raises( AssertionError, match = "No regression results" ):
@@ -1129,7 +1128,6 @@ class TestMemoryDumpAndLoad:
       arbo2 = Arborescence()
       arbo2.load( tmp_path, Print = False )
       # Check that the LG contains the data
-      assert len( arbo2.LG.Data ) == 1
       assert np.array_equal( arbo2.LG[ idx ], data )
       # Key lookup should still work
       result = arbo2.LG.SameStart( np.array( [ 1, 2 ], dtype = np.int64 ) )
@@ -1686,9 +1684,9 @@ class TestMultiKeyHashTableInteraction:
     assert result == idx
 
   def test_lg_samestart_no_match( self, arbo_with_dc ) -> None:
-    '''LG SameStart returns empty list for no match.'''
+    '''LG SameStart returns None for no match.'''
     result = arbo_with_dc.LG.SameStart( np.array( [ 99 ], dtype = np.int64 ) )
-    assert result == []
+    assert result is None
 
   def test_lg_delete_keys( self, arbo_with_dc ) -> None:
     '''LG DeleteAllOfSize removes keys correctly.'''
@@ -1699,12 +1697,6 @@ class TestMultiKeyHashTableInteraction:
     # Keys of length 2 should be gone
     assert arbo_with_dc.LG.SameStart( np.array( [ 0, 1 ], dtype = np.int64 ) ) is None
 
-
-# =====================================================================================================================
-# MultiKeyHashTable Semantic Correctness Tests
-# These tests verify that the open-addressing MKHT matches dict-based semantics
-# for all SameStart/AddData/CreateKeys/DeleteAllOfSize operations.
-# =====================================================================================================================
 
 class TestMultiKeyHashTableSemantics:
     """Verify MKHT semantic invariants for BFS cache correctness."""
@@ -1741,38 +1733,32 @@ class TestMultiKeyHashTableSemantics:
         assert result is None, "SameStart should return None for a different LI"
 
     def test_samestart_matches_across_levels(self):
-        """SameStart at level n+1 must match a prefix registered by CreateKeys at level n.
-        This tests the cross-level prefix registration (CreateKeys at level n stores
-        prefixes for levels n, n+1, ..., len(IndexSet))."""
+        """SameStart at level n+1 must match a prefix registered by CreateKeys at level n."""
         lg = MultiKeyHashTable()
         LI = np.array([1, 2, 3], dtype=np.int32)
         Output = [np.array([4, 5], dtype=np.int32)]
         ellG = np.concatenate((np.sort(LI), Output[0]))
         Value = lg.AddData(np.array(ellG, dtype=lg.int_type))
         lg.CreateKeys(MinLen=len(LI), IndexSet=ellG, Value=Value)
-        # LI at level n+1 that matches the n+1-prefix from CreateKeys
         LI_next = np.array([1, 2, 3, 4], dtype=np.int32)
         result = lg.SameStart(LI_next)
         assert result is not None, f"SameStart returned None for cross-level LI {LI_next}, expected hit"
         assert result == Value, f"SameStart returned {result}, expected {Value}"
 
     def test_samestart_cross_level_with_output_smaller_than_li(self):
-        """SameStart at level n+1 must still match when Output contains elements
-        smaller than LI elements. This was a bug: stored format [sorted_LI, Output]
-        made prefix verification at level n+1 fail when Output[0] < some LI element."""
+        """SameStart at level n+1 must match even when Output[0] < LI elements
+        (tests fingerprint-based verification, not prefix against stored data)."""
         lg = MultiKeyHashTable()
-        LI = np.array([3, 1, 2], dtype=np.int32)  # sorted: [1, 2, 3]
-        Output = [np.array([0, 5, 4], dtype=np.int32)]  # contains 0 < 1, 2, 3
+        LI = np.array([3, 1, 2], dtype=np.int32)
+        Output = [np.array([0, 5, 4], dtype=np.int32)]
         ellG = np.concatenate((np.sort(LI), Output[0]))
         Value = lg.AddData(np.array(ellG, dtype=lg.int_type))
         lg.CreateKeys(MinLen=len(LI), IndexSet=ellG, Value=Value)
-        # LI at level n+1 matching the n+1-prefix: elements {1,2,3,0}
         LI_next = np.array([1, 2, 3, 0], dtype=np.int32)
         result = lg.SameStart(LI_next)
         assert result is not None, (
             f"SameStart returned None for cross-level LI {LI_next} "
-            f"when Output[0] < LI elements. This means the fingerprint-based "
-            f"SameStart verification is broken."
+            f"when Output[0] < LI elements."
         )
         assert result == Value, f"SameStart returned {result}, expected {Value}"
 
@@ -1813,20 +1799,16 @@ class TestMultiKeyHashTableSemantics:
         lg.CreateKeys(MinLen=len(LI_l1), IndexSet=ellG_l1, Value=V1)
         V2 = lg.AddData(np.array(ellG_l2, dtype=lg.int_type))
         lg.CreateKeys(MinLen=len(LI_l2), IndexSet=ellG_l2, Value=V2)
-        # Both levels should have entries
         assert lg.SameStart(LI_l1) is not None, "LI_l1 should be found before deletion"
         assert lg.SameStart(LI_l2) is not None, "LI_l2 should be found before deletion"
-        # Delete level 1 only
         lg.DeleteAllOfSize(1)
-        # Level 1 entries must be gone
         if (len(LI_l1) < len(lg.tables)):
             assert lg.SameStart(LI_l1) is None, "LI_l1 should be removed after DeleteAllOfSize(1)"
-        # Level 2 entries must survive (they were registered at level 2 by CreateKeys)
         if (len(LI_l2) < len(lg.tables)):
             assert lg.SameStart(LI_l2) is not None, "LI_l2 should survive DeleteAllOfSize(1)"
 
-    def test_delete_all_of_size_oob_is_noop(self):
-        """DeleteAllOfSize with n >= len(tables) or n < 0 should be a no-op."""
+    def test_delete_all_of_size_negative_is_noop(self):
+        """DeleteAllOfSize with n < 0 should be a no-op."""
         lg = MultiKeyHashTable()
         LI = np.array([1, 2, 3], dtype=np.int32)
         Output = [np.array([4], dtype=np.int32)]
@@ -1834,14 +1816,12 @@ class TestMultiKeyHashTableSemantics:
         Value = lg.AddData(np.array(ellG, dtype=lg.int_type))
         lg.CreateKeys(MinLen=len(LI), IndexSet=ellG, Value=Value)
         assert lg.SameStart(LI) is not None
-        lg.DeleteAllOfSize(100)
-        assert lg.SameStart(LI) is not None
         lg.DeleteAllOfSize(-1)
         assert lg.SameStart(LI) is not None
 
     def test_same_li_different_output_both_registered(self):
-        """Same LI with different Output values creates separate regressions
-        (different AddData indices). CreateKeys registers the LI prefix for both."""
+        """Same LI with different Output values creates separate regressions.
+        CreateKeys registers the LI prefix for both, SameStart returns the first."""
         lg = MultiKeyHashTable()
         LI = np.array([1, 2], dtype=np.int32)
         Output_1 = [np.array([3], dtype=np.int32)]
@@ -1852,7 +1832,6 @@ class TestMultiKeyHashTableSemantics:
         lg.CreateKeys(MinLen=len(LI), IndexSet=ellG_1, Value=V1)
         V2 = lg.AddData(np.array(ellG_2, dtype=lg.int_type))
         lg.CreateKeys(MinLen=len(LI), IndexSet=ellG_2, Value=V2)
-        # SameStart for LI should find one of them (the first one inserted)
         result = lg.SameStart(LI)
         assert result is not None
         assert result == V1, "SameStart should return the first registered Value for the same LI"

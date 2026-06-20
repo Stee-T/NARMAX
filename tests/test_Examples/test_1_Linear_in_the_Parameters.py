@@ -16,9 +16,6 @@ def test_nonlinearities_arborescence() -> None:
   seed = 42
   tor.manual_seed( seed )
 
-  # ---- 1. Imports inside function (fine, but already global) ----------------
-  # (done above)
-
   # ---- 2. Hyper-parameters --------------------------------------------------
   p: int = 2_500
   InputAmplitude: float = 1.0

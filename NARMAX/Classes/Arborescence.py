@@ -207,7 +207,7 @@ class Arborescence:
     # the following variables are only used if Dc is not None
 
     self.Q: Queue.Queue = Queue.Queue()
-    self.LG: MultiKeyHashTable.MultiKeyHashTable = MultiKeyHashTable.MultiKeyHashTable()
+    self.LG: MultiKeyHashTable.MultiKeyHashTable = MultiKeyHashTable.MultiKeyHashTable( int_type = self.INT_TYPE )
 
     self.Abort: bool = False # Toggle activated at MaxDepth to finish regressions early
 
@@ -469,11 +469,11 @@ class Arborescence:
       # --------------------------------------------------------------------- 3. Optimal regressor search loop ---------------------------------------------------------------------
       while ( ( 1 - np.sum( ERR ) > tol ) and ( s < MatSize ) ): # while not enough variance explained ( empty lists sum to zero ) and still regressors available ( nS + nC )
 
-        if ( ( self.Abort and ( s > MaxTerms ) ) ): return ( tuple( [ np.array( L, dtype = self.INT_TYPE ) ] ) ) # R[1/4] for leaf nodes only. valid L, disqualified as solution candidate being already too long
+        if ( ( self.Abort and ( s > MaxTerms ) ) ): return ( tuple( [ np.array( L, dtype = self.INT_TYPE ) ] ) ) # R[1/4] for leaf nodes only
 
         if ( LI is not None ):
           RegIdx = self.LG.SameStart( np.concatenate( ( LI, L ) ) ) # check if regression is to be continued (doesn't contain Ds content, since no index)
-          if ( RegIdx != [] ): # Match found, so exit
+          if ( RegIdx is not None ): # Match found, so exit
             self.AbortedRegs += 1 # OOIT - for statistics not needed for regression
             return ( np.setdiff1d( self.LG[ RegIdx ], LI, True ), RegIdx ) # R[2/4] eliminate LI from predicted L, since LI is concatenated by arbo
 
@@ -593,7 +593,7 @@ class Arborescence:
 
       ellG = self.LG.SameStart( LI ) # Regression already computed? Yes = index, No = []
 
-      if ( ellG == [] ): # This indexset isn’t equal to a previous one, else pass and use returned index
+      if ( ellG is None ): # This indexset isn't equal to a previous one, else pass and use returned index
         self.nNotSkippedNodes += 1 # just for statistics not needed for regression
 
         U_tmp: list[ int ] = self.U.copy() # copy required since else self.U is modified when passed to a function
@@ -662,7 +662,7 @@ class Arborescence:
     print( "Starting Validation procedure." )
     MinError = tor.inf; Processed = [] # Variables storing the shortest sequence with Min Validation ’s position
 
-    for reg in tqdm.tqdm( self.LG.Data, desc = "Validating", unit = " Regressions" ): # and over each regressor sequence
+    for reg in tqdm.tqdm( self.LG, desc = "Validating", unit = " Regressions" ):  # and over each regressor sequence
       if ( len( reg ) == self.MinLen[ -1 ] ): # compute error metric only if candidate to best regression.
         reg = np.sort( reg ) # sort regressor sequence
         if ( tuple( reg ) not in Processed ): # check that not somehow a permutation of already computed regression
@@ -683,7 +683,7 @@ class Arborescence:
 
     if ( MinError == tor.inf ):
       print( "\n\nValidation failed: All regressions yield inf as validation error. Outputtng one of minimal length\n\n" )
-      for reg in self.LG.Data: # and over each regressor sequence
+      for reg in self.LG: # and over each regressor sequence
         if ( len( reg ) == self.MinLen[ -1 ] ): self.theta = theta.cpu(); self.L = reg.astype( np.int64 ); self.ERR = ERR; break
 
     print( f"\nValidation done on { len( Processed ) } different Regressions. Best validation error: { MinError }\n",

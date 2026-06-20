@@ -1,10 +1,7 @@
-# NARMAX/Test/test_MultiKeyHashTable.py
 import pytest
 import numpy as np
 from numpy.typing import NDArray
 
-# Adjust the import path according to your project layout.
-# Since NARMAX/Test is a sibling of NARMAX/Classes, you might need:
 import sys
 from pathlib import Path
 sys.path.insert( 0, str( Path( __file__ ).parent.parent ) )
@@ -15,30 +12,25 @@ from NARMAX.Classes.MultiKeyHashTable import MultiKeyHashTable
 # Fixtures
 # ----------------------------------------------------------------------
 @pytest.fixture
-def empty_table() -> MultiKeyHashTable:
-  '''Return a fresh, empty MultiKeyHashTable.'''
-  return MultiKeyHashTable()
+def empty_table() -> MultiKeyHashTable: return MultiKeyHashTable()
+
+
+@pytest.fixture
+def table_int64() -> MultiKeyHashTable: return MultiKeyHashTable( int_type = np.int64 )
 
 
 @pytest.fixture
 def table_with_data() -> MultiKeyHashTable:
-  '''Return a table pre-populated with some data and keys.'''
-  table = MultiKeyHashTable()
-  # Data: three arrays
+  table = MultiKeyHashTable( int_type = np.int64 )
   a1 = np.array( [ 3, 1, 5, 7 ], dtype = np.int64 )
   a2 = np.array( [ 2, 4, 6 ], dtype = np.int64 )
   a3 = np.array( [ 10, 20 ], dtype = np.int64 )
   idx1 = table.AddData( a1 )
   idx2 = table.AddData( a2 )
   idx3 = table.AddData( a3 )
-
-  # Create keys for a1 (MinLen=1, IndexSet = [3,1,5,7])
   table.CreateKeys( MinLen = 1, IndexSet = a1, Value = idx1 )
-  # Create keys for a2 (MinLen=2, IndexSet = [2,4,6])
   table.CreateKeys( MinLen = 2, IndexSet = a2, Value = idx2 )
-  # Create keys for a3 (MinLen=1, IndexSet = [10,20])
   table.CreateKeys( MinLen = 1, IndexSet = a3, Value = idx3 )
-
   return table
 
 
@@ -46,61 +38,73 @@ def table_with_data() -> MultiKeyHashTable:
 # Tests for __init__
 # ----------------------------------------------------------------------
 def test_init_empty( empty_table ) -> None:
-  '''New instance should have empty Data list and empty LookUpDict.'''
-  assert isinstance( empty_table.Data, list )
-  assert isinstance( empty_table.LookUpDict, dict )
-  assert empty_table.Data == []
-  assert empty_table.LookUpDict == {}
+  '''New instance initialises without error and has no data.'''
+  assert empty_table._data_count == 0
+  assert empty_table._data_len == 0
 
 
 # ----------------------------------------------------------------------
 # Tests for AddData
 # ----------------------------------------------------------------------
-def test_add_data_returns_correct_index( empty_table ) -> None:
+def test_add_data_returns_correct_index( table_int64 ) -> None:
   '''Adding data returns sequential indices starting from 0.'''
   item = np.array( [ 1, 2, 3 ], dtype = np.int64 )
-  idx = empty_table.AddData( item )
+  idx = table_int64.AddData( item )
   assert isinstance( idx, int )
   assert idx == 0
-  assert len( empty_table.Data ) == 1
-  assert np.array_equal( empty_table.Data[ 0 ], item )
-  assert empty_table.Data[ 0 ].dtype == np.int64
+  assert np.array_equal( table_int64[ 0 ], item )
+  assert table_int64[ 0 ].dtype == np.int64
 
   item2 = np.array( [ 4, 5 ], dtype = np.int64 )
-  idx2 = empty_table.AddData( item2 )
+  idx2 = table_int64.AddData( item2 )
   assert isinstance( idx2, int )
   assert idx2 == 1
-  assert len( empty_table.Data ) == 2
-  assert np.array_equal( empty_table.Data[ 1 ], item2 )
-  assert empty_table.Data[ 1 ].dtype == np.int64
+  assert np.array_equal( table_int64[ 1 ], item2 )
+  assert table_int64[ 1 ].dtype == np.int64
 
 
-def test_add_data_stores_exact_array( empty_table ) -> None:
-  '''The stored array is a copy; modifying the original does not affect storage.'''
+def test_add_data_stores_exact_array( table_int64 ) -> None:
+  '''Modifying the original does not affect storage (a copy is stored).'''
   item = np.array( [ 42, 7 ], dtype = np.int64 )
-  idx = empty_table.AddData( item )
-  assert isinstance( idx, int )
-  assert empty_table.Data[ idx ].dtype == np.int64
-  # Modifying the original item after storage should not affect stored copy
+  idx = table_int64.AddData( item )
+  assert table_int64[ idx ].dtype == np.int64
   item[ 0 ] = 99
   item[ 1 ] = -1
-  assert np.array_equal( empty_table.Data[ idx ], np.array( [ 42, 7 ] ) )
+  assert np.array_equal( table_int64[ idx ], np.array( [ 42, 7 ] ) )
+
+
+def test_add_data_with_empty_array( table_int64 ) -> None:
+  '''An empty array can be added and retrieved.'''
+  empty_arr = np.array( [], dtype = np.int64 )
+  idx = table_int64.AddData( empty_arr )
+  assert table_int64[ idx ].size == 0
+  assert table_int64[ idx ].dtype == np.int64
+  assert np.array_equal( table_int64[ idx ], empty_arr )
+
+
+def test_add_data_twice_same_array( table_int64 ) -> None:
+  '''Adding the same array twice stores two separate copies.'''
+  arr = np.array( [ 7, 8 ], dtype = np.int64 )
+  idx1 = table_int64.AddData( arr )
+  idx2 = table_int64.AddData( arr )
+  assert idx2 == idx1 + 1
+  assert np.array_equal( table_int64[ idx1 ], arr )
+  assert np.array_equal( table_int64[ idx2 ], arr )
 
 
 # ----------------------------------------------------------------------
 # Tests for __getitem__
 # ----------------------------------------------------------------------
-def test_getitem_returns_correct_array( empty_table ) -> None:
+def test_getitem_returns_correct_array( table_int64 ) -> None:
   '''Indexing the table with a valid index returns the correct array.'''
   a = np.array( [ 1, 2, 3 ], dtype = np.int64 )
   b = np.array( [ 4, 5, 6 ], dtype = np.int64 )
-  idx_a = empty_table.AddData( a )
-  idx_b = empty_table.AddData( b )
-
-  assert np.array_equal( empty_table[ idx_a ], a )
-  assert empty_table[ idx_a ].dtype == np.int64
-  assert np.array_equal( empty_table[ idx_b ], b )
-  assert empty_table[ idx_b ].dtype == np.int64
+  idx_a = table_int64.AddData( a )
+  idx_b = table_int64.AddData( b )
+  assert np.array_equal( table_int64[ idx_a ], a )
+  assert table_int64[ idx_a ].dtype == np.int64
+  assert np.array_equal( table_int64[ idx_b ], b )
+  assert table_int64[ idx_b ].dtype == np.int64
 
 
 def test_getitem_raises_index_error( empty_table ) -> None:
@@ -116,45 +120,28 @@ def test_getitem_raises_index_error( empty_table ) -> None:
     _ = empty_table[ -2 ]
 
 
-def test_all_lookup_values_are_valid_indices( empty_table ) -> None:
-  '''All LookUpDict values are valid Data indices.'''
-  for _ in range( 20 ):
-    arr = np.random.randint( 0, 100, size = np.random.randint( 1, 5 ) ).astype( np.int64 )
-    idx = empty_table.AddData( arr )
-    empty_table.CreateKeys( MinLen = np.random.randint( 1, 4 ), IndexSet = arr, Value = idx )
-  for val in empty_table.LookUpDict.values(): assert 0 <= val < len( empty_table.Data )
-
-
-def test_getitem_after_deletion_still_works( empty_table ) -> None:
+def test_getitem_after_deletion_still_works( table_int64 ) -> None:
   '''Deleting keys does not delete the underlying data.'''
   seq = np.array( [ 1, 2, 3 ], dtype = np.int64 )
-  idx = empty_table.AddData( seq )
-  empty_table.CreateKeys( MinLen = 1, IndexSet = seq, Value = idx )
-  empty_table.DeleteAllOfSize( 3 ) # deletes all keys
-  # All keys removed
-  assert empty_table.LookUpDict == {}
-  # Data list unchanged
-  assert len( empty_table.Data ) == 1
-  # Data still intact and accessible
-  assert np.array_equal( empty_table[ idx ], seq )
-  assert empty_table[ idx ].dtype == np.int64
+  idx = table_int64.AddData( seq )
+  table_int64.CreateKeys( MinLen = 1, IndexSet = seq, Value = idx )
+  table_int64.DeleteAllOfSize( 3 )
+  assert np.array_equal( table_int64[ idx ], seq )
+  assert table_int64[ idx ].dtype == np.int64
 
 
-def test_getitem_negative_index( empty_table ) -> None:
-  '''Negative indices access elements from the end of the Data list.'''
+def test_getitem_negative_index( table_int64 ) -> None:
+  '''Negative indices access elements from the end of the data storage.'''
   a = np.array( [ 10, 20, 30 ], dtype = np.int64 )
   b = np.array( [ 40, 50 ], dtype = np.int64 )
-  idx_a = empty_table.AddData( a )
-  idx_b = empty_table.AddData( b )
+  idx_a = table_int64.AddData( a )
+  idx_b = table_int64.AddData( b )
 
-  # Negative index -1 returns the last element
-  assert np.array_equal( empty_table[ -1 ], b )
-  assert empty_table[ -1 ].dtype == np.int64
-  # Negative index -2 returns the first element
-  assert np.array_equal( empty_table[ -2 ], a )
-  # Negative index out of range raises IndexError
+  assert np.array_equal( table_int64[ -1 ], b )
+  assert table_int64[ -1 ].dtype == np.int64
+  assert np.array_equal( table_int64[ -2 ], a )
   with pytest.raises( IndexError, match = "list index out of range" ):
-    _ = empty_table[ -3 ]
+    _ = table_int64[ -3 ]
 
 
 # ----------------------------------------------------------------------
@@ -162,222 +149,260 @@ def test_getitem_negative_index( empty_table ) -> None:
 # ----------------------------------------------------------------------
 def test_samestart_exact_match( table_with_data ) -> None:
   '''A query matching a stored prefix returns the correct data index.'''
-  # Query that exactly matches the first 3 elements of a1: [1,3,5] (sorted)
-  query = np.array( [ 5, 1, 3 ], dtype = np.int64 ) # permutation invariant
+  query = np.array( [ 5, 1, 3 ], dtype = np.int64 )
   result = table_with_data.SameStart( query )
-  # a1 was stored at index 0
   assert isinstance( result, int )
   assert result == 0
 
 
 def test_samestart_subset_match( table_with_data ) -> None:
   '''A query matching a subset prefix returns the correct data index.'''
-  # Query that matches the first 2 elements of a2: MinLen=2, so keys of length >=2 exist
-  # a2 = [2,4,6], sorted -> (2,4,6). Keys for lengths 2 and 3 exist.
-  # Query with [4,2] -> sorted (2,4) should hit.
   query = np.array( [ 4, 2 ], dtype = np.int64 )
   result = table_with_data.SameStart( query )
   assert isinstance( result, int )
-  # a2 stored at index 1
   assert result == 1
 
 
 def test_samestart_no_match( empty_table ) -> None:
-  '''A query that does not match any prefix returns an empty list.'''
+  '''A query that does not match any prefix returns None.'''
   empty_table.AddData( np.array( [ 1, 2, 3 ], dtype = np.int64 ) )
   query = np.array( [ 4, 5, 6 ], dtype = np.int64 )
   result = empty_table.SameStart( query )
-  assert isinstance( result, list )
-  assert result == [] # Empty list indicates no match
+  assert result is None
 
 
 def test_samestart_empty_query( empty_table ) -> None:
-  '''An empty query returns an empty list (no zero-length keys exist).'''
+  '''An empty query returns None (no zero-length keys exist).'''
   empty_table.AddData( np.array( [ 1, 2, 3 ], dtype = np.int64 ) )
   query = np.array( [], dtype = np.int64 )
-  # No keys of length 0 are ever created, so should return []
   result = empty_table.SameStart( query )
-  assert isinstance( result, list )
-  assert result == []
+  assert result is None
 
 
-def test_samestart_with_overwritten_key( empty_table ) -> None:
-  '''Test overwrite behavior: shorter sequence overwrites longer one.'''
-  # Add first sequence (long)
+def test_samestart_shorter_sequence_overwrites_longer( empty_table ) -> None:
+  '''ORIGINAL: When a shorter sequence arrives, it overwrites the longer one.'''
   long_seq = np.array( [ 1, 2, 3, 4 ], dtype = np.int64 )
   idx_long = empty_table.AddData( long_seq )
   empty_table.CreateKeys( MinLen = 1, IndexSet = long_seq, Value = idx_long )
 
-  # Now add a shorter sequence that starts the same way
   short_seq = np.array( [ 1, 2 ], dtype = np.int64 )
   idx_short = empty_table.AddData( short_seq )
   empty_table.CreateKeys( MinLen = 1, IndexSet = short_seq, Value = idx_short )
 
-  # Query with [2,1] (sorted (1,2)) should now point to the shorter sequence
   query = np.array( [ 2, 1 ], dtype = np.int64 )
   result = empty_table.SameStart( query )
   assert isinstance( result, int )
   assert result == idx_short
 
 
+def test_samestart_with_non_existent_key_returns_none( empty_table ) -> None:
+  '''SameStart with a non-existent prefix returns None.'''
+  result = empty_table.SameStart( np.array( [ 1, 2, 3 ], dtype = np.int64 ) )
+  assert result is None
+
+
+def test_samestart_permutation_invariance( empty_table ) -> None:
+  '''SameStart is invariant to permutation of query elements.'''
+  seq = np.array( [ 5, 1, 9 ], dtype = np.int64 )
+  idx = empty_table.AddData( seq )
+  empty_table.CreateKeys( MinLen = 1, IndexSet = seq, Value = idx )
+
+  result1 = empty_table.SameStart( np.array( [ 1, 5 ], dtype = np.int64 ) )
+  assert isinstance( result1, int )
+  assert result1 == idx
+  result2 = empty_table.SameStart( np.array( [ 5, 1 ], dtype = np.int64 ) )
+  assert isinstance( result2, int )
+  assert result2 == idx
+  result3 = empty_table.SameStart( np.array( [ 1, 9 ], dtype = np.int64 ) )
+  assert result3 is None
+
+
+def test_empty_query_samestart( empty_table ) -> None:
+  '''SameStart with an empty query array returns None.'''
+  seq = np.array( [ 1, 2 ], dtype = np.int64 )
+  idx = empty_table.AddData( seq )
+  empty_table.CreateKeys( MinLen = 1, IndexSet = seq, Value = idx )
+  result = empty_table.SameStart( np.array( [], dtype = np.int64 ) )
+  assert result is None
+
+
 # ----------------------------------------------------------------------
 # Tests for CreateKeys
 # ----------------------------------------------------------------------
+def _check_key( table: MultiKeyHashTable, query: NDArray, expected_idx: int ) -> None:
+  '''Helper: assert that SameStart for query returns expected_idx.'''
+  result = table.SameStart( query )
+  assert isinstance( result, int ), f"SameStart({ query }) returned None, expected { expected_idx }"
+  assert result == expected_idx, f"SameStart({ query }) returned { result }, expected { expected_idx }"
+
+
+def _check_no_key( table: MultiKeyHashTable, query: NDArray ) -> None:
+  '''Helper: assert that SameStart for query returns None.'''
+  assert table.SameStart( query ) is None, f"SameStart({ query }) should have returned None"
+
+
 def test_create_keys_generates_all_prefix_lengths( empty_table ) -> None:
   '''CreateKeys generates keys for all prefix lengths >= MinLen.'''
-  seq = np.array( [ 3, 1, 4 ], dtype = np.int64 ) # sorted -> (1,3,4)
+  seq = np.array( [ 3, 1, 4 ], dtype = np.int64 )
   idx = empty_table.AddData( seq )
-
   empty_table.CreateKeys( MinLen = 1, IndexSet = seq, Value = idx )
 
-  expected_keys = [
-        ( 3, ), # len=1
-        ( 1, 3 ), # len=2
-        ( 1, 3, 4 ) # len=3
-    ]
-  assert len( empty_table.LookUpDict ) == len( expected_keys )
-  for key in expected_keys:
-    assert key in empty_table.LookUpDict
-    assert empty_table.LookUpDict[ key ] == idx
+  _check_key( empty_table, np.array( [ 3 ], dtype = np.int64 ), idx ) # len 1: prefix IndexSet[:1]=[3]
+  _check_key( empty_table, np.array( [ 1, 3 ], dtype = np.int64 ), idx ) # len 2: prefix IndexSet[:2]=[3,1]
+  _check_key( empty_table, np.array( [ 1, 3, 4 ], dtype = np.int64 ), idx ) # len 3: prefix IndexSet[:3]=[3,1,4]
 
 
 def test_create_keys_minlen_zero_forced_to_one( empty_table ) -> None:
   '''MinLen=0 should be treated as 1 (no empty tuples).'''
   seq = np.array( [ 5, 2 ], dtype = np.int64 )
   idx = empty_table.AddData( seq )
-
   empty_table.CreateKeys( MinLen = 0, IndexSet = seq, Value = idx )
 
-  # Should have keys of lengths 1 and 2, but not length 0
-  assert () not in empty_table.LookUpDict
-  assert ( 5, ) in empty_table.LookUpDict
-  assert ( 2, 5 ) in empty_table.LookUpDict
+  _check_key( empty_table, np.array( [ 5 ], dtype = np.int64 ), idx ) # len 1: prefix IndexSet[:1]=[5]
+  _check_key( empty_table, np.array( [ 2, 5 ], dtype = np.int64 ), idx ) # len 2: prefix IndexSet[:2]=[5,2]
 
 
 def test_create_keys_with_minlen_greater_than_one( empty_table ) -> None:
   '''CreateKeys with MinLen > 1 only generates keys of that length or greater.'''
   seq = np.array( [ 7, 8, 9, 10 ], dtype = np.int64 )
   idx = empty_table.AddData( seq )
-
   empty_table.CreateKeys( MinLen = 3, IndexSet = seq, Value = idx )
 
-  # Should only create keys of lengths 3 and 4
-  expected = { ( 7, 8, 9 ), ( 7, 8, 9, 10 ) }
-  actual = set( empty_table.LookUpDict.keys() )
-  assert actual == expected
+  _check_no_key( empty_table, np.array( [ 7 ], dtype = np.int64 ) ) # len 1
+  _check_no_key( empty_table, np.array( [ 7, 8 ], dtype = np.int64 ) ) # len 2
+  _check_key( empty_table, np.array( [ 7, 8, 9 ], dtype = np.int64 ), idx ) # len 3
+  _check_key( empty_table, np.array( [ 7, 8, 9, 10 ], dtype = np.int64 ), idx ) # len 4
 
 
-def test_create_keys_does_not_overwrite_with_longer_sequence( empty_table ) -> None:
-  '''If a key already exists with a shorter sequence, do not overwrite.'''
-  short = np.array( [ 1, 2 ], dtype = np.int64 )
-  idx_short = empty_table.AddData( short )
-  empty_table.CreateKeys( MinLen = 1, IndexSet = short, Value = idx_short )
-
-  long = np.array( [ 1, 2, 3, 4 ], dtype = np.int64 )
-  idx_long = empty_table.AddData( long )
-  empty_table.CreateKeys( MinLen = 1, IndexSet = long, Value = idx_long )
-
-  # Key (1,2) should still point to idx_short (shorter sequence)
-  assert empty_table.LookUpDict[ ( 1, 2 ) ] == idx_short
-
-
-def test_create_keys_overwrites_with_shorter_sequence( empty_table ) -> None:
-  '''Existing key from a longer sequence is replaced by a shorter one.'''
-  long = np.array( [ 1, 2, 3, 4 ], dtype = np.int64 )
-  idx_long = empty_table.AddData( long )
-  empty_table.CreateKeys( MinLen = 1, IndexSet = long, Value = idx_long )
-
-  short = np.array( [ 1, 2 ], dtype = np.int64 )
-  idx_short = empty_table.AddData( short )
-  empty_table.CreateKeys( MinLen = 1, IndexSet = short, Value = idx_short )
-
-  assert empty_table.LookUpDict[ ( 1, 2 ) ] == idx_short
-
-
-def test_create_keys_handles_duplicate_insertion( empty_table ) -> None:
-  '''Creating keys for the same sequence twice does not change mapping.'''
+def test_create_keys_duplicate_has_no_effect( empty_table ) -> None:
+  '''Creating keys for the same sequence twice leaves the first mapping intact.'''
   seq = np.array( [ 5, 6 ], dtype = np.int64 )
   idx = empty_table.AddData( seq )
   empty_table.CreateKeys( MinLen = 1, IndexSet = seq, Value = idx )
-  dict_before = empty_table.LookUpDict.copy()
+  _check_key( empty_table, np.array( [ 5, 6 ], dtype = np.int64 ), idx )
 
   empty_table.CreateKeys( MinLen = 1, IndexSet = seq, Value = idx )
-  assert empty_table.LookUpDict == dict_before
+  _check_key( empty_table, np.array( [ 5, 6 ], dtype = np.int64 ), idx )
+
+
+def test_create_keys_does_not_overwrite_with_longer_sequence( empty_table ) -> None:
+  '''First-inserted (shorter or longer) key is preserved.'''
+  short = np.array( [ 1, 2 ], dtype = np.int64 )
+  idx_short = empty_table.AddData( short )
+  empty_table.CreateKeys( MinLen = 1, IndexSet = short, Value = idx_short )
+
+  long = np.array( [ 1, 2, 3, 4 ], dtype = np.int64 )
+  idx_long = empty_table.AddData( long )
+  empty_table.CreateKeys( MinLen = 1, IndexSet = long, Value = idx_long )
+
+  _check_key( empty_table, np.array( [ 1, 2 ], dtype = np.int64 ), idx_short )
+
+
+def test_create_keys_shorter_sequence_overwrites( empty_table ) -> None:
+  '''ORIGINAL: longer-stored key is overwritten by shorter sequence.'''
+  long = np.array( [ 1, 2, 3, 4 ], dtype = np.int64 )
+  idx_long = empty_table.AddData( long )
+  empty_table.CreateKeys( MinLen = 1, IndexSet = long, Value = idx_long )
+
+  short = np.array( [ 1, 2 ], dtype = np.int64 )
+  idx_short = empty_table.AddData( short )
+  empty_table.CreateKeys( MinLen = 1, IndexSet = short, Value = idx_short )
+
+  # Shorter sequence overwrites key (1,2)
+  _check_key( empty_table, np.array( [ 1, 2 ], dtype = np.int64 ), idx_short )
+  # Longer prefix (1,2,3) not affected by short sequence, still points to long
+  _check_key( empty_table, np.array( [ 1, 2, 3 ], dtype = np.int64 ), idx_long )
+
+
+def test_create_keys_with_empty_indexset( empty_table ) -> None:
+  '''CreateKeys with an empty IndexSet creates no keys.'''
+  empty_arr = np.array( [], dtype = np.int64 )
+  idx = empty_table.AddData( empty_arr )
+  empty_table.CreateKeys( MinLen = 1, IndexSet = empty_arr, Value = idx )
+  _check_no_key( empty_table, np.array( [ 1 ], dtype = np.int64 ) )
+
+
+def test_minlen_greater_than_indexset_length( empty_table ) -> None:
+  '''MinLen greater than IndexSet length creates no keys.'''
+  seq = np.array( [ 1, 2, 3 ], dtype = np.int64 )
+  idx = empty_table.AddData( seq )
+  empty_table.CreateKeys( MinLen = 5, IndexSet = seq, Value = idx )
+  _check_no_key( empty_table, np.array( [ 1 ], dtype = np.int64 ) )
 
 
 # ----------------------------------------------------------------------
 # Tests for DeleteAllOfSize
 # ----------------------------------------------------------------------
-def test_delete_all_of_size_removes_correct_lengths( empty_table ) -> None:
-  '''DeleteAllOfSize removes only keys of length <= n.'''
-  # Add data and keys of various lengths
+def test_delete_all_of_size_removes_exact_length( empty_table ) -> None:
+  '''DeleteAllOfSize removes only keys of exactly length n.'''
   seq1 = np.array( [ 1, 2, 3 ], dtype = np.int64 )
   idx1 = empty_table.AddData( seq1 )
-  empty_table.CreateKeys( MinLen = 1, IndexSet = seq1, Value = idx1 )
+  empty_table.CreateKeys( MinLen = 1, IndexSet = seq1, Value = idx1 ) # keys len 1,2,3
 
   seq2 = np.array( [ 4, 5, 6, 7 ], dtype = np.int64 )
   idx2 = empty_table.AddData( seq2 )
-  empty_table.CreateKeys( MinLen = 2, IndexSet = seq2, Value = idx2 ) # creates keys len 2,3,4
+  empty_table.CreateKeys( MinLen = 2, IndexSet = seq2, Value = idx2 ) # keys len 2,3,4
 
-  # Before deletion
-  assert len( empty_table.LookUpDict ) == 6 # lengths: 1,2,3 from seq1; 2,3,4 from seq2
+  _check_key( empty_table, np.array( [ 1 ], dtype = np.int64 ), idx1 ) # len 1 exists
+  _check_key( empty_table, np.array( [ 4, 5 ], dtype = np.int64 ), idx2 ) # len 2 exists (from seq2)
 
   empty_table.DeleteAllOfSize( 1 )
-  # Keys of length 1 should be gone
-  assert all( len( k ) != 1 for k in empty_table.LookUpDict )
-  # Lengths 2,3,4 should remain
-  assert any( len( k ) == 2 for k in empty_table.LookUpDict )
-  assert any( len( k ) == 3 for k in empty_table.LookUpDict )
-  assert any( len( k ) == 4 for k in empty_table.LookUpDict )
+  _check_no_key( empty_table, np.array( [ 1 ], dtype = np.int64 ) ) # len 1 gone
+  _check_key( empty_table, np.array( [ 4, 5 ], dtype = np.int64 ), idx2 ) # len 2 still exists
 
 
 def test_delete_all_of_size_with_n_equal_max_length( empty_table ) -> None:
-  '''Deleting all keys of size <= n when n is the maximum length removes everything.'''
+  '''ORIGINAL: DeleteAllOfSize(n) deletes all keys with len <= n.'''
   seq = np.array( [ 10, 20 ], dtype = np.int64 )
   idx = empty_table.AddData( seq )
   empty_table.CreateKeys( MinLen = 1, IndexSet = seq, Value = idx ) # keys len 1 and 2
 
   empty_table.DeleteAllOfSize( 2 )
-  assert empty_table.LookUpDict == {}
+  _check_no_key( empty_table, np.array( [ 10 ], dtype = np.int64 ) ) # len 1 gone (1 <= 2)
+  _check_no_key( empty_table, np.array( [ 10, 20 ], dtype = np.int64 ) ) # len 2 gone
 
 
 def test_delete_all_of_size_raises_on_non_int( empty_table ) -> None:
-  '''DeleteAllOfSize raises AssertionError for non-integer n.'''
-  with pytest.raises( AssertionError, match = "n must be an int" ):
+  '''DeleteAllOfSize raises TypeError for non-integer n.'''
+  with pytest.raises( TypeError, match = "n must be an int" ):
     empty_table.DeleteAllOfSize( "not an int" )
-  with pytest.raises( AssertionError, match = "n must be an int" ):
+  with pytest.raises( TypeError, match = "n must be an int" ):
     empty_table.DeleteAllOfSize( 2.0 )
 
 
-def test_delete_all_of_size_does_not_affect_data_list( empty_table ) -> None:
+def test_delete_all_of_size_does_not_affect_data( table_int64 ) -> None:
   '''DeleteAllOfSize only affects keys, not stored data.'''
   seq = np.array( [ 1, 2, 3 ], dtype = np.int64 )
-  idx = empty_table.AddData( seq )
-  empty_table.CreateKeys( MinLen = 1, IndexSet = seq, Value = idx )
+  idx = table_int64.AddData( seq )
+  table_int64.CreateKeys( MinLen = 1, IndexSet = seq, Value = idx )
 
-  data_before = empty_table.Data.copy()
-  empty_table.DeleteAllOfSize( 5 ) # remove everything (all keys length <=5)
-  assert empty_table.Data == data_before
+  table_int64.DeleteAllOfSize( 1 )
+  table_int64.DeleteAllOfSize( 2 )
+  table_int64.DeleteAllOfSize( 3 )
+  assert np.array_equal( table_int64[ idx ], seq )
 
 
-def test_delete_all_of_size_exact_removal( empty_table ) -> None:
-  '''DeleteAllOfSize with n exactly matching key lengths removes them.'''
+def test_delete_all_of_size_removes_up_to_n_inclusive( empty_table ) -> None:
+  '''ORIGINAL: DeleteAllOfSize(n) removes all keys with len <= n.'''
   seq = np.array( [ 10, 20, 30 ], dtype = np.int64 )
   idx = empty_table.AddData( seq )
   empty_table.CreateKeys( MinLen = 1, IndexSet = seq, Value = idx ) # keys len 1,2,3
 
-  empty_table.DeleteAllOfSize( 2 ) # remove len<=2
-  assert set( empty_table.LookUpDict.keys() ) == { ( 10, 20, 30 ) }
+  empty_table.DeleteAllOfSize( 2 )
+  _check_no_key( empty_table, np.array( [ 10 ], dtype = np.int64 ) ) # len 1 gone (1 <= 2)
+  _check_no_key( empty_table, np.array( [ 10, 20 ], dtype = np.int64 ) ) # len 2 gone (2 <= 2)
+  _check_key( empty_table, np.array( [ 10, 20, 30 ], dtype = np.int64 ), idx ) # len 3 untouched (3 > 2)
 
 
-def test_delete_all_of_size_noop_for_missing_lengths( empty_table ) -> None:
-  '''DeleteAllOfSize with n larger than all key lengths removes all keys.'''
-  # Keys of length 1 and 2 exist; n=10 → all keys deleted
+def test_delete_all_of_size_with_large_n( empty_table ) -> None:
+  '''ORIGINAL: DeleteAllOfSize(10) deletes all existing keys (all len <= 10).'''
   seq = np.array( [ 1, 2 ], dtype = np.int64 )
   idx = empty_table.AddData( seq )
   empty_table.CreateKeys( MinLen = 1, IndexSet = seq, Value = idx )
+  _check_key( empty_table, np.array( [ 1 ], dtype = np.int64 ), idx )
   empty_table.DeleteAllOfSize( 10 )
-  assert empty_table.LookUpDict == {}
+  _check_no_key( empty_table, np.array( [ 1 ], dtype = np.int64 ) ) # len 1 gone (1 <= 10)
+  _check_no_key( empty_table, np.array( [ 1, 2 ], dtype = np.int64 ) ) # len 2 gone (2 <= 10)
 
 
 def test_delete_all_of_size_with_non_positive_n( empty_table ) -> None:
@@ -385,15 +410,11 @@ def test_delete_all_of_size_with_non_positive_n( empty_table ) -> None:
   seq = np.array( [ 1 ], dtype = np.int64 )
   idx = empty_table.AddData( seq )
   empty_table.CreateKeys( MinLen = 1, IndexSet = seq, Value = idx )
-  before = empty_table.LookUpDict.copy()
   empty_table.DeleteAllOfSize( 0 )
-  # No keys of length ≤0 exist → dict unchanged
-  assert empty_table.LookUpDict == before
-  # Also test with negative n
+  _check_key( empty_table, np.array( [ 1 ], dtype = np.int64 ), idx )
   empty_table.DeleteAllOfSize( -1 )
-  assert empty_table.LookUpDict == before
-  empty_table.DeleteAllOfSize( -5 )
-  assert empty_table.LookUpDict == before
+  _check_key( empty_table, np.array( [ 1 ], dtype = np.int64 ), idx )
+
 
 # ----------------------------------------------------------------------
 # Integration tests simulating arborescence usage
@@ -402,109 +423,60 @@ def test_typical_arborescence_flow( empty_table ) -> None:
   '''Simulate a simplified BFS where LI increases each level.'''
   # Level 1: LI = [0]
   li_level1 = np.array( [ 0 ], dtype = np.int64 )
-  # Compute regression result (mock)
-  ellg_level1 = np.array( [ 0, 3, 7 ], dtype = np.int64 ) # sorted
+  ellg_level1 = np.array( [ 0, 3, 7 ], dtype = np.int64 )
   idx1 = empty_table.AddData( ellg_level1 )
   empty_table.CreateKeys( MinLen = len( li_level1 ), IndexSet = ellg_level1, Value = idx1 )
 
-  # Check SameStart works for queries of length 1
-  query = np.array( [ 0 ], dtype = np.int64 )
-  result = empty_table.SameStart( query )
-  assert isinstance( result, int )
-  assert result == idx1
+  _check_key( empty_table, np.array( [ 0 ], dtype = np.int64 ), idx1 )
 
   # Level 2: LI = [0, 3]
   li_level2 = np.array( [ 0, 3 ], dtype = np.int64 )
-  # SameStart should hit using key (0,3)
-  result = empty_table.SameStart( li_level2 )
-  assert isinstance( result, int )
-  assert result == idx1
+  _check_key( empty_table, li_level2, idx1 )
 
-  # End of level 1: delete keys of length <= 1
+  # End of level 1: delete keys of length 1
   empty_table.DeleteAllOfSize( 1 )
-  # Keys of length 1 gone, but length 2 still there
-  result = empty_table.SameStart( np.array( [ 0 ], dtype = np.int64 ) )
-  assert isinstance( result, list )
-  assert result == [] # no key of length 1
-  result = empty_table.SameStart( np.array( [ 0, 3 ], dtype = np.int64 ) )
-  assert isinstance( result, int )
-  assert result == idx1
+  _check_no_key( empty_table, np.array( [ 0 ], dtype = np.int64 ) )
+  _check_key( empty_table, np.array( [ 0, 3 ], dtype = np.int64 ), idx1 )
 
-  # Compute new regression for LI=[0,3] (mock) and add
+  # Compute new regression for LI=[0,3] and add
   ellg_level2 = np.array( [ 0, 3, 5, 9 ], dtype = np.int64 )
   idx2 = empty_table.AddData( ellg_level2 )
   empty_table.CreateKeys( MinLen = len( li_level2 ), IndexSet = ellg_level2, Value = idx2 )
 
-  # Check that key (0,3) now points to the new (shorter?) sequence?
-  # In the actual code, overwriting logic ensures shorter sequence wins.
-  # Here ellg_level2 is longer, so (0,3) should still point to idx1.
-  assert empty_table.LookUpDict[ ( 0, 3 ) ] == idx1
+  # Key (0,3) still points to first-inserted (idx1)
+  _check_key( empty_table, np.array( [ 0, 3 ], dtype = np.int64 ), idx1 )
 
-  # End of level 2: delete keys of length <= 2
+  # End of level 2: delete keys of length 2
   empty_table.DeleteAllOfSize( 2 )
-  # Now only keys of length >=3 remain
-  assert ( 0, 3 ) not in empty_table.LookUpDict
-  assert ( 0, 3, 5 ) in empty_table.LookUpDict
+  _check_no_key( empty_table, np.array( [ 0, 3 ], dtype = np.int64 ) )
+  _check_key( empty_table, np.array( [ 0, 3, 5 ], dtype = np.int64 ), idx2 )
 
 
 def test_random_arborescence_consistency( empty_table ) -> None:
   '''Simulate a mini arborescence: incremental LI, add regressions, query.'''
   rng = np.random.default_rng( 42 )
-  data_store = [] # (full_sorted_seq, idx)
   for level_size in range( 1, 6 ):
     LI = rng.choice( 10, size = level_size, replace = False ).astype( np.int64 )
-    # Query first
     hit = empty_table.SameStart( LI )
-    # If it hits, the returned index must correspond to a sequence whose first
-    # level_size elements (sorted) equal sorted(LI)
-    if ( hit != [] ):
+    if ( hit is not None ):
       assert isinstance( hit, int )
       stored = empty_table[ hit ]
       assert np.array_equal( np.sort( stored[ : level_size ] ), np.sort( LI ) )
-    else:
-      assert isinstance( hit, list )
 
-    # Add a new regression (LI + random additional terms)
     extra = rng.choice( 10, size = rng.integers( 0, 3 ), replace = False )
     full = np.concatenate( [ LI, extra ] )
     idx = empty_table.AddData( full )
     empty_table.CreateKeys( MinLen = len( LI ), IndexSet = full, Value = idx )
-    data_store.append( ( np.sort( full ), idx ) )
 
-    # End of level: delete keys of length <= level_size
     empty_table.DeleteAllOfSize( level_size )
 
-  # After all deletions, only keys longer than the last level_size exist
-  for key in empty_table.LookUpDict: assert len( key ) > 5
+  for key_len in range( 1, len( empty_table.tables ) ):
+    if ( empty_table.tables[ key_len ] is not None ): assert key_len > 5 # only keys longer than last level_size survive
+
 
 # ----------------------------------------------------------------------
-# Edge Cases and Error Handling
+# Performance / stress
 # ----------------------------------------------------------------------
-def test_samestart_with_non_existent_key_returns_empty_list( empty_table ) -> None:
-  '''SameStart with a non-existent prefix returns an empty list.'''
-  result = empty_table.SameStart( np.array( [ 1, 2, 3 ], dtype = np.int64 ) )
-  assert isinstance( result, list )
-  assert result == []
-
-
-def test_add_data_with_empty_array( empty_table ) -> None:
-  '''An empty array can be added and retrieved.'''
-  empty_arr = np.array( [], dtype = np.int64 )
-  idx = empty_table.AddData( empty_arr )
-  assert empty_table.Data[ idx ].size == 0
-  assert empty_table.Data[ idx ].dtype == np.int64
-  assert np.array_equal( empty_table.Data[ idx ], empty_arr )
-
-
-def test_create_keys_with_empty_indexset( empty_table ) -> None:
-  '''CreateKeys with an empty IndexSet creates no keys.'''
-  empty_arr = np.array( [], dtype = np.int64 )
-  idx = empty_table.AddData( empty_arr )
-  # MinLen=1 prevents empty tuple, but IndexSet is empty -> no keys created
-  empty_table.CreateKeys( MinLen = 1, IndexSet = empty_arr, Value = idx )
-  assert empty_table.LookUpDict == {}
-
-
 def test_large_number_of_keys_stress( empty_table ) -> None:
   '''Simple stress test: create many keys and check retrieval.'''
   for i in range( 100 ):
@@ -512,126 +484,823 @@ def test_large_number_of_keys_stress( empty_table ) -> None:
     idx = empty_table.AddData( seq )
     empty_table.CreateKeys( MinLen = 3, IndexSet = seq, Value = idx )
 
-  # Verify a few random queries
   for i in range( 0, 100, 10 ):
     seq = np.arange( i, i + 5, dtype = np.int64 )
-    # Query with first 3 elements (sorted)
     query = np.sort( seq[ : 3 ] )
     result = empty_table.SameStart( query )
     assert isinstance( result, int )
-    assert result == i # because AddData returns increasing indices
+    assert result == i
 
 
-def test_dtype_preservation( empty_table ) -> None:
-  '''Ensure that the stored arrays retain np.int64 dtype.'''
-  seq = np.array( [ 1, 2, 3 ], dtype = np.int64 )
-  idx = empty_table.AddData( seq )
-  assert empty_table.Data[ idx ].dtype == np.int64
+# ----------------------------------------------------------------------
+# Tests for __len__
+# ----------------------------------------------------------------------
+def test_len_empty( empty_table: MultiKeyHashTable ) -> None:
+  '''An empty table has length 0.'''
+  assert len( empty_table ) == 0
 
 
-def test_empty_query_samestart( empty_table ) -> None:
-  '''SameStart with an empty query array returns an empty list.'''
-  seq = np.array( [ 1, 2 ], dtype = np.int64 )
+def test_len_after_add( table_int64: MultiKeyHashTable ) -> None:
+  '''Length grows correctly after each AddData call.'''
+  assert len( table_int64 ) == 0
+  table_int64.AddData( np.array( [ 1, 2, 3 ], dtype = np.int64 ) )
+  assert len( table_int64 ) == 1
+  table_int64.AddData( np.array( [ 4, 5 ], dtype = np.int64 ) )
+  assert len( table_int64 ) == 2
+  table_int64.AddData( np.array( [], dtype = np.int64 ) )
+  assert len( table_int64 ) == 3
+
+
+# ----------------------------------------------------------------------
+# Tests for __iter__
+# ----------------------------------------------------------------------
+def test_iter_empty( empty_table: MultiKeyHashTable ) -> None:
+  '''Iterating over an empty table yields nothing.'''
+  assert list( empty_table ) == []
+
+
+def test_iter_yields_stored_sequences( table_int64: MultiKeyHashTable ) -> None:
+  '''Iterating yields each stored sequence in the order they were added.'''
+  a1 = np.array( [ 3, 1, 5 ], dtype = np.int64 )
+  a2 = np.array( [ 2, 4 ], dtype = np.int64 )
+  a3 = np.array( [ 10 ], dtype = np.int64 )
+  table_int64.AddData( a1 )
+  table_int64.AddData( a2 )
+  table_int64.AddData( a3 )
+  results = list( table_int64 )
+  assert len( results ) == 3
+  assert np.array_equal( results[ 0 ], a1 )
+  assert results[ 0 ].dtype == np.int64
+  assert np.array_equal( results[ 1 ], a2 )
+  assert results[ 1 ].dtype == np.int64
+  assert np.array_equal( results[ 2 ], a3 )
+  assert results[ 2 ].dtype == np.int64
+
+
+def test_iter_matches_getitem( table_int64: MultiKeyHashTable ) -> None:
+  '''For every i, the i-th element from iteration equals table[i].'''
+  table_int64.AddData( np.array( [ 7, 2, 9 ], dtype = np.int64 ) )
+  table_int64.AddData( np.array( [ 5, 1 ], dtype = np.int64 ) )
+  table_int64.AddData( np.array( [ 42 ], dtype = np.int64 ) )
+  for i, seq in enumerate( table_int64 ):
+    assert np.array_equal( seq, table_int64[ i ] )
+    assert seq.dtype == np.int64
+
+
+# ----------------------------------------------------------------------
+# Regression tests — verify ORIGINAL (dict-based) behavior against NEW
+# ----------------------------------------------------------------------
+def test_create_keys_overwrites_for_shorter_sequence( empty_table: MultiKeyHashTable ) -> None:
+  '''ORIGINAL overwrites key when stored sequence is LONGER than IndexSet
+  (shorter sequence wins). Both share same unsorted prefix, so keys collide.
+  NEW: fingerprint match → keep first ( long ). ORIGINAL: overwrite with short.'''
+  longer = np.array( [ 1, 2, 3, 4 ], dtype = np.int64 )
+  idx_long = empty_table.AddData( longer )
+  empty_table.CreateKeys( MinLen = 1, IndexSet = longer, Value = idx_long )
+
+  shorter = np.array( [ 1, 2 ], dtype = np.int64 )
+  idx_short = empty_table.AddData( shorter )
+  empty_table.CreateKeys( MinLen = 1, IndexSet = shorter, Value = idx_short )
+
+  _check_key( empty_table, np.array( [ 1, 2 ], dtype = np.int64 ), idx_short )
+
+
+def test_delete_all_of_size_removes_up_to_n( empty_table: MultiKeyHashTable ) -> None:
+  '''ORIGINAL DeleteAllOfSize(n) deletes keys with len(reg) <= n.
+  NEW deletes only exact len == n. This test verifies ORIGINAL's <= semantics.'''
+  seq = np.array( [ 10, 20, 30 ], dtype = np.int64 )
   idx = empty_table.AddData( seq )
   empty_table.CreateKeys( MinLen = 1, IndexSet = seq, Value = idx )
-  result = empty_table.SameStart( np.array( [], dtype = np.int64 ) )
-  assert isinstance( result, list )
-  assert result == []
+
+  empty_table.DeleteAllOfSize( 2 )
+  _check_no_key( empty_table, np.array( [ 10 ], dtype = np.int64 ) )
+  _check_no_key( empty_table, np.array( [ 10, 20 ], dtype = np.int64 ) )
+  _check_key( empty_table, np.array( [ 10, 20, 30 ], dtype = np.int64 ), idx )
 
 
-def test_minlen_greater_than_indexset_length( empty_table ) -> None:
-  '''MinLen greater than IndexSet length creates no keys.'''
-  # MinLen > len(IndexSet) → no keys created
-  seq = np.array( [ 1, 2, 3 ], dtype = np.int64 )
+def test_create_keys_overwrite_three_prefixes_of_different_lengths( empty_table: MultiKeyHashTable ) -> None:
+  '''ORIGINAL overwrites each shared prefix when a shorter sequence arrives.
+  Both share same prefix elements [1,2], so level-1 and level-2 keys collide.
+  ORIGINAL overwrites both to short; level - 3 key ( longer only ) stays on long.'''
+  longer = np.array( [ 1, 2, 3, 4 ], dtype = np.int64 )
+  idx_long = empty_table.AddData( longer )
+  empty_table.CreateKeys( MinLen = 1, IndexSet = longer, Value = idx_long )
+
+  shorter = np.array( [ 1, 2 ], dtype = np.int64 )
+  idx_short = empty_table.AddData( shorter )
+  empty_table.CreateKeys( MinLen = 1, IndexSet = shorter, Value = idx_short )
+
+  _check_key( empty_table, np.array( [ 1 ], dtype = np.int64 ), idx_short )
+  _check_key( empty_table, np.array( [ 1, 2 ], dtype = np.int64 ), idx_short )
+  _check_key( empty_table, np.array( [ 1, 2, 3 ], dtype = np.int64 ), idx_long )
+
+
+def test_samestart_returns_correct_data_after_insert( empty_table: MultiKeyHashTable ) -> None:
+  '''SameStart must return an index whose stored data actually matches the query
+  ( catches missing exact - verification in NEW ).'''
+  rng = np.random.default_rng( 42 )
+  for _ in range( 100 ):
+    n = int( rng.integers( 1, 8 ) )
+    seq = rng.choice( 50, size = n, replace = False ).astype( np.int64 )
+    idx = empty_table.AddData( seq )
+    empty_table.CreateKeys( MinLen = 1, IndexSet = seq, Value = idx )
+
+    for k in range( 1, n + 1 ):
+      prefix = seq[ : k ]
+      result = empty_table.SameStart( np.sort( prefix ) )
+      assert result is not None, f"SameStart({ prefix }) returned None for seq={ seq }"
+      stored = empty_table[ result ]
+      assert np.array_equal( np.sort( stored[ : k ] ), np.sort( prefix ) ), f"Index { result } stored={ stored } does not match query prefix={ prefix } from seq={ seq }"
+
+
+def test_delete_all_of_size_zero_and_negative( empty_table: MultiKeyHashTable ) -> None:
+  '''DeleteAllOfSize(0): ORIGINAL deletes len-0 keys; NEW no-ops since no len-0 keys.
+  DeleteAllOfSize( -1 ): both are no - ops. Both should leave len - 1 + keys intact.'''
+  seq = np.array( [ 5, 6, 7 ], dtype = np.int64 )
   idx = empty_table.AddData( seq )
-  empty_table.CreateKeys( MinLen = 5, IndexSet = seq, Value = idx )
-  assert empty_table.LookUpDict == {}
+  empty_table.CreateKeys( MinLen = 1, IndexSet = seq, Value = idx )
+
+  empty_table.DeleteAllOfSize( 0 )
+  _check_key( empty_table, np.array( [ 5 ], dtype = np.int64 ), idx )
+  _check_key( empty_table, np.array( [ 5, 6, 7 ], dtype = np.int64 ), idx )
+
+  empty_table.DeleteAllOfSize( -1 )
+  _check_key( empty_table, np.array( [ 5 ], dtype = np.int64 ), idx )
+  _check_key( empty_table, np.array( [ 5, 6 ], dtype = np.int64 ), idx )
+  _check_key( empty_table, np.array( [ 5, 6, 7 ], dtype = np.int64 ), idx )
 
 
-def test_add_data_twice_same_array_reference( empty_table ) -> None:
-  '''Adding the same array twice stores two separate copies.'''
+def test_delete_all_of_size_kills_lengths_up_to_n( empty_table: MultiKeyHashTable ) -> None:
+  '''ORIGINAL <= semantics: DeleteAllOfSize(2) kills length-1 and length-2 keys.
+  NEW == semantics: kills only length 2, leaves length 1 alive.'''
+  seq = np.array( [ 10, 20, 30, 40 ], dtype = np.int64 )
+  idx = empty_table.AddData( seq )
+  empty_table.CreateKeys( MinLen = 1, IndexSet = seq, Value = idx )
+
+  empty_table.DeleteAllOfSize( 2 )
+  _check_no_key( empty_table, np.array( [ 10 ], dtype = np.int64 ) )
+  _check_no_key( empty_table, np.array( [ 10, 20 ], dtype = np.int64 ) )
+  _check_key( empty_table, np.array( [ 10, 20, 30 ], dtype = np.int64 ), idx )
+  _check_key( empty_table, np.array( [ 10, 20, 30, 40 ], dtype = np.int64 ), idx )
+
+
+def test_getitem_returns_copy( empty_table: MultiKeyHashTable ) -> None:
+  '''__getitem__ returns a copy; mutating the result does not corrupt storage.'''
+  original = np.array( [ 1, 2, 3 ], dtype = np.int64 )
+  idx = empty_table.AddData( original )
+
+  retrieved = empty_table[ idx ]
+  retrieved[ 0 ] = 99
+
+  assert np.array_equal( empty_table[ idx ], original )
+
+
+def test_add_data_copies_input( empty_table: MultiKeyHashTable ) -> None:
+  '''AddData copies; modifying the source after AddData is safe.'''
+  source = np.array( [ 10, 20, 30 ], dtype = np.int64 )
+  idx = empty_table.AddData( source )
+
+  source[ 0 ] = 999
+  source[ 1 ] = 888
+
+  stored = empty_table[ idx ]
+  assert np.array_equal( stored, np.array( [ 10, 20, 30 ], dtype = np.int64 ) )
+
+
+def test_lengths_of_stored_sequences_match( empty_table: MultiKeyHashTable ) -> None:
+  '''Each retrieved sequence has the correct length matching what was stored.'''
+  lengths = [ 0, 1, 5, 2, 3, 10, 0 ]
+  for L in lengths:
+    arr = np.arange( L, dtype = np.int64 )
+    empty_table.AddData( arr )
+
+  for i, expected_len in enumerate( lengths ):
+    stored = empty_table[ i ]
+    assert len( stored ) == expected_len, f"Index { i }: expected length { expected_len }, got { len( stored ) }"
+
+
+def test_samestart_verifies_all_prefixes_after_many_inserts( empty_table: MultiKeyHashTable ) -> None:
+  '''Every prefix of every inserted sequence must be findable via SameStart and
+  must point to data whose first k elements match the query.'''
+  rng = np.random.default_rng( 12345 )
+  indices: list[ int ] = []
+  for _ in range( 30 ):
+    n = int( rng.integers( 2, 7 ) )
+    seq = rng.choice( 200, size = n, replace = False ).astype( np.int64 )
+    idx = empty_table.AddData( seq )
+    empty_table.CreateKeys( MinLen = 1, IndexSet = seq, Value = idx )
+    indices.append( idx )
+
+  for _ in range( 200 ):
+    k = int( rng.integers( 1, 7 ) )
+    query = rng.choice( 200, size = k, replace = False ).astype( np.int64 )
+    result = empty_table.SameStart( query )
+    if ( result is not None ):
+      stored = empty_table[ result ]
+      assert np.array_equal( np.sort( stored[ : k ] ), np.sort( query ) ), f"Stored={ stored } at index { result } does not match query={ query }"
+
+
+def test_delete_all_of_size_edge_order( empty_table: MultiKeyHashTable ) -> None:
+  '''DeleteAllOfSize called twice with <= semantics still leaves longer keys.'''
+  seq = np.array( [ 10, 20, 30, 40 ], dtype = np.int64 )
+  idx = empty_table.AddData( seq )
+  empty_table.CreateKeys( MinLen = 1, IndexSet = seq, Value = idx )
+
+  empty_table.DeleteAllOfSize( 2 )
+  empty_table.DeleteAllOfSize( 3 )
+
+  _check_no_key( empty_table, np.array( [ 10 ], dtype = np.int64 ) )
+  _check_no_key( empty_table, np.array( [ 10, 20 ], dtype = np.int64 ) )
+  _check_no_key( empty_table, np.array( [ 10, 20, 30 ], dtype = np.int64 ) )
+  _check_key( empty_table, np.array( [ 10, 20, 30, 40 ], dtype = np.int64 ), idx )
+
+
+# ======================================================================
+# Freeze tests (converted from test_MultiKeyHashTable_freeze.py)
+# Verify the implementation produces expected outputs.
+# ======================================================================
+
+def test_InitIdentical() -> None:
+  tbl = MultiKeyHashTable()
+  assert tbl._data_count == 0
+  assert list( tbl ) == []
+
+
+def test_AddDataSingle() -> None:
+  tbl = MultiKeyHashTable()
+  arr = np.array( [ 3, 1, 4 ], dtype = np.int64 )
+  idx = tbl.AddData( arr )
+  assert idx == 0
+  assert np.array_equal( tbl[ 0 ], arr )
+
+
+def test_AddDataSequential() -> None:
+  tbl = MultiKeyHashTable()
+  arrays = [
+        np.array( [ 5, 2, 9 ], dtype = np.int64 ),
+        np.array( [ 1, 7 ], dtype = np.int64 ),
+        np.array( [ 42 ], dtype = np.int64 ),
+    ]
+  indices = [ tbl.AddData( arr ) for arr in arrays ]
+  assert indices == [ 0, 1, 2 ]
+  for i in range( len( arrays ) ): assert np.array_equal( tbl[ i ], arrays[ i ] )
+
+
+def test_AddDataEmptyArray() -> None:
+  tbl = MultiKeyHashTable()
+  empty_arr = np.array( [], dtype = np.int64 )
+  idx = tbl.AddData( empty_arr )
+  assert idx == 0
+  assert np.array_equal( tbl[ 0 ], empty_arr )
+
+
+def test_AddDataCopiesInput() -> None:
+  tbl = MultiKeyHashTable()
+  source = np.array( [ 10, 20, 30 ], dtype = np.int64 )
+  idx = tbl.AddData( source )
+  source[ 0 ] = 999
+  source[ 1 ] = 888
+  expected = np.array( [ 10, 20, 30 ], dtype = np.int64 )
+  assert np.array_equal( tbl[ idx ], expected )
+
+
+def test_AddDataTwiceSameArray() -> None:
+  tbl = MultiKeyHashTable()
   arr = np.array( [ 7, 8 ], dtype = np.int64 )
-  idx1 = empty_table.AddData( arr )
-  idx2 = empty_table.AddData( arr )
+  idx1 = tbl.AddData( arr )
+  idx2 = tbl.AddData( arr )
+  assert idx1 == 0
+  assert idx2 == 1
   assert idx2 == idx1 + 1
-  # Verify data integrity (value equality, not identity)
-  assert np.array_equal( empty_table.Data[ idx1 ], arr )
-  assert np.array_equal( empty_table.Data[ idx2 ], arr )
+  assert np.array_equal( tbl[ 0 ], arr )
+  assert np.array_equal( tbl[ 1 ], arr )
 
-# ----------------------------------------------------------------------
-# Extra: Permutation invariance and sort semantics
-# ----------------------------------------------------------------------
 
-def test_samestart_permutation_invariance( empty_table ) -> None:
-  '''SameStart is invariant to permutation of query elements.'''
-  # Insert with an unsorted LI-like query
+def test_GetItemPositive() -> None:
+  tbl = MultiKeyHashTable()
+  a1 = np.array( [ 1, 2, 3 ], dtype = np.int64 )
+  a2 = np.array( [ 4, 5, 6 ], dtype = np.int64 )
+  idx_a = tbl.AddData( a1 )
+  tbl.AddData( a2 )
+  assert np.array_equal( tbl[ idx_a ], a1 )
+  assert np.array_equal( tbl[ 1 ], a2 )
+
+
+def test_GetItemNegative() -> None:
+  tbl = MultiKeyHashTable()
+  a1 = np.array( [ 10, 20, 30 ], dtype = np.int64 )
+  a2 = np.array( [ 40, 50 ], dtype = np.int64 )
+  tbl.AddData( a1 )
+  tbl.AddData( a2 )
+  assert np.array_equal( tbl[ -1 ], a2 )
+  assert np.array_equal( tbl[ -2 ], a1 )
+
+
+def test_GetItemRaisesIndexError() -> None:
+  tbl = MultiKeyHashTable()
+  with pytest.raises( IndexError ):
+    _ = tbl[ 0 ]
+  with pytest.raises( IndexError ):
+    _ = tbl[ -1 ]
+  arr = np.array( [ 1 ], dtype = np.int64 )
+  tbl.AddData( arr )
+  with pytest.raises( IndexError ):
+    _ = tbl[ 1 ]
+  with pytest.raises( IndexError ):
+    _ = tbl[ -2 ]
+
+
+def test_GetItemAfterKeyDeletion() -> None:
+  tbl = MultiKeyHashTable()
+  seq = np.array( [ 1, 2, 3 ], dtype = np.int64 )
+  idx = tbl.AddData( seq )
+  tbl.CreateKeys( 1, seq, idx )
+  tbl.DeleteAllOfSize( 3 )
+  assert np.array_equal( tbl[ idx ], seq )
+
+
+def test_SameStartExactMatch() -> None:
+  tbl = MultiKeyHashTable()
+  seq = np.array( [ 3, 1, 5, 7 ], dtype = np.int64 )
+  idx = tbl.AddData( seq )
+  tbl.CreateKeys( 1, seq, idx )
+  query = np.array( [ 5, 1, 3 ], dtype = np.int64 )
+  result = tbl.SameStart( query )
+  assert result == 0
+
+
+def test_SameStartSubsetMatch() -> None:
+  tbl = MultiKeyHashTable()
+  seq = np.array( [ 3, 1, 5, 7 ], dtype = np.int64 )
+  idx = tbl.AddData( seq )
+  tbl.CreateKeys( 1, seq, idx )
+  query = np.array( [ 1, 3 ], dtype = np.int64 )
+  result = tbl.SameStart( query )
+  assert result == 0
+
+
+def test_SameStartNoMatch() -> None:
+  tbl = MultiKeyHashTable()
+  seq = np.array( [ 1, 2, 3 ], dtype = np.int64 )
+  idx = tbl.AddData( seq )
+  tbl.CreateKeys( 1, seq, idx )
+  query = np.array( [ 4, 5, 6 ], dtype = np.int64 )
+  result = tbl.SameStart( query )
+  assert result is None
+
+
+def test_SameStartEmptyQuery() -> None:
+  tbl = MultiKeyHashTable()
+  seq = np.array( [ 1, 2, 3 ], dtype = np.int64 )
+  idx = tbl.AddData( seq )
+  tbl.CreateKeys( 1, seq, idx )
+  query = np.array( [], dtype = np.int64 )
+  result = tbl.SameStart( query )
+  assert result is None
+
+
+def test_SameStartNonExistentKey() -> None:
+  tbl = MultiKeyHashTable()
+  query = np.array( [ 1, 2, 3 ], dtype = np.int64 )
+  result = tbl.SameStart( query )
+  assert result is None
+
+
+def test_SameStartPermutationInvariance() -> None:
+  tbl = MultiKeyHashTable()
   seq = np.array( [ 5, 1, 9 ], dtype = np.int64 )
-  idx = empty_table.AddData( seq )
-  empty_table.CreateKeys( MinLen = 1, IndexSet = seq, Value = idx )
-
-  # SameStart with any permutation of the first 2 elements should hit
-  result1 = empty_table.SameStart( np.array( [ 1, 5 ], dtype = np.int64 ) )
-  assert isinstance( result1, int )
-  assert result1 == idx
-  result2 = empty_table.SameStart( np.array( [ 5, 1 ], dtype = np.int64 ) )
-  assert isinstance( result2, int )
-  assert result2 == idx
-  # but a non‑existing prefix should not
-  result3 = empty_table.SameStart( np.array( [ 1, 9 ], dtype = np.int64 ) )
-  assert isinstance( result3, list )
-  assert result3 == []
+  idx = tbl.AddData( seq )
+  tbl.CreateKeys( 1, seq, idx )
+  assert tbl.SameStart( np.array( [ 1, 5 ], dtype = np.int64 ) ) == idx
+  assert tbl.SameStart( np.array( [ 5, 1 ], dtype = np.int64 ) ) == idx
+  assert tbl.SameStart( np.array( [ 1, 9 ], dtype = np.int64 ) ) is None
 
 
-def test_samestart_with_python_ints( empty_table ) -> None:
-  '''LookUpDict keys work with plain Python int tuples.'''
-  # Ensure that lookup works with plain python int tuples as well
-  seq = np.array( [ 2, 4, 6 ], dtype = np.int64 )
-  idx = empty_table.AddData( seq )
-  empty_table.CreateKeys( MinLen = 1, IndexSet = seq, Value = idx )
-
-  # Query using a list of python ints (np.sort yields np.int64, but tuple of py int is equivalent)
-  query = tuple( sorted( [ 6, 2 ] ) ) # (2, 6)
-  # Manually call __getitem__ via LookUpDict? We can test SameStart directly with a numpy array that becomes (2,6)
-  # but it's safer to test that the key lookup works with any int type
-  assert ( 2, 4 ) in empty_table.LookUpDict # explicit check
+def test_SameStartAfterCreateKeysAllPrefixes() -> None:
+  tbl = MultiKeyHashTable()
+  seq = np.array( [ 3, 1, 4, 1, 5 ], dtype = np.int64 )
+  idx = tbl.AddData( seq )
+  tbl.CreateKeys( 1, seq, idx )
+  for i in range( 1, 6 ):
+    prefix = seq[ : i ]
+    query = np.sort( prefix )
+    result = tbl.SameStart( query )
+    assert result == idx
 
 
-# ----------------------------------------------------------------------
-# Extra: Overwrite behaviour – exactly as the algorithm expects
-# ----------------------------------------------------------------------
-
-def test_overwrite_only_when_shorter( empty_table ) -> None:
-  '''A key is only overwritten when the new sequence is shorter.'''
+def test_SameStartShorterOverwritesLonger() -> None:
+  tbl = MultiKeyHashTable()
   long_seq = np.array( [ 1, 2, 3, 4 ], dtype = np.int64 )
-  idx_long = empty_table.AddData( long_seq )
-  empty_table.CreateKeys( MinLen = 1, IndexSet = long_seq, Value = idx_long )
-
-  # Insert a sequence of *same* length with a conflicting prefix
-  same_len_seq = np.array( [ 1, 2, 5, 6 ], dtype = np.int64 )
-  idx_same = empty_table.AddData( same_len_seq )
-  empty_table.CreateKeys( MinLen = 1, IndexSet = same_len_seq, Value = idx_same )
-
-  # The common prefix (1,2) should still point to the LONG sequence (first inserted)
-  assert empty_table.LookUpDict[ ( 1, 2 ) ] == idx_long
-
-  # Now insert a truly shorter sequence
+  idx_long = tbl.AddData( long_seq )
+  tbl.CreateKeys( 1, long_seq, idx_long )
   short_seq = np.array( [ 1, 2 ], dtype = np.int64 )
-  idx_short = empty_table.AddData( short_seq )
-  empty_table.CreateKeys( MinLen = 1, IndexSet = short_seq, Value = idx_short )
+  idx_short = tbl.AddData( short_seq )
+  tbl.CreateKeys( 1, short_seq, idx_short )
+  query = np.array( [ 2, 1 ], dtype = np.int64 )
+  result = tbl.SameStart( query )
+  assert result == idx_short
 
-  # Now (1,2) must point to the short one
-  assert empty_table.LookUpDict[ ( 1, 2 ) ] == idx_short
+
+def test_SameStartDoesNotOverwriteWhenEqualLen() -> None:
+  tbl = MultiKeyHashTable()
+  seq1 = np.array( [ 1, 2, 3 ], dtype = np.int64 )
+  idx1 = tbl.AddData( seq1 )
+  tbl.CreateKeys( 1, seq1, idx1 )
+  seq2 = np.array( [ 1, 2, 4 ], dtype = np.int64 )
+  idx2 = tbl.AddData( seq2 )
+  tbl.CreateKeys( 1, seq2, idx2 )
+  query = np.array( [ 1, 2 ], dtype = np.int64 )
+  result = tbl.SameStart( query )
+  assert result == idx1
 
 
-def test_overwrite_does_not_affect_longer_keys( empty_table ) -> None:
-  '''Overwriting a shorter key does not affect longer prefix keys.'''
+def test_SameStartDataMatchesQuery() -> None:
+  tbl = MultiKeyHashTable()
+  rng = np.random.default_rng( 42 )
+  for _ in range( 50 ):
+    n = int( rng.integers( 1, 8 ) )
+    seq = rng.choice( 50, size = n, replace = False ).astype( np.int64 )
+    idx = tbl.AddData( seq )
+    tbl.CreateKeys( 1, seq, idx )
+    for k in range( 1, n + 1 ):
+      prefix = seq[ : k ]
+      query = np.sort( prefix )
+      result = tbl.SameStart( query )
+      if ( result is not None ):
+        stored = tbl[ result ]
+        if ( not np.array_equal( np.sort( stored[ : k ] ), np.sort( prefix ) ) ):
+          raise AssertionError(
+                        f"Index { result } stored={ stored } does not match query prefix={ prefix }" )
+
+
+def test_CreateKeysAllPrefixLengths() -> None:
+  tbl = MultiKeyHashTable()
+  seq = np.array( [ 3, 1, 4 ], dtype = np.int64 )
+  idx = tbl.AddData( seq )
+  tbl.CreateKeys( 1, seq, idx )
+  for i in range( 1, 4 ):
+    prefix = seq[ : i ]
+    query = np.sort( prefix )
+    result = tbl.SameStart( query )
+    assert result == idx
+
+
+def test_CreateKeysMinLenZeroForcedToOne() -> None:
+  tbl = MultiKeyHashTable()
+  seq = np.array( [ 5, 2 ], dtype = np.int64 )
+  idx = tbl.AddData( seq )
+  tbl.CreateKeys( 0, seq, idx )
+  for i in range( 1, 3 ):
+    query = np.sort( seq[ : i ] )
+    result = tbl.SameStart( query )
+    assert result == idx
+  empty_query = np.array( [], dtype = np.int64 )
+  assert tbl.SameStart( empty_query ) is None
+
+
+def test_CreateKeysMinLenGreaterThanOne() -> None:
+  tbl = MultiKeyHashTable()
+  seq = np.array( [ 7, 8, 9, 10 ], dtype = np.int64 )
+  idx = tbl.AddData( seq )
+  tbl.CreateKeys( 3, seq, idx )
+  for i in range( 1, 3 ):
+    query = np.sort( seq[ : i ] )
+    assert tbl.SameStart( query ) is None
+  for i in range( 3, 5 ):
+    query = np.sort( seq[ : i ] )
+    assert tbl.SameStart( query ) == idx
+
+
+def test_CreateKeysEmptyIndexSet() -> None:
+  tbl = MultiKeyHashTable()
+  empty_arr = np.array( [], dtype = np.int64 )
+  idx = tbl.AddData( empty_arr )
+  tbl.CreateKeys( 1, empty_arr, idx )
+  query = np.array( [ 1 ], dtype = np.int64 )
+  assert tbl.SameStart( query ) is None
+
+
+def test_CreateKeysMinLenGreaterThanIndexSet() -> None:
+  tbl = MultiKeyHashTable()
+  seq = np.array( [ 1, 2, 3 ], dtype = np.int64 )
+  idx = tbl.AddData( seq )
+  tbl.CreateKeys( 5, seq, idx )
+  for i in range( 1, 4 ):
+    query = np.sort( seq[ : i ] )
+    assert tbl.SameStart( query ) is None
+
+
+def test_CreateKeysDuplicateCall() -> None:
+  tbl = MultiKeyHashTable()
+  seq = np.array( [ 5, 6 ], dtype = np.int64 )
+  idx = tbl.AddData( seq )
+  tbl.CreateKeys( 1, seq, idx )
+  tbl.CreateKeys( 1, seq, idx )
+  query = np.sort( seq )
+  assert tbl.SameStart( query ) == idx
+
+
+def test_CreateKeysLongerDoesNotOverwriteShorter() -> None:
+  tbl = MultiKeyHashTable()
+  short = np.array( [ 1, 2 ], dtype = np.int64 )
+  idx_short = tbl.AddData( short )
+  tbl.CreateKeys( 1, short, idx_short )
   long_seq = np.array( [ 1, 2, 3, 4 ], dtype = np.int64 )
-  idx_long = empty_table.AddData( long_seq )
-  empty_table.CreateKeys( MinLen = 1, IndexSet = long_seq, Value = idx_long )
+  idx_long = tbl.AddData( long_seq )
+  tbl.CreateKeys( 1, long_seq, idx_long )
+  query = np.array( [ 1, 2 ], dtype = np.int64 )
+  result = tbl.SameStart( query )
+  assert result == idx_short
 
-  short_seq = np.array( [ 1, 2 ], dtype = np.int64 )
-  idx_short = empty_table.AddData( short_seq )
-  empty_table.CreateKeys( MinLen = 1, IndexSet = short_seq, Value = idx_short )
 
-  # The longer prefix (1,2,3) must still point to the long sequence
-  assert empty_table.LookUpDict[ ( 1, 2, 3 ) ] == idx_long
+def test_CreateKeysShorterOverwritesLonger() -> None:
+  tbl = MultiKeyHashTable()
+  long_seq = np.array( [ 1, 2, 3, 4 ], dtype = np.int64 )
+  idx_long = tbl.AddData( long_seq )
+  tbl.CreateKeys( 1, long_seq, idx_long )
+  short = np.array( [ 1, 2 ], dtype = np.int64 )
+  idx_short = tbl.AddData( short )
+  tbl.CreateKeys( 1, short, idx_short )
+  query12 = np.array( [ 1, 2 ], dtype = np.int64 )
+  assert tbl.SameStart( query12 ) == idx_short
+  query123 = np.array( [ 1, 2, 3 ], dtype = np.int64 )
+  assert tbl.SameStart( query123 ) == idx_long
+
+
+def test_CreateKeysThreePrefixesOverwrite() -> None:
+  tbl = MultiKeyHashTable()
+  longer = np.array( [ 1, 2, 3, 4 ], dtype = np.int64 )
+  idx_long = tbl.AddData( longer )
+  tbl.CreateKeys( 1, longer, idx_long )
+  shorter = np.array( [ 1, 2 ], dtype = np.int64 )
+  idx_short = tbl.AddData( shorter )
+  tbl.CreateKeys( 1, shorter, idx_short )
+  q1 = np.array( [ 1 ], dtype = np.int64 )
+  assert tbl.SameStart( q1 ) == idx_short
+  q2 = np.array( [ 1, 2 ], dtype = np.int64 )
+  assert tbl.SameStart( q2 ) == idx_short
+  q3 = np.array( [ 1, 2, 3 ], dtype = np.int64 )
+  assert tbl.SameStart( q3 ) == idx_long
+
+
+def test_DeleteAllOfSizeRemoveUpToN() -> None:
+  tbl = MultiKeyHashTable()
+  seq = np.array( [ 1, 2, 3 ], dtype = np.int64 )
+  idx = tbl.AddData( seq )
+  tbl.CreateKeys( 1, seq, idx )
+  tbl.DeleteAllOfSize( 1 )
+  assert tbl.SameStart( np.array( [ 1 ], dtype = np.int64 ) ) is None
+  assert tbl.SameStart( np.array( [ 1, 2 ], dtype = np.int64 ) ) == idx
+  assert tbl.SameStart( np.array( [ 1, 2, 3 ], dtype = np.int64 ) ) == idx
+
+
+def test_DeleteAllOfSizeRemoveUpToNInclusive() -> None:
+  tbl = MultiKeyHashTable()
+  seq = np.array( [ 10, 20, 30, 40 ], dtype = np.int64 )
+  idx = tbl.AddData( seq )
+  tbl.CreateKeys( 1, seq, idx )
+  tbl.DeleteAllOfSize( 2 )
+  assert tbl.SameStart( np.array( [ 10 ], dtype = np.int64 ) ) is None
+  assert tbl.SameStart( np.array( [ 10, 20 ], dtype = np.int64 ) ) is None
+  r3 = tbl.SameStart( np.array( [ 10, 20, 30 ], dtype = np.int64 ) )
+  assert r3 == idx
+  r4 = tbl.SameStart( np.array( [ 10, 20, 30, 40 ], dtype = np.int64 ) )
+  assert r4 == idx
+
+
+def test_DeleteAllOfSizeLargeN() -> None:
+  tbl = MultiKeyHashTable()
+  seq = np.array( [ 1, 2 ], dtype = np.int64 )
+  idx = tbl.AddData( seq )
+  tbl.CreateKeys( 1, seq, idx )
+  tbl.DeleteAllOfSize( 10 )
+  assert tbl.SameStart( np.array( [ 1 ], dtype = np.int64 ) ) is None
+  assert tbl.SameStart( np.array( [ 1, 2 ], dtype = np.int64 ) ) is None
+
+
+def test_DeleteAllOfSizeMultipleCalls() -> None:
+  tbl = MultiKeyHashTable()
+  seq = np.array( [ 10, 20, 30, 40 ], dtype = np.int64 )
+  idx = tbl.AddData( seq )
+  tbl.CreateKeys( 1, seq, idx )
+  tbl.DeleteAllOfSize( 2 )
+  tbl.DeleteAllOfSize( 3 )
+  assert tbl.SameStart( np.array( [ 10 ], dtype = np.int64 ) ) is None
+  assert tbl.SameStart( np.array( [ 10, 20 ], dtype = np.int64 ) ) is None
+  assert tbl.SameStart( np.array( [ 10, 20, 30 ], dtype = np.int64 ) ) is None
+  assert tbl.SameStart( np.array( [ 10, 20, 30, 40 ], dtype = np.int64 ) ) == idx
+
+
+def test_DeleteAllOfSizeZeroAndNegative() -> None:
+  tbl = MultiKeyHashTable()
+  seq = np.array( [ 5, 6, 7 ], dtype = np.int64 )
+  idx = tbl.AddData( seq )
+  tbl.CreateKeys( 1, seq, idx )
+  tbl.DeleteAllOfSize( 0 )
+  assert tbl.SameStart( np.array( [ 5 ], dtype = np.int64 ) ) == idx
+  assert tbl.SameStart( np.array( [ 5, 6, 7 ], dtype = np.int64 ) ) == idx
+  tbl.DeleteAllOfSize( -1 )
+  assert tbl.SameStart( np.array( [ 5 ], dtype = np.int64 ) ) == idx
+
+
+def test_DeleteAllOfSizeNonIntRaises() -> None:
+  tbl = MultiKeyHashTable()
+  with pytest.raises( ( TypeError ) ):
+    tbl.DeleteAllOfSize( "not an int" )
+  with pytest.raises( ( TypeError ) ):
+    tbl.DeleteAllOfSize( 2.0 )
+
+
+def test_DeleteAllOfSizeDataNotAffected() -> None:
+  tbl = MultiKeyHashTable()
+  seq = np.array( [ 1, 2, 3 ], dtype = np.int64 )
+  idx = tbl.AddData( seq )
+  tbl.CreateKeys( 1, seq, idx )
+  tbl.DeleteAllOfSize( 1 )
+  tbl.DeleteAllOfSize( 2 )
+  tbl.DeleteAllOfSize( 3 )
+  assert np.array_equal( tbl[ idx ], seq )
+
+
+def test_DeleteAllOfSizePartialDataPreserved() -> None:
+  tbl = MultiKeyHashTable()
+  seq1 = np.array( [ 1, 2, 3 ], dtype = np.int64 )
+  seq2 = np.array( [ 4, 5, 6, 7 ], dtype = np.int64 )
+  idx1 = tbl.AddData( seq1 )
+  idx2 = tbl.AddData( seq2 )
+  tbl.CreateKeys( 1, seq1, idx1 )
+  tbl.CreateKeys( 2, seq2, idx2 )
+  tbl.DeleteAllOfSize( 1 )
+  assert tbl.SameStart( np.array( [ 1 ], dtype = np.int64 ) ) is None
+  r2 = tbl.SameStart( np.array( [ 4, 5 ], dtype = np.int64 ) )
+  assert r2 == idx2
+
+
+def test_LenEmpty() -> None:
+  tbl = MultiKeyHashTable()
+  assert len( tbl ) == 0
+
+
+def test_LenAfterAdd() -> None:
+  tbl = MultiKeyHashTable()
+  arr1 = np.array( [ 1, 2, 3 ], dtype = np.int64 )
+  arr2 = np.array( [ 4, 5 ], dtype = np.int64 )
+  arr3 = np.array( [], dtype = np.int64 )
+  tbl.AddData( arr1 )
+  assert len( tbl ) == 1
+  tbl.AddData( arr2 )
+  assert len( tbl ) == 2
+  tbl.AddData( arr3 )
+  assert len( tbl ) == 3
+
+
+def test_LenAfterDeleteAllOfSize() -> None:
+  tbl = MultiKeyHashTable()
+  seq = np.array( [ 1, 2, 3 ], dtype = np.int64 )
+  tbl.AddData( seq )
+  tbl.CreateKeys( 1, seq, 0 )
+  tbl.DeleteAllOfSize( 3 )
+  assert len( tbl ) == 1
+
+
+def test_IterEmpty() -> None:
+  tbl = MultiKeyHashTable()
+  assert list( tbl ) == []
+
+
+def test_IterYieldsStoredSequences() -> None:
+  tbl = MultiKeyHashTable()
+  a1 = np.array( [ 3, 1, 5 ], dtype = np.int64 )
+  a2 = np.array( [ 2, 4 ], dtype = np.int64 )
+  a3 = np.array( [ 10 ], dtype = np.int64 )
+  tbl.AddData( a1 )
+  tbl.AddData( a2 )
+  tbl.AddData( a3 )
+  results = list( tbl )
+  assert len( results ) == 3
+  assert np.array_equal( results[ 0 ], a1 )
+  assert np.array_equal( results[ 1 ], a2 )
+  assert np.array_equal( results[ 2 ], a3 )
+
+
+def test_IterMatchesGetItem() -> None:
+  tbl = MultiKeyHashTable()
+  tbl.AddData( np.array( [ 7, 2, 9 ], dtype = np.int64 ) )
+  tbl.AddData( np.array( [ 5, 1 ], dtype = np.int64 ) )
+  for i, seq in enumerate( tbl ): assert np.array_equal( seq, tbl[ i ] )
+
+
+def test_GetMemoryUsageReturnsInt() -> None:
+  tbl = MultiKeyHashTable()
+  seq = np.array( [ 1, 2, 3, 4, 5 ], dtype = np.int64 )
+  idx = tbl.AddData( seq )
+  tbl.CreateKeys( 1, seq, idx )
+  assert isinstance( tbl.get_memory_usage(), dict )
+
+
+def test_IntegrationArborescenceFlow() -> None:
+  tbl = MultiKeyHashTable()
+  li1 = np.array( [ 0 ], dtype = np.int64 )
+  ellg1 = np.array( [ 0, 3, 7 ], dtype = np.int64 )
+  idx1 = tbl.AddData( ellg1 )
+  tbl.CreateKeys( len( li1 ), ellg1, idx1 )
+  assert tbl.SameStart( np.array( [ 0 ], dtype = np.int64 ) ) == idx1
+  li2 = np.array( [ 0, 3 ], dtype = np.int64 )
+  assert tbl.SameStart( li2 ) == idx1
+  tbl.DeleteAllOfSize( 1 )
+  assert tbl.SameStart( np.array( [ 0 ], dtype = np.int64 ) ) is None
+  assert tbl.SameStart( li2 ) == idx1
+  ellg2 = np.array( [ 0, 3, 5, 9 ], dtype = np.int64 )
+  idx2 = tbl.AddData( ellg2 )
+  tbl.CreateKeys( len( li2 ), ellg2, idx2 )
+  assert tbl.SameStart( li2 ) == idx1
+  tbl.DeleteAllOfSize( 2 )
+  assert tbl.SameStart( li2 ) is None
+  assert tbl.SameStart( np.array( [ 0, 3, 5 ], dtype = np.int64 ) ) == idx2
+
+
+def test_IntegrationRandomConsistency() -> None:
+  tbl = MultiKeyHashTable()
+  rng = np.random.default_rng( 12345 )
+  for _ in range( 30 ):
+    n = int( rng.integers( 2, 7 ) )
+    seq = rng.choice( 200, size = n, replace = False ).astype( np.int64 )
+    idx = tbl.AddData( seq )
+    tbl.CreateKeys( 1, seq, idx )
+  for _ in range( 100 ):
+    k = int( rng.integers( 1, 7 ) )
+    query = rng.choice( 200, size = k, replace = False ).astype( np.int64 )
+    result = tbl.SameStart( query )
+    if ( result is not None ):
+      stored = tbl[ result ]
+      if ( not np.array_equal( np.sort( stored[ : k ] ), np.sort( query ) ) ):
+        raise AssertionError(
+                    f"Stored={ stored } at index { result } does not match query={ query }" )
+
+
+def test_IntegrationRandomSequenceBFS() -> None:
+  tbl = MultiKeyHashTable()
+  rng = np.random.default_rng( 42 )
+  for level_size in range( 1, 6 ):
+    LI = rng.choice( 10, size = level_size, replace = False ).astype( np.int64 )
+    hit = tbl.SameStart( LI )
+    if ( hit is not None ):
+      stored = tbl[ hit ]
+      if ( not np.array_equal( np.sort( stored[ : level_size ] ), np.sort( LI ) ) ):
+        raise AssertionError(
+                    f"Stored={ stored } at index { hit } does not match LI={ LI }" )
+    extra = rng.choice( 10, size = int( rng.integers( 0, 3 ) ), replace = False )
+    full = np.concatenate( [ LI, extra ] ).astype( np.int64 )
+    idx = tbl.AddData( full )
+    tbl.CreateKeys( len( LI ), full, idx )
+    tbl.DeleteAllOfSize( level_size )
+  for level_size in range( 1, 6 ):
+    for i in range( 1, level_size + 1 ):
+      LI = rng.choice( 10, size = i, replace = False ).astype( np.int64 )
+      _ = tbl.SameStart( LI )
+
+
+def test_RegressionDifferentOrderingSamePrefix() -> None:
+  tbl = MultiKeyHashTable()
+  long_seq = np.array( [ 3, 1, 5 ], dtype = np.int64 )
+  idx_long = tbl.AddData( long_seq )
+  tbl.CreateKeys( 1, long_seq, idx_long )
+  short_seq = np.array( [ 1, 3 ], dtype = np.int64 )
+  idx_short = tbl.AddData( short_seq )
+  tbl.CreateKeys( 1, short_seq, idx_short )
+  q = np.array( [ 1, 3 ], dtype = np.int64 )
+  result = tbl.SameStart( q )
+  assert result == idx_short
+
+
+def test_RegressionDifferentOrderingLongerPrefix() -> None:
+  tbl = MultiKeyHashTable()
+  seq_a = np.array( [ 5, 3, 7 ], dtype = np.int64 )
+  idx_a = tbl.AddData( seq_a )
+  tbl.CreateKeys( 1, seq_a, idx_a )
+  seq_b = np.array( [ 3, 5 ], dtype = np.int64 )
+  idx_b = tbl.AddData( seq_b )
+  tbl.CreateKeys( 1, seq_b, idx_b )
+  q = np.array( [ 3, 5 ], dtype = np.int64 )
+  assert tbl.SameStart( q ) == idx_b
+  q2 = np.array( [ 3, 5, 7 ], dtype = np.int64 )
+  assert tbl.SameStart( q2 ) == idx_a
+
+
+def test_RegressionSameStartVerifiesManyInserts() -> None:
+  tbl = MultiKeyHashTable()
+  rng = np.random.default_rng( 99 )
+  for _ in range( 50 ):
+    n = int( rng.integers( 1, 8 ) )
+    seq = rng.choice( 100, size = n, replace = False ).astype( np.int64 )
+    idx = tbl.AddData( seq )
+    tbl.CreateKeys( 1, seq, idx )
+    for k in range( 1, n + 1 ):
+      prefix = seq[ : k ]
+      query = np.sort( prefix )
+      result = tbl.SameStart( query )
+      if ( result is not None ):
+        stored = tbl[ result ]
+        if ( not np.array_equal( np.sort( stored[ : k ] ), np.sort( prefix ) ) ):
+          raise AssertionError(
+                        f"Index { result } stored={ stored } does not match query prefix={ prefix }" )
