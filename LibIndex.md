@@ -19,7 +19,7 @@
   - `ToMorph: bool` — whether this function is eligible for dictionary morphing
 - **Constructor** validates: callable, same-shape output, no NaNs on test input, elementwise (no time-dependence). If `fPrime`/`fSecond` absent, `ToMorph` is forced `False`.
 
-### `NARMAX.Classes.Parser_0_2` — Data Classes
+### `NARMAX.Classes.Parser_0_3` — Data Classes
 
 #### `SubExpression` (dataclass)
 - `Coeff: Optional[float]` — multiplicative coefficient
@@ -113,7 +113,7 @@
   - `PlotAndPrint(ValData, PrintRegressor=True) -> tuple[Figure, Axes]` — generates 2-panel signal comparison plot and 2-panel ERR/MAE progression plot. Prints regressor terms and coefficients.
 - **Errors**: `AssertionError` for invalid state (None y, uninitialized), `ValueError` for bad parameter types.
 
-#### `NARMAX/Classes/SymbolicOscillator_0_3.py`
+#### `NARMAX/Classes/SymbolicOscillator_0_4.py`
 - **Responsibility**: Compiled NARMAX model simulation.
 - **Constants**: `Device: str` — selected at module level via `HelperFuncs.Set_Tensortype_And_Device()`.
 - **Public API**:
@@ -153,7 +153,7 @@
   - `InfOPT(y, Xl, ksiS, Ds, Dc, PA, f, fPrime, fSecond, Reps, A_T, Psi, Psi_n, W_T, L) -> tor.Tensor` — scipy `trust-exact` refinement with random restarts. Returns optimized coefficients.
   - `DictionaryMorpher(U, ell, Psi, Psi_n, y, A_T, W_T, L, Ds, Dc, MDict) -> tuple | None` — end-to-end morphing: parse → test → GenVSGen → InfOPT → metadata. Returns `(morph_data, regressor, regressor_name)` or `None` if unmorphable.
 
-#### `NARMAX/Classes/Parser_0_2.py`
+#### `NARMAX/Classes/Parser_0_3.py`
 - **Responsibility**: Expression string parser for NARMAX symbolic expressions.
 - **Public API**:
   - `CleanExpression(InputExpr: str) -> tuple[Optional[str], str]` — normalizes whitespace, protects lag brackets, handles `~/` and `1/` fraction operators, splits function name and arguments. Raises `ValueError` for fractional lags, reserved sequences, multi-paren.

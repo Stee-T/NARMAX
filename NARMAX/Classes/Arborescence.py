@@ -13,7 +13,7 @@ import timeit # time measurements for Back-ups
 # Import from current folder:
 from . import Queue
 from . import MultiKeyHashTable
-from .SymbolicOscillator_0_3 import SymbolicOscillator, Device # for Plot & Print
+from .SymbolicOscillator_0_4 import SymbolicOscillator, Device # for Plot & Print
 from . import Morpher
 
 # Import from parent folder:

@@ -16,10 +16,10 @@ def System( y: tor.Tensor, x1: tor.Tensor, x2: tor.Tensor, W: tor.Tensor, theta:
             StartIdx: int, EndIdx: int ) -> tor.Tensor:
   for k in range( StartIdx, EndIdx ):
     y[ k ] = W[ k ] + ( ( theta[ 0 ] * y[ k - 1 ] / x2[ k ] + theta[ 1 ] * UserFunction( x1[ k - 1 ] )
-                      + theta[ 2 ] / tor.abs( 0.2 * x1[ k - 1 ] + 0.5 * x1[ k - 2 ] * x2[ k ] - 0.2 ) ) # Numerator
+                      + theta[ 2 ] / tor.abs( 0.2 * x1[ k - 1 ] + 0.5 * tor.cos( x1[ k - 2 ] * x2[ k ] ) - 0.2 ) ) # Numerator
                                                     /
                     ( 1 + theta[ 3 ] * x1[ k - 1 ] * x2[ k - 1 ] + theta[ 4 ] * x2[ k - 2 ]**2
-                      + theta[ 5 ] * tor.cos( 0.2 * x1[ k - 3 ] * x2[ k - 1 ] - 0.1 ) ) ) # Denominator
+                      + theta[ 5 ] * tor.cos( 0.2 * x1[ k - 3 ] * x2[ k - 1 ] + tor.sin( x2[ k - 2 ] + 0.5 ) - 0.1 ) ) ) # Denominator
   return ( y )
 
 # Direct input to the system, allows to model input noise / supplementary regressors, DC-offset or whatever
@@ -40,10 +40,11 @@ NonLinearities: list[ NARMAX.NonLinearity ] = [ NARMAX.Identity, # Obligatory fo
                                                 NARMAX.NonLinearity( "uFunc", f = UserFunction ),
                                                 NARMAX.NonLinearity( "abs", f = tor.abs ),
                                                 NARMAX.NonLinearity( "cos", f = tor.cos ),
+                                                NARMAX.NonLinearity( "sin", f = tor.sin ),
                                               ] # Used Functions
 
-Expressions: list[ str ] = [ "y[k-1]/x2[k]", "uFunc( x1[k-1] )", "1/abs( 0.2*x1[k-1] + 0.5*x1[k-2]*x2[k] - 0.2 )", # Numerator
-                            "~/(x1[k-1]*x2[k-1])", "~/(x2[k-2]^2)", "~/cos( 0.2*x1[k-3]*x2[k-1] - 0.1 )" ] # Denominator
+Expressions: list[ str ] = [ "y[k-1]/x2[k]", "uFunc( x1[k-1] )", "1/abs( 0.2*x1[k-1] + 0.5*cos( x1[k-2]*x2[k] ) - 0.2 )", # Numerator
+                            "~/(x1[k-1]*x2[k-1])", "~/(x2[k-2]^2)", "~/cos( 0.2*x1[k-3]*x2[k-1] + sin( x2[k-2] + 0.5 ) - 0.1 )" ] # Denominator
 
 # ----------------------------------------------------- 3. Simulation and Processing
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ y = Real System

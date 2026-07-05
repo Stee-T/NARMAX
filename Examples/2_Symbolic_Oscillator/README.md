@@ -25,11 +25,11 @@ The `NARMAX.SymbolicOscillator` object, thus, allows the user to create a symbol
 
 This tutorial demonstrates how to use a `NARMAX.SymbolicOscillator`-object to represent and evaluate arbitrary [1] symbolic NARMAX systems, aka applying the system to incommnig data or generating data itself. This example consists of a MISO-system (Multiple-Input Single-Output) with two inputs ($x_1$ and $x_2$), a single output ($y$) and multiple nonlinearities in addition to a supplementary input channel ($W$) for noise, DC-offsets, etc. The to-be-compiled system is
 
-$y\[k\] = W\[k\] + \frac{{\theta_0\frac{y\[k-1\]}{x_2\[k\]} + \theta_1 \text{UFunc}(x_1\[k-1\]) + \frac{\theta_2}{\text{abs}\left( 0.2x_1\[k-1\] + 0.5x_1\[k-2\]x_2\[k\] - 0.2 \right)} }}{1 + \theta_3 x_1\[k-1\]x_2\[k-1\] + \theta_4 x_2^2\[k-2\] + \theta_5\cos\left( 0.2x_1\[k-3\]x_2\[k-1\] - 0.1 \right) }$
+$y\[k\] = W\[k\] + \frac{{\theta_0\frac{y\[k-1\]}{x_2\[k\]} + \theta_1 \text{UFunc}(x_1\[k-1\]) + \frac{\theta_2}{\text{abs}\left( 0.2x_1\[k-1\] + 0.5\cos\left( x_1\[k-2\]x_2\[k\] \right) - 0.2 \right)} }}{1 + \theta_3 x_1\[k-1\]x_2\[k-1\] + \theta_4 x_2^2\[k-2\] + \theta_5\cos\left( 0.2x_1\[k-3\]x_2\[k-1\] + \sin\left( x_2\[k-2\] + 0.5 \right) - 0.1 \right) }$
 
 where $\text{UFunc}(x) := \max(0, \sin(2x))$ is a custom user-defined function, which demonstrates that the provided compiler handles any function passed by the user correctly.
 
-[1] There are currently some limitations on the expression, such as nesting multiple functions with coefficients. This is, however, what I'm currently working on, since the Symbolic Oscillator is the subject of the paper I'm writing at the moment. Support for arbitrary nesting depth of expressions will thus be added in the near future.
+[1] The parser now supports arbitrary nesting depth of functions, as demonstrated by the nested `cos(sin(...))` expression in this example.
 
 <br/>
 
@@ -76,16 +76,16 @@ ThirdBuffer: int = p // 3 # How long we keep the same theta values
 
 ```python
 def UserFunction( x: tor.Tensor ) -> tor.Tensor:
-  return ( tor.max( tor.Tensor( [ 0 ] ), tor.sin( 2 * x ) ) ) # whatever really
+  return ( tor.max( tor.tensor( [ 0 ] ), tor.sin( 2 * x ) ) ) # whatever really
 
 def System( y: tor.Tensor, x1: tor.Tensor, x2: tor.Tensor, W: tor.Tensor, theta: tor.Tensor,
             StartIdx: int, EndIdx: int ) -> tor.Tensor:
   for k in range( StartIdx, EndIdx ):
     y[k] = W[k] + ( ( theta[0] * y[k-1] / x2[k] + theta[1] * UserFunction( x1[k-1] )
-                      + theta[2] / tor.abs( 0.2 * x1[k-1] + 0.5 * x1[k-2] * x2[k] - 0.2 ) ) # Numerator
+                      + theta[2] / tor.abs( 0.2 * x1[k-1] + 0.5 * tor.cos( x1[k-2] * x2[k] ) - 0.2 ) ) # Numerator
                                                     /
                     ( 1 + theta[3] * x1[k-1] * x2[k-1] + theta[4] * x2[k-2]**2
-                      + theta[5] * tor.cos( 0.2 * x1[k-3] * x2[k-1] - 0.1 ) ) ) # Denominator
+                      + theta[5] * tor.cos( 0.2 * x1[k-3] * x2[k-1] + tor.sin( x2[k-2] + 0.5 ) - 0.1 ) ) ) # Denominator
   return ( y )
 ```
 
@@ -112,6 +112,7 @@ NonLinearities: list[ NARMAX.NonLinearity ] = [ NARMAX.Identity, # Obligatory fo
                                                 NARMAX.NonLinearity( "uFunc", f = UserFunction ),
                                                 NARMAX.NonLinearity( "abs", f = tor.abs ),
                                                 NARMAX.NonLinearity( "cos", f = tor.cos ),
+                                                NARMAX.NonLinearity( "sin", f = tor.sin ),
                                               ] # Used Functions
 ```
 
@@ -123,8 +124,8 @@ List of strings containing the symbolic expressions for the system regressors. T
 **Note 2 (Function Names):** Functions used in expression-strings must use the EXACT same name (string) as used in the `NARMAX.NonLinearities` list, otherwise the parser will complain that it doesn't know what you're talking about.
 
 ```python
-Expressions: list[ str ] = ["y[k-1]/x2[k]", "uFunc( x1[k-1] )", "1/abs( 0.2*x1[k-1] + 0.5*x1[k-2]*x2[k] - 0.2 )", # Numerator
-                            "~/(x1[k-1]*x2[k-1])", "~/(x2[k-2]^2)", "~/cos( 0.2*x1[k-3]*x2[k-1] - 0.1 )" ] # Denominator
+Expressions: list[ str ] = ["y[k-1]/x2[k]", "uFunc( x1[k-1] )", "1/abs( 0.2*x1[k-1] + 0.5*cos( x1[k-2]*x2[k] ) - 0.2 )", # Numerator
+                            "~/(x1[k-1]*x2[k-1])", "~/(x2[k-2]^2)", "~/cos( 0.2*x1[k-3]*x2[k-1] + sin( x2[k-2] + 0.5 ) - 0.1 )" ] # Denominator
 ```
 
 #### 3.1.4 Theta
@@ -154,7 +155,7 @@ y: tor.Tensor = tor.zeros( p )
 for i in range( 3 ):
   StartIdx: int = ( i * ThirdBuffer ) if ( i > 0 ) else 3 # avoids index error in System
   EndIdx: int = ( i + 1 ) * ThirdBuffer
-  y: tor.Tensor = System( y, x1, x2, AdditionalInput, theta[i], StartIdx, EndIdx ) # only overwrite y[StartIdx:EndIdx]
+  y = System( y, x1, x2, AdditionalInput, theta[i], StartIdx, EndIdx ) # only overwrite y[StartIdx:EndIdx]
 ```
 <br/>
 
@@ -167,7 +168,7 @@ Model: NARMAX.SymbolicOscillator = NARMAX.SymbolicOscillator( InputVarNames, Non
 for i in range( 3 ):
   StartIdx: int = i * ThirdBuffer # no conditional, since SymbOsc-class handles buffer starts correctly
   EndIdx: int = ( i + 1 ) * ThirdBuffer
-  yHat[ StartIdx : EndIdx ] = Model.Oscillate( Data = [ x1[ StartIdx : EndIdx], x2[ StartIdx : EndIdx ] ],
+  yHat[ StartIdx : EndIdx ] = Model.Oscillate( Data = [ x1[ StartIdx : EndIdx ], x2[ StartIdx : EndIdx ] ],
                                                theta = theta[i], # change regression coefficients
                                                DsData = AdditionalInput[ StartIdx : EndIdx ] # additional input
                                              )
@@ -200,189 +201,91 @@ The first few initial samples are cut away, since the hard-coded system isn't pr
 ## 6. Supplementary Material
 ### 6.1 Proper initialization
 
-### 6.1 Proper initialization
+As mentioned in the last section, the initialization of a NARMAX system (and thus of an `NARMAX.SymbolicOscillator` object) isn't trivial.
+The library therefore provides a convenience-function `NARMAX.InitAndComputeBuffer` to abstract that away from the user, but it is still of interest to understand the procedure.
 
-TODO:
+The `SymbolicOscillator` internally keeps a short rolling window of the most recent past inputs and outputs. These stored values are used whenever a regressor refers to a time index that lies **before** the beginning of the current data buffer (for example `y[k-2]` when `k=0` or `k=1`).
 
-OLD: 
-```
-As mentioned in the last section, the initialization of a NARMAX system
-(and thus of an `NARMAX.SymbolicOscillator` object) must be done correctly.
-The library therefore provides a convenience‑function
-`NARMAX.InitAndComputeBuffer` to abstract that away from the user,
-but it is important to understand the procedure.
+#### 6.1.1 Why Initialization Matters
+To exactly reproduce a known output sequence `\underline{y}`, the model's internal state must be filled with the **correct historical data**. The most common mistake is to feed the **first** few sequence samples into the storage. That would only be correct if the required lag window happens to start at index 0, which is not the general case.
 
-The central idea is that the SymbolicOscillator internally keeps a short
-**rolling window** of the most recent past inputs and outputs. These
-stored values are used whenever a regressor refers to a time index that
-lies **before** the beginning of the current data buffer (for example
-`y[k-2]` when `k=0` or `k=1`).
+Proper initialization guarantees that given a set of input sequences (`Data`), the `NARMAX.SymbolicOscillator` generates the ***EXACT*** same output sequence `y` as the original system (if both equations are the same). This requires particular care, since, per default, the SymbOsc is a zero-initialized "blank system", meaning that all initial conditions are zero.  
 
-If the model is supposed to exactly reproduce a known output sequence `y`,
-the internal state must be filled with the **correct historical data**.
-The most common mistake is to feed the **first** few samples of the
-sequence into the storage. That would only be correct if the required
-lag window happens to start at index 0, which is rarely the case.
+To illustrate, be the system $y[k] = a \cdot x[k] + b \cdot x[k-1] + c \cdot y[k-2]$. At time point $k=0$, the two last regressors ($y[k-2]$ and $x[k-1]$) are outside of the current buffer / sequence (negative indices) and are thus assumed to be zero if no other information is available. Those zeros (called initial conditions: $x[-1]$, $y[-1]$ and $y[-2]$) are taken from the object's internal buffers. However, if the "real" system that generated the output sequence $\underline y$ was already "running" before the sequence start, assuming that $y[-1] = 0$, $y[-2] = 0$ and $x[-1]=0$ could result in a completely different output sequence $\hat{\underline y}$. 
 
-Instead, one must determine the largest negative lag in both the input
-and the output regressors,
-`qx = max_input_lag` and `qy = max_output_lag`. The model needs the
-*immediately preceding* `qx` input samples and `qy` output samples **just
-before** the first index we want to compute. That index is
-`StartIdx = max(qx, qy)`.
+This problem is especially pronounced with:
+1. **Strongly Auto-Regressive (AR) NARMAX systems**: Errors from the initial conditions are fed back into the system for a potentially long time.
+2. **Chaotic or barely stable NARMAX systems**: These can be "knocked-off" from their equilibrium state or start in a completely different part of their phase-plot.
 
-- The **output storage** must receive
-  `y[StartIdx - qy : StartIdx]`  (the `qy` samples right before `StartIdx`).
-- The **input storage** must receive, for each channel,
-  `input[StartIdx - qx : StartIdx]`  (the `qx` samples right before `StartIdx`).
+Thus, it is very important to initialize the `NARMAX.SymbolicOscillator` correctly, especially when comparing a `NARMAX.SymbolicOscillator` output to a measurement (e.g., in cost functions or model validation procedures).
 
-After that, the first `StartIdx` output samples are simply copied from
-the true `y` – they cannot be computed because the system would need
-even earlier data that we do not possess. The remaining part
-(`k >= StartIdx`) is then produced by calling `Model.Oscillate()` on the
-correspondingly sliced input data.
+#### 6.1.2 Step By Step
+One can emulate a correct initialization from an arbitrary buffer by essentially using the buffer-start to fake the initial conditions, as shown in the `InitAndComputeBuffer` function, which we'll work up to in the following example.
 
-The library helper implements this logic:
+First, determine the maximum of the system's input and output lags ($q_x$ and $q_y$), which is how far in teh past the model needs to see to compute the current output. This can be obtained via `get_MaxInputLag` and `get_MaxOutputLag`:
 
 ```python
-def InitAndComputeBuffer( Model, y, Data, DsData=None ):
-    if Model.get_MaxPositiveInputLag() > 0: raise RuntimeError("Positive input lags are not yet supported.")
-
-    if len(Data) != Model.get_nInputVars(): raise ValueError("Wrong number of input variables.")
-
-    qx = Model.get_MaxInputLag()
-    qy = Model.get_MaxOutputLag()
-    StartIdx = max(qx, qy)
-
-    # Initial state = immediate past
-    Model.set_OutputStorage( y[StartIdx - qy : StartIdx].clone() )
-    Model.set_InputStorage( torch.vstack([
-        inp[StartIdx - qx : StartIdx] for inp in Data
-    ]))
-
-    yHat = torch.zeros_like(y)
-    yHat[:StartIdx] = y[:StartIdx].clone()
-
-    DataSlice = [inp[StartIdx:] for inp in Data]
-    DsSlice = DsData[StartIdx:] if DsData is not None else None
-
-    yHat[StartIdx:] = Model.Oscillate(DataSlice, DsData=DsSlice).to(y.device)
-    return yHat
-
-This function guarantees that given a set of input sequences (`Data`), the symbolic oscillator generates the ***EXACT*** same output sequence `y` as the original system (if both equations are the same). This requires particular care, since, per default, the SymbOsc is a zero-initialized "blank system", meaning that all initial conditions are zero.  
-To illustrate, be the system $y[k] = a \cdot x[k] + b \cdot x[k-1] + c \cdot y[k-2]$. At time point $k=0$, the two last regressors ($y[k-2]$ and $x[k-1]$) are outside of the current buffer / sequence (negative indices) and are thus assumed to be zero if no other information is available. Those zeros (called initial conditions: $x[-1]$ and $y[-2]$, $y[-1]$) are taken from the object's internal buffers. However, if the "real" system that generated the output sequence $\underline y$ was already "running" before the sequence start, assuming that $y[-1] = 0$, $y[-2] = 0$ and $x[-1]=0$ could result in a completely different output sequence $\hat{\underline y}$. This problem is especially pronounced with  
-a) NARMAX systems having a strong recursive component (strongly AR = auto-regressive) since the errors from the initial conditions are fed back into the system for a potentially long time.  
-b) Chaotic or barely stable NARMAX systems, which can be "knocked-off" from their equilibrium state or just start in a completely different part of their phase-plot.  
-Thus, it's very important to initialize the SymbOsc correctly, especially when comparing a SymbOsc output to a measurement, for example in cost functions or model validation procedures.
-
-One can emulate a correct initialization from any arbitrary buffer by essentially using the buffer-start to fake the initial conditions, as shown in the above `InitAndComputeBuffer` function.
-
-First, one needs to determine for how long one needs to "fake" having the initial conditions. This is simply the maximum of the system's negative input and output lags ($q_y$ and $q_x$), as obtained by the respective member functions `get_MaxNegInputLag` and `get_MaxNegOutputLag`:
-
-```python
-StartIdx = max( Model.get_MaxNegOutputLag(), Model.get_MaxNegInputLag() ) # essentially q = max(qx, qy) as usual
+qx: int = Model.get_MaxInputLag()
+qy: int = Model.get_MaxOutputLag()
+StartIdx: int = max( qx, qy ) 
 ```
 
-Then, the first $q_y$ samples (largest negative output lag: largest $j$ in any regressor containing a $y[k-j]$ in the NARMAX system) are taken from the measured system output $\underline y$ and used to overwrite the internal output buffer. The same is done with the set of input sequences $\underline x$. Now the SymbOsc is no longer a "blank" (zero-initialized) system but has valid (in the sense of real input and output data) initial conditions:
+Then, the $q_y$ samples immediately preceding `StartIdx` are taken from the measured system output $\underline y$ and used to overwrite the internal output buffer. The same is done with the set of input sequences $\underline x$. Now the SymbOsc is no longer a "blank" (zero-initialized) system but has valid initial conditions:
 
 ```python
-Model.set_OutputStorage( y[ : Model.get_MaxNegOutputLag() ].clone() ) # set previous y[k-j] states
-Model.set_InputStorage( tor.vstack( [ input[ : Model.get_MaxNegInputLag() ] for input in Data ] ) ) # set previous phi[k-j] states
+# set previous y[k-j] states
+Model.set_OutputStorage( y[ StartIdx - qy : StartIdx ].clone() )
+
+# set previous x[k-j] states
+Model.set_InputStorage( tor.vstack( [ input[ StartIdx - qx : StartIdx ] for input in Data ] ) )
 ```
-Then, the SymbOsc output must copy the first $StartIdx$ measured output samples $\underline y$ into the output buffer, since those aren't calculated, being the initial conditions. From there on, the SymbOsc can normally be applied, since its first output samples are correct (having just been copied) and the internal buffers contain the corresponding initial conditions:
 
+Finally, copy the first `StartIdx` measured output samples $\underline y$ into the output buffer, since those cannot be calculated (they act as the initial conditions). From there on, the SymbOsc can normally run to get the rest of the data:
 ```python
-yHat[ :StartIdx ] = y[ : StartIdx ].clone() # take solution samples, where Model hasn't got all data. Avoids init-Error spikes
+yHat: tor.Tensor = tor.zeros_like( y )
+
+# take solution samples where Model hasn't got all data. Avoids init-Error spikes
+yHat[ : StartIdx ] = y[ : StartIdx ].clone()
+
+# calculate the rest
 yHat[ StartIdx: ] = Model.Oscillate( [ input[ StartIdx: ] for input in Data ] )
 return ( yHat )
 ```
 
-**Note:** For analysis purposes, the `NARMAX.SymbolicOscillator` object's internal buffers can be obtained at any time via the member functions `get_OutputStorage` and `get_InputStorage` and overwritten via `set_OutputStorage` and `set_InputStorage`. See next section for a complete list of member functions.
+#### 6.1.3 The full function
 
-<br/>
-```
-
-
-NEW:
-### 6.1 Proper initialization
-
-As mentioned in the last section, the initialization of a NARMAX system
-(and thus of an `NARMAX.SymbolicOscillator` object) must be done correctly.
-The library therefore provides a convenience‑function
-`NARMAX.InitAndComputeBuffer` to abstract that away from the user,
-but it is important to understand the procedure.
-
-The central idea is that the SymbolicOscillator internally keeps a short
-**rolling window** of the most recent past inputs and outputs. These
-stored values are used whenever a regressor refers to a time index that
-lies **before** the beginning of the current data buffer (for example
-`y[k-2]` when `k=0` or `k=1`).
-
-If the model is supposed to exactly reproduce a known output sequence `y`,
-the internal state must be filled with the **correct historical data**.
-The most common mistake is to feed the **first** few samples of the
-sequence into the storage. That would only be correct if the required
-lag window happens to start at index 0, which is rarely the case.
-
-Instead, one must determine the largest negative lag in both the input
-and the output regressors,
-`qx = max_input_lag` and `qy = max_output_lag`. The model needs the
-*immediately preceding* `qx` input samples and `qy` output samples **just
-before** the first index we want to compute. That index is
-`StartIdx = max(qx, qy)`.
-
-- The **output storage** must receive
-  `y[StartIdx - qy : StartIdx]`  (the `qy` samples right before `StartIdx`).
-- The **input storage** must receive, for each channel,
-  `input[StartIdx - qx : StartIdx]`  (the `qx` samples right before `StartIdx`).
-
-After that, the first `StartIdx` output samples are simply copied from
-the true `y` – they cannot be computed because the system would need
-even earlier data that we do not possess. The remaining part
-(`k >= StartIdx`) is then produced by calling `Model.Oscillate()` on the
-correspondingly sliced input data.
-
-The library helper implements this logic:
+The library helper `InitAndComputeBuffer` consolidates the above logic into a single function, adding basic input validation and support for additive inputs:
 
 ```python
-def InitAndComputeBuffer( Model, y, Data, DsData=None ):
-    if Model.get_MaxPositiveInputLag() > 0:
-        raise RuntimeError("Positive input lags are not yet supported.")
+from typing import Optional, Sequence
+import torch as tor
 
-    if len(Data) != Model.get_nInputVars():
-        raise ValueError("Wrong number of input variables.")
+def InitAndComputeBuffer( Model: object, y: tor.Tensor, Data: Sequence[ tor.Tensor ], DsData: Optional[ tor.Tensor ] = None ) -> tor.Tensor:
+  if ( Model.get_MaxPositiveInputLag() > 0 ): raise RuntimeError( "Positive input lags are not yet supported." )
 
-    qx = Model.get_MaxInputLag()
-    qy = Model.get_MaxOutputLag()
-    StartIdx = max(qx, qy)
+  if ( len( Data ) != Model.get_nInputVars() ): raise ValueError( "Wrong number of input variables." )
 
-    # Initial state = immediate past
-    Model.set_OutputStorage( y[StartIdx - qy : StartIdx].clone() )
-    Model.set_InputStorage( torch.vstack([
-        inp[StartIdx - qx : StartIdx] for inp in Data
-    ]))
+  qx: int = Model.get_MaxInputLag()
+  qy: int = Model.get_MaxOutputLag()
+  StartIdx: int = max( qx, qy )
 
-    yHat = torch.zeros_like(y)
-    yHat[:StartIdx] = y[:StartIdx].clone()
+  # Initial state = immediate past
+  Model.set_OutputStorage( y[ StartIdx - qy : StartIdx ].clone() )
+  Model.set_InputStorage( tor.vstack( [ input[ StartIdx - qx : StartIdx ] for input in Data ] ) )
 
-    DataSlice = [inp[StartIdx:] for inp in Data]
-    DsSlice = DsData[StartIdx:] if DsData is not None else None
+  yHat: tor.Tensor = tor.zeros_like( y )
+  yHat[ : StartIdx ] = y[ : StartIdx ].clone()
 
-    yHat[StartIdx:] = Model.Oscillate(DataSlice, DsData=DsSlice).to(y.device)
-    return yHat
+  DataSlice: list[ tor.Tensor ] = [ input[ StartIdx : ] for input in Data ]
+  DsSlice: Optional[ tor.Tensor ] = DsData[ StartIdx : ] if ( DsData is not None ) else None
+
+  yHat[ StartIdx : ] = Model.Oscillate( DataSlice, DsData = DsSlice ).to( y.device )
+  return yHat
 ```
 
-Why the old code was wrong:
-A naive version used y[:qy] and input[:qx]. This correctly initialises the storage only when qx == qy. When the lags differ (e.g. qx=2, qy=5), StartIdx = 5. The model would then use x[0], x[1] as the past inputs for y[5], while the true inputs immediately before y[5] are x[3], x[4]. The resulting output would diverge, especially for strongly auto‑regressive or chaotic systems.
+**Handling additive inputs (`DsData`)**: Some systems include an extra additive channel (noise, DC offsets, etc.) that is not stored in the internal state (it has no lags). If the true system used such a channel, it must be passed to `InitAndComputeBuffer` via the optional `DsData` argument. The helper will slice it exactly like the input data and forward it to `Oscillate`. Omitting `DsData` when it was present during the original generation will lead to an incorrect output.
 
-Device consistency:
-Oscillate returns a tensor on the device stored in the model. The helper moves it to the same device as y to avoid a runtime error
-when assigning to yHat. Thus, y can reside on a different device than the model (e.g., CPU vs GPU) and the result will be placed
-correctly.
-
-Handling additive inputs (DsData):
-Some systems include an extra additive channel (noise, DC offsets, etc.) that is not stored in the internal state (it has no lags). If the
-true system used such a channel, it must be passed to InitAndComputeBuffer via the optional DsData argument. The helper will slice it exactly like the input data and forward it to Oscillate. Omitting DsData when it was present during the original generation will lead to an incorrect output.
+**Note:** For analysis purposes, the `NARMAX.SymbolicOscillator` object's internal buffers can be obtained at any time via the member functions `get_OutputStorage` and `get_InputStorage` and overwritten via `set_OutputStorage` and `set_InputStorage`. See the next section for a complete list of member functions.
 
 ### 6.2 List of Member Functions
 

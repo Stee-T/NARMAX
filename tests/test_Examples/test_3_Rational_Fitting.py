@@ -185,7 +185,7 @@ def test_rational_nonlinear_system() -> None:
   # ---- 9. Verification on fresh test data via SymbolicOscillator -----------
   # Generate fresh test data with a new seed
   tor.manual_seed(99999)
-  TestInput = tor.tensor((2 * InputAmplitude) * (tor.rand(p) - 0.5))
+  TestInput = (2 * InputAmplitude) * (tor.rand(p) - 0.5)
   TestInput -= TestInput.mean()
   _, y_true, _ = Sys(TestInput, None, Print=False)
 

@@ -8,7 +8,7 @@ from . import CTors # Expose all constuctors and helper functions
 
 # Rest of the Lib: "from ."" is same Folder and ".Name" is subfolder import
 from .Classes.NonLinearity import NonLinearity # import here to give acces to the user (add to namespaec rFOrLSR)
-from .Classes.SymbolicOscillator_0_3 import SymbolicOscillator, Device
+from .Classes.SymbolicOscillator_0_4 import SymbolicOscillator, Device
 from .Classes.Arborescence import Arborescence
 from .HelperFuncs import CutY
 from .Validation import InitAndComputeBuffer, DefaultValidation

@@ -2,7 +2,7 @@ import torch as tor
 
 # Rest of the Lib: "from ."" is same Folder and ".Name" is subfolder import
 from .Classes.NonLinearity import NonLinearity # for typechecking
-from .Classes.SymbolicOscillator_0_3 import SymbolicOscillator # for Default Validation
+from .Classes.SymbolicOscillator_0_4 import SymbolicOscillator # for Default Validation
 
 from typing import Optional, Sequence, Any
 from numpy.typing import NDArray
