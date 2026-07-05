@@ -86,7 +86,8 @@ class MultiKeyHashTable:
 
   # --------------------------------------------------- [] operator ----------------------------------------------------
   def __getitem__( self, index: int ) -> NDArray:
-    if ( ( index < 0 ) or ( index >= self._data_count ) ): raise IndexError( "list index out of range" )
+    if ( index < 0 ): index += self._data_count # Support negative indices with single negative wrap-around, emulate python container
+    if ( ( index < 0 ) or ( index >= self._data_count ) ): raise IndexError( "list index out of range" ) # If still fails after wrap-around
     start = self._offsets[ index ]
     length = self._lengths[ index ]
     return self._flat_data[ start : start + length ].copy()
