@@ -2,18 +2,7 @@
 import numpy as np
 import torch as tor
 import pytest
-from typing import Callable
-from unittest.mock import patch, MagicMock
-
 from NARMAX.Tools import ComputeERR
-
-def _norm2_side_effect( min_val: float = 1e-12 ) -> Callable[ [ tor.Tensor ], tor.Tensor ]:
-  '''Return a callable that mimics HF.Norm2: squared L2 norm clamped to min_val.'''
-  def norm2( v: tor.Tensor ) -> tor.Tensor:
-    val = tor.sum( v**2 )
-    clamped = tor.clamp( val, min = tor.tensor( min_val, dtype = val.dtype, device = val.device ) )
-    return clamped
-  return norm2
 
 
 class TestComputeERR:
@@ -38,13 +27,12 @@ class TestComputeERR:
 
     # y with variance just above threshold should work
     y_ok = tor.randn( 10 ) * 1e-5 # variance ~ 1e-10
-    with patch( 'NARMAX.Tools.HF.Norm2', side_effect = _norm2_side_effect() ):
-      err = ComputeERR( y_ok, tor.randn( 10, 1 ) ) # no exception
-      assert isinstance( err, np.ndarray )
-      assert err.dtype == np.float64
-      assert err.shape == ( 1, )
-      assert 0.0 <= err[ 0 ] <= 1.0 + 1e-12
-      assert not np.isnan( err[ 0 ] )
+    err = ComputeERR( y_ok, tor.randn( 10, 1 ) ) # no exception
+    assert isinstance( err, np.ndarray )
+    assert err.dtype == np.float64
+    assert err.shape == ( 1, )
+    assert 0.0 <= err[ 0 ] <= 1.0 + 1e-12
+    assert not np.isnan( err[ 0 ] )
 
   def test_single_column( self ) -> None:
     '''One regressor: ERR = (dot(y, Omega)^2) / (||Omega||^2 * var(y)).'''
@@ -55,8 +43,7 @@ class TestComputeERR:
     n_Omega_real = tor.sum( Omega**2 ).item()
     expected_err = ( Omega @ y ).item()**2 / ( n_Omega_real * s2y )
 
-    with patch( 'NARMAX.Tools.HF.Norm2', side_effect = _norm2_side_effect() ):
-      err = ComputeERR( y, Ds )
+    err = ComputeERR( y, Ds )
     assert isinstance( err, np.ndarray )
     assert err.dtype == np.float64
     assert err.shape == ( 1, )
@@ -72,8 +59,7 @@ class TestComputeERR:
 
     # Reference calculation (same algorithm as the implementation)
     s2y = ( y @ y ).item()
-    with patch( 'NARMAX.Tools.HF.Norm2', side_effect = _norm2_side_effect() ):
-      err = ComputeERR( y, Ds )
+    err = ComputeERR( y, Ds )
 
     # Recompute manually
     Psi = tor.empty( ( 20, 0 ) )
@@ -103,8 +89,7 @@ class TestComputeERR:
     col2 = tor.randn( 10 ) # not used
     Ds = tor.column_stack( ( col1, col2 ) )
 
-    with patch( 'NARMAX.Tools.HF.Norm2', side_effect = _norm2_side_effect() ):
-      err = ComputeERR( y, Ds )
+    err = ComputeERR( y, Ds )
 
     # First ERR ~1.0 (float rounding might be 0.999...), second stays 0.0
     assert isinstance( err, np.ndarray )
@@ -114,12 +99,11 @@ class TestComputeERR:
     assert abs( err[ 1 ] ) < 1e-20 # never touched after early exit
     assert np.sum( err ) >= 1.0 - 1e-12
 
-  def test_norm2_fudge_factor( self ) -> None:
+  def test_zero_column_fudge_factor( self ) -> None:
     '''All‑zero column must not cause division by zero; ERR=0.'''
     y = tor.randn( 10 ) - tor.randn( 10 ).mean()
     Ds = tor.column_stack( ( tor.zeros( 10 ), tor.randn( 10 ) ) )
-    with patch( 'NARMAX.Tools.HF.Norm2', side_effect = _norm2_side_effect() ):
-      err = ComputeERR( y, Ds )
+    err = ComputeERR( y, Ds )
     # Zero column gives ERR=0, second column whatever
     assert isinstance( err, np.ndarray )
     assert err.dtype == np.float64
@@ -132,8 +116,7 @@ class TestComputeERR:
     '''Function should work with float32 inputs, but output ERR is float64.'''
     y = tor.randn( 15, dtype = tor.float32 )
     Ds = tor.randn( 15, 2, dtype = tor.float32 )
-    with patch( 'NARMAX.Tools.HF.Norm2', side_effect = _norm2_side_effect() ):
-      err = ComputeERR( y, Ds )
+    err = ComputeERR( y, Ds )
     assert isinstance( err, np.ndarray )
     assert err.dtype == np.float64
     assert err.shape == ( 2, )
@@ -146,8 +129,7 @@ class TestComputeERR:
     p = 5000
     y = tor.randn( p ) - tor.randn( p ).mean()
     Ds = tor.randn( p, 5 )
-    with patch( 'NARMAX.Tools.HF.Norm2', side_effect = _norm2_side_effect() ):
-      err = ComputeERR( y, Ds )
+    err = ComputeERR( y, Ds )
     assert isinstance( err, np.ndarray )
     assert err.dtype == np.float64
     assert err.shape == ( 5, )
@@ -156,12 +138,11 @@ class TestComputeERR:
     assert np.all( np.isfinite( err ) )
 
   def test_all_zero_regressors( self ) -> None:
-    '''When all regressor columns are zero, Norm2 returns the fudge factor
+    '''When all regressor columns are zero, the inline norm clips to epsilon
     and numerator (Omega @ y) is zero, so all ERR values are 0.0.'''
     y = tor.randn( 10 ) - tor.randn( 10 ).mean()
     Ds = tor.zeros( 10, 3 )
-    with patch( 'NARMAX.Tools.HF.Norm2', side_effect = _norm2_side_effect() ):
-      err = ComputeERR( y, Ds )
+    err = ComputeERR( y, Ds )
     assert isinstance( err, np.ndarray )
     assert err.dtype == np.float64
     assert err.shape == ( 3, )
@@ -173,8 +154,7 @@ class TestComputeERR:
     y = tor.randn( 20 ) - tor.randn( 20 ).mean()
     Ds_full = tor.randn( 20, 4 )
     Ds = Ds_full[ :, ::2 ]  # non‑contiguous slice
-    with patch( 'NARMAX.Tools.HF.Norm2', side_effect = _norm2_side_effect() ):
-      err = ComputeERR( y, Ds )
+    err = ComputeERR( y, Ds )
     assert isinstance( err, np.ndarray )
     assert err.dtype == np.float64
     assert err.shape == ( 2, )

@@ -408,36 +408,40 @@ class Arborescence:
     if ( Ds is not None ): # A matrix was passed as Ds, thus there are pre-selected regressors which are taken in order
       # First iteration treated separately since no orthogonalization and no entry in A, and requires some reshapes
       Psi = Ds[ :, 0, None ] # unnormed orthogonal regressor matrix ( already centered ) reshaped as column
-      n_Omega = HF.Norm2( Psi ) # squared euclidean norm of Omega or fudge factor
+      n_Omega: float = max( float( tor.sum( Psi ** 2 ).item() ), 1e-12 ) # squared euclidean norm of Psi or fudge factor
       Psi_n = Psi / n_Omega # normed orthogonal regressor matrix
-      W.append( ( Psi_n.T @ y ).item() ) # store orthogonal regression coefficient ( w )
+      W.append( tor.dot( Psi_n[ :, 0 ], y ).item() ) # store orthogonal regression coefficient ( w )
       ERR.append( W[ -1 ]**2 * n_Omega / s2y )
       if ( self.Verbose ): ProgressCount.update()
 
       for col in range( 1, Ds.shape[ 1 ] ): # iterate over columns, start after position 1
-        # Computations
-        Omega = Ds[ :, col ] - Psi_n @ ( Psi.T @ Ds[ :, col ] ) # orthogonalize only the current column ( no reshape needed )
-        n_Omega = HF.Norm2( Omega ) # squared euclidean norm of Omega or fudge factor
-        W.append( ( Omega @ y ).item() / n_Omega ) # store orthogonal regression coefficient ( w )
-        ERR.append( W[ -1 ]**2 * n_Omega / s2y )
+        # Computations (omega in lower case since single column = vector)
+        omega: tor.Tensor = Ds[ :, col ] - tor.mv( Psi_n, tor.mv( Psi.T, Ds[ :, col ] ) ) # orthogonalize only the current column (small omega)
+        n_omega: float = max( float( tor.sum( omega**2 ).item() ), 1e-12 ) # squared euclidean norm or fudge factor
+        W.append( tor.dot( omega, y ).item() / n_omega ) # store orthogonal regression coefficient ( w )
+        ERR.append( W[ -1 ]**2 * n_omega / s2y )
 
         # Data storage: add current regressor
-        A.append( Psi_n.T @ Ds[ :, col ] ) # Multiply all normed orthogonalized regressors with the currently chosen unorthogonalized regressor
-        Psi = tor.column_stack( ( Psi, Omega ) ) # unnormed matrix
-        Psi_n = tor.column_stack( ( Psi_n, Omega / n_Omega ) ) # normed matrix
+        A.append( tor.mv( Psi_n.T, Ds[ :, col ] ) ) # Multiply all normed orthogonalized regressors with the currently chosen unorthogonalized regressor
+        Psi = tor.column_stack( ( Psi, omega ) ) # unnormed matrix
+        Psi_n = tor.column_stack( ( Psi_n, omega / n_omega ) ) # normed matrix
         s += 1 # increment the A-matrix column count
         if ( self.Verbose ): ProgressCount.update()
 
     # Term selecting iteration with orthogonalization
     if ( Dc is not None ):
       # ----------------------------------------------------- 2. First iteration treated separately since no orthogonalization -----------------------------------------------------
-      if ( Ds is not None ): Omega = Dc[ :, U ] - Psi_n @ ( Psi.T @ Dc[ :, U ] ) # orthogonalize Dc w.r.t Ds
-      else: Omega = Dc[ :, U ] # If no imposed term start with unorthogonalized dictionary
+      Omega: tor.Tensor = Dc[ :, U ] # If no Ds, start with unorthogonalized dictionary. We pay for a memory allocation due to indexing, keep it, then in-place orthogonalize if necessary
+      if ( Ds is not None ): tor.addmm( Omega, Psi_n, tor.mm( Psi.T, Omega ), beta = 1.0, alpha = -1.0, out = Omega ) # orthogonalize all Dc columns w.r.t Ds
 
-      n_Omega = HF.Norm2( Omega ) # norm squared or fudge factor elementwise
-      ell = int( tor.argmax( ( Omega.T @ y )**2 / tor.ravel( tor.as_tensor( n_Omega ) ) ).item() ) # get highest QERR index. int() → throw if anything weird comes out
+      active_mask: tor.Tensor = tor.ones( len( U ), dtype = tor.bool, device = Omega.device ) # Boolean mask for active regressors instead of changing U
+
+      n_Omega: tor.Tensor = tor.clamp( tor.sum( Omega**2, dim = 0 ), min = 1e-12 ) # column-wise squared norms
+      ell = int( tor.argmax( ( tor.matmul( y, Omega )**2 ) / n_Omega ).item() ) # index of highest QERR regressor
 
       if ( self.MorphDict is not None ): # Morphing necessary
+        # TODO: rewrite in the same BLAS style as surrounding code
+        # TODO: U needs probably to be recreated on the fly with active_mask or DM rewritten
         MOut = Morpher.DictionaryMorpher( U, ell, Psi, Psi_n, y, A, W, L, Ds, Dc, self.MorphDict )
 
         if ( MOut is not None ): # Function has been morphed
@@ -445,28 +449,29 @@ class Arborescence:
           self.MorphDict[ "DcNames" ].append( MOut[ 2 ] ) # Parse Morphing Output
           L.append( Dc.shape[ 1 ] ) # append newly added Regressor
           Dc = tor.column_stack( ( Dc, MOut[ 1 ] ) ) # append morphed term to dictionary ( unorthogonalized but centered )
-          Reg = MOut[ 1 ] - Psi_n @ ( Psi.T @ MOut[ 1 ] ) # orthogonalize, since previous terms exist
-          n_Reg = HF.Norm2( Reg )
+          # TODO: also append column to Omega (orthogonalized) + also put MOut[1] as output for BLAS operation
+          Reg: tor.Tensor = tor.addmv( MOut[ 1 ], Psi_n, tor.mv( Psi.T, MOut[ 1 ] ), beta=1.0, alpha=-1.0 ) # orthogonalize, since previous terms exist
+          n_Reg: float = max( float( tor.sum( Reg ** 2 ).item() ), 1e-12 )
 
       if ( ( self.MorphDict is None ) or ( MOut is None ) ): # no morphing, since either 1 ) deactivated or 2 ) not morphable
         L.append( U[ ell ] ) # no morphing, so store the actual index
         Reg = Omega[ :, ell ] # selected regressor
-        if ( len( U ) > 1 ): n_Reg = n_Omega[ 0, ell ].item() # selected Regressor norm
-        else: n_Reg = n_Omega # TODO check what's going on # must be an array not an int, holds for length zero and 1
+        n_Reg: float = n_Omega[ ell ].item() # selected Regressor norm (n_Omega is now 1D)
 
       # Common to morphed and non-morphed
       if ( Ds is not None ): # if not 0th regression term
-        A.append( Psi_n.T @ Dc[ :, L[ -1 ] ] ) # Multiply all normed orthogonalized regressors with the currently chosen unorthogonalized regressor
+        A.append( tor.mv( Psi_n.T, Dc[ :, L[ -1 ] ] ) ) # Multiply all normed orthogonalized regressors with the currently chosen unorthogonalized regressor
         s += 1 # increment A-matrix column count
 
       Psi = tor.column_stack( ( Psi, Reg ) ) # normed matrix ( if Ds is None, Psi is empty and this is just a reshape )
       Psi_n = tor.column_stack( ( Psi_n, Reg / n_Reg ) ) # normed matrix ( if Ds is None, Psi_n is empty and this is just a reshape )
-      W.append( ( Psi_n[ :, -1 ] @ y ).item() ) # add orthogonal regression coefficient
+      W.append( tor.dot( Psi_n[ :, -1 ], y ).item() ) # add orthogonal regression coefficient
       ERR.append( W[ -1 ]**2 * n_Reg / s2y )
-      U.remove( U[ ell ] ) # update unused indices list
+      active_mask[ ell ] = False # mark first selected column as inactive
       if ( self.Verbose ): ProgressCount.update()
 
       # --------------------------------------------------------------------- 3. Optimal regressor search loop ---------------------------------------------------------------------
+
       while ( ( 1 - np.sum( ERR ) > tol ) and ( s < MatSize ) ): # while not enough variance explained ( empty lists sum to zero ) and still regressors available ( nS + nC )
 
         if ( ( self.Abort and ( s > MaxTerms ) ) ): return ( tuple( [ np.array( L, dtype = self.INT_TYPE ) ] ) ) # R[1/4] for leaf nodes only
@@ -477,12 +482,17 @@ class Arborescence:
             self.AbortedRegs += 1 # OOIT - for statistics not needed for regression
             return ( np.setdiff1d( self.LG[ RegIdx ], LI, True ), RegIdx ) # R[2/4] eliminate LI from predicted L, since LI is concatenated by arbo
 
-        # 1. Computations
-        Omega = HF.DeleteColumn( Omega, ell ) - Psi_n[ :, -1, None ] @ ( Psi[ :, -1, None ].T @ Dc[ :, U ] ) # Single Gram Schmidt on unused regressors ( parenthesis avoid outerproduct broadcast )
-        n_Omega = HF.Norm2( Omega ) # squared euclidean norm of Omega, Omega_n not stored to avoid recomputation since practically entire dictonary
-        ell = int( tor.argmax( tor.ravel( ( Omega.T @ y )**2 / n_Omega ) ).item() ) # store index of highest QERR regressor
+        # 1. Optimized Gram-Schmidt update of Omega (IN-PLACE, ZERO ALLOCATION). Equivalent to: Omega - Psi_n[ :, -1, None ] @ ( Psi[ :, -1, None ].T @ Dc[ :, U ] )
+        tor.addmm( Omega, Psi_n[ :, -1: ], tor.matmul( Psi[ :, -1 ], Dc )[ U ].unsqueeze( 0 ), beta = 1.0, alpha = -1.0, out = Omega )
+        n_Omega: tor.Tensor = tor.clamp( tor.sum( Omega**2, dim = 0 ), min = 1e-12 ) # Column-wise squared norms
+        # Best-regressor selection via QERR (Masked argmax). U indexes Dc columns (0..nC-1), not Omega columns (0..N-1), so can't use U for indexing — use active_mask instead.
+        qerr: tor.Tensor = ( tor.matmul( y, Omega ) ** 2 ) / n_Omega
+        qerr[ ~active_mask ] = -tor.inf # eliminate already chosen regressors from selection
+        ell = int( tor.argmax( qerr ).item() )
 
         if ( self.MorphDict is not None ): # Morphing needs to be done
+          # TODO: rewrite in the same BLAS style as surrounding code
+          # TODO: U needs probably to be recreated on the fly with active_mask or DM rewritten
           MOut = Morpher.DictionaryMorpher( U, ell, Psi, Psi_n, y, A, W, L, Ds, Dc, self.MorphDict ) # s+1 since those entries are being written in and must thus be included
 
           if ( MOut is not None ): # Function has been morphed
@@ -490,24 +500,22 @@ class Arborescence:
             self.MorphDict[ "DcNames" ].append( MOut[ 2 ] ) # Parse Morphing Output
             L.append( Dc.shape[ 1 ] ) # append newly added Regressor
             Dc = tor.column_stack( ( Dc, MOut[ 1 ] ) ) # append morphed term to dictionary ( unorthogonalized )
-            Reg: tor.Tensor = MOut[ 1 ] - Psi_n @ ( Psi.T @ MOut[ 1 ] ) # orthogonalize ( no reshape needed )
-            n_Reg: Union[ float, tor.Tensor ] = HF.Norm2( Reg ) # squared euclidean norm of Reg or fudge factor
+            Reg: tor.Tensor = tor.addmv( MOut[ 1 ], Psi_n, tor.mv( Psi.T, MOut[ 1 ] ), beta=1.0, alpha=-1.0 ) # orthogonalize ( no reshape needed )
+            n_Reg: float = max( float( tor.sum( Reg ** 2 ).item() ), 1e-12 ) # squared euclidean norm of Reg or fudge factor
 
         if ( ( self.MorphDict is None ) or ( MOut is None ) ): # no morphing, since either 1 ) deactivated or 2 ) not morphable
           L.append( U[ ell ] ) # add the unmorphed = original term to the regression
           Reg: tor.Tensor = Omega[ :, ell ] # selected regressor
-          if ( len( U ) > 1 ): n_Reg = n_Omega[ 0, ell ].item() # selected Regressor norm
-          else: n_Reg: Union[ float, tor.Tensor ] = n_Omega # TODO check what's going on # must be an array not a float, holds for length zero and 1
-          # else: n_Reg = tor.tensor( [[n_Omega]] ) # must be an array not an int, holds for length zero and 1
+          n_Reg = n_Omega[ ell ].item() # selected Regressor norm
 
         # 2. Data storage
-        A.append( Psi_n.T @ Dc[ :, L[ -1 ] ] ) # Multiply all normed orthogonalized regressors with the currently chosen unorthogonalized regressor
+        A.append( tor.mv( Psi_n.T, Dc[ :, L[ -1 ] ] ) )
         Psi = tor.column_stack( ( Psi, Reg ) ) # unnormed matrix
         Psi_n = tor.column_stack( ( Psi_n, Reg / n_Reg ) ) # normed matrix
-        W.append( ( Psi_n[ :, -1 ] @ y ).item() ) # store orthogonal regression coefficient ( w )
+        W.append( tor.dot( Psi_n[ :, -1 ], y ).item()) # store orthogonal regression coefficient ( w )
         ERR.append( W[ -1 ]**2 * n_Reg / s2y ) # store this regressors' ERR
-        U.remove( U[ ell ] ) # update unused indices list
-        if ( U == [] ): print( "\n\nThe entire dictionary has been used without reaching the desired tolerance!\n\n" ) # no need to exit, since done by 's'
+        active_mask[ ell ] = False # mark selected column as inactive (same as deleting it from U in the old version/paper)
+        if ( not active_mask.any() ): print( "\n\nThe entire dictionary has been used without reaching the desired tolerance!\n\n" ) # no need to exit, since done by 's'
         s += 1 # increment the A-matrix column count
         if ( self.Verbose ): ProgressCount.update()
 

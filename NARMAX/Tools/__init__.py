@@ -308,6 +308,7 @@ def zPlanePlot( b: Sequence[ float ], a: Union[ float, Sequence[ float ] ] = 1, 
 #  Note: these tools are relatively outdated
 
 # ############################################ Variable Selection Procedure ##################################################
+# TODO: use same in-place BLAS as rFOrLSR
 def ComputeERR( y: tor.Tensor, Ds: tor.Tensor ) -> np.ndarray:
   '''Imposed only part of the rFOrLSR, as only the ERR of imposed terms is computed and returned.
 
@@ -329,7 +330,7 @@ def ComputeERR( y: tor.Tensor, Ds: tor.Tensor ) -> np.ndarray:
 
   # First iteration treated separately since no orthogonalization and no entry in A, and requires some reshapes
   Omega = Ds[ :, 0 ]
-  n_Omega = HF.Norm2( Omega ) # scalar, ≥ 1e-12 (fudge factor)
+  n_Omega = max( tor.sum( Omega**2 ).item(), 1e-12 ) # scalar, ≥ 1e-12 (fudge factor)
   Psi = Omega[ :, None ] # (p,1)
   Psi_n = Psi / n_Omega
   ERR[ 0 ] = ( ( Psi_n.T @ y ).item() )**2 * n_Omega / s2y
@@ -339,7 +340,7 @@ def ComputeERR( y: tor.Tensor, Ds: tor.Tensor ) -> np.ndarray:
     if ( np.sum( ERR[ : col ] ) >= 1.0 ): return ( ERR ) # R[2/3] Early exit if max ERR reached, array is init with 1s
 
     Omega = Ds[ :, col ] - Psi_n @ ( Psi.T @ Ds[ :, col ] ) # orthogonalize only the current column ( no reshape needed )
-    n_Omega = HF.Norm2( Omega ) # squared euclidean norm of Omega or fudge factor
+    n_Omega = max( tor.sum( Omega**2 ).item(), 1e-12 ) # squared euclidean norm of Omega or fudge factor
 
     ERR[ col ] = ( ( Omega @ y ).item() / n_Omega )**2 * n_Omega / s2y
 

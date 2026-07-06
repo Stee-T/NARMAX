@@ -149,11 +149,11 @@ def IsMorphable( f: Callable, x0: tor.Tensor, order: int ) -> bool:
   R = 5 * tor.max( tor.abs( x0 ) ) # range determining the checked interval w.r.t x0 ( much larger to be sure )
   X = tor.linspace( -R, R, 50, endpoint = True ) # linspace as X axis, spanning x0 range
   fx = f( X ) # precompute as potentially used twice
-  if ( tor.allclose( fx, X, 1e-12 ) ): return ( False ) # R[2/4] [R 1/3] identity always excluded
-  if ( order > 0 ): return ( True ) # R[3/4] [R 2/3] if terms are added, the function morphs irrespectively of Relaxed Homogeneity
+  if ( tor.allclose( fx, X, 1e-12 ) ): return ( False ) # [R 1/3] identity always excluded
+  if ( order > 0 ): return ( True ) # [R 2/3] if terms are added, the function morphs irrespectively of Relaxed Homogeneity
   C = f( 10 * X ) / fx # arbitrarily take a=2 and compute f( ax )/f( x )=c
 
-  return ( not tor.allclose( C, C[ 0 ], 1e-12 ) ) # R[4/4] [R 3/3] elementwise comparison for RH, true if all true
+  return ( not tor.allclose( C, C[ 0 ], 1e-12 ) ) # [R 3/3] elementwise comparison for RH, true if all true
 
 
 
@@ -185,7 +185,7 @@ def GenVSGen( f: Callable, U: list, i0: int, Dc: tor.Tensor, order: int, Psi: Op
   # baseline metrics
   IMax = f( ( Dc[ :, i0 ] + m[ :, i0 ] ).reshape( -1, 1 ) ); IMax -= tor.mean( IMax )
   if ( Psi is not None ): IMax = IMax - Psi_n @ ( Psi.T @ IMax ) # orthogonalize
-  IMax = ( IMax.T @ y )**2 / HF.Norm2( IMax )
+  IMax = ( IMax.T @ y )**2 / max( float( tor.sum( IMax ** 2 ).item() ), 1e-12 )
   tMax = [ i0 ] # best known result is the baseline
   ksiMax = [ 1 ] # the baseline is unscaled
 
@@ -198,7 +198,7 @@ def GenVSGen( f: Callable, U: list, i0: int, Dc: tor.Tensor, order: int, Psi: Op
       F -= tor.mean( F, axis = 0, keepdims = True ) # columnwise centering
       if ( Psi is not None ): F = F - Psi_n @ ( Psi.T @ F ) # decomposed PA ( much faster than PA@F )
 
-      QERR = tor.ravel( ( F.T @ y )**2 / HF.Norm2( F ) ) # Quasi-ERR for all lin. Comb.
+      QERR = tor.ravel( ( F.T @ y )**2 / tor.clamp( tor.sum( F ** 2, dim = 0 ), min = 1e-12 ) ) # Quasi-ERR for all lin. Comb.
       l = tor.argmax( QERR ) # find highest QERR
       if ( QERR[ l ] > IMax ): IMax = QERR[ l ]; tMax = t.copy(); ksiMax = tor.copy( Ksi[ :, l ] ) # if better QERR than known
 
@@ -264,12 +264,12 @@ def InfOPT( y: tor.Tensor, Xl: tor.Tensor, ksiS: tor.Tensor, Ds: Optional[ tor.T
     fT = f( Xl @ ksiT ); fT -= tor.mean( fT ) # evaluate and center
 
     if ( Psi is None ): # no prior terms exist in the regression ( imposed or selected ), thus don't orthogonalize
-      thetaT = fT @ y / HF.Norm2( fT ) # yields scalar
+      thetaT = fT @ y / max( float( tor.sum( fT ** 2 ).item() ), 1e-12 ) # yields scalar
       MSE = fT * thetaT # remains a vector, partial MSE computation
 
     else: # not the first term in the regression
       PAfT = PA @ fT # orthogonalize
-      A_T[ : -1, -1 ] = Psi_n.T @ fT; W_T[ -1 ] = PAfT @ y / HF.Norm2( PAfT ) # Add new regressor to A and reg coeffs to W
+      A_T[ : -1, -1 ] = Psi_n.T @ fT; W_T[ -1 ] = PAfT @ y / max( float( tor.sum( PAfT ** 2 ).item() ), 1e-12 ) # Add new regressor to A and reg coeffs to W
       # TODO Replace with torch
       # thetaT = spla.solve_triangular( A_T, W_T, overwrite_b= False, unit_diagonal=True ) # obtain the regression coefficients for validation
       if ( Ds is None ): MSE = tor.column_stack( ( Dc[ :, L ], fT ) ) @ thetaT # version for vectors, partial MSE computation

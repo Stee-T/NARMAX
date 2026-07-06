@@ -108,27 +108,6 @@ def CutY( y: tor.Tensor, Lags: int | Sequence ) -> tor.Tensor:
 
   return y[ q : ]
 
-############################################################################### Squared norm function ##############################################################################
-def Norm2( x: tor.Tensor, epsilon: float = 1e-12 ) -> Union[ float, tor.Tensor ]:
-  ''' Dimension-aware squared Euclidean norm, more efficient than using torch.norm and squaring because it avoids the square root.
-  Values below epsilon are replaced by epsilon since the norm is typically used in denominators.
-  '''
-  # ---- Input checks
-  if ( not isinstance( x, tor.Tensor ) ): raise TypeError( f"Norm2 expects a torch.Tensor, got { type( x ).__name__ }" )
-  if ( x.ndim == 0 ): raise ValueError( "Norm2 does not support scalar (0-dimensional) tensors" )
-  if ( tor.isnan( x ).any() ): raise ValueError( "Input tensor contains NaN values" )
-
-  # ---- Core logic
-  # Single (p,)-array or column ( p,1 ) array, return scalar
-  if ( ( x.ndim == 1 ) or ( x.ndim == 2 and x.shape[ 1 ] == 1 ) ): return max( float( tor.sum( x**2 ).item() ), epsilon ) # R[1/2] cast to float in case input tensor isn't, also float is 64 bit
-  if ( x.ndim == 2 ):
-    # Column-wise squared norm, shape (1, n)
-    Out: tor.Tensor = tor.sum( x**2, dim = 0, keepdim = True ) # columnwise for matrices, return ( 1,n ) array being one norm per column
-    Out[ Out < epsilon ] = epsilon # replace by a fudge factor to prevent division by quasi-zero
-    return Out # R[2/2]
-
-  raise AssertionError( "This function isn't supposed to receive tensors of degree > 2" )
-
 ########################################################## Column deleter function (used by recursive FOrLSr matrix update) ########################################################
 def DeleteColumn( Tensor: tor.Tensor, index: int ) -> tor.Tensor:
   '''Delete a column from a 2D tensor. Raises IndexError for negative indices.
