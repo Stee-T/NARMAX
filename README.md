@@ -1,9 +1,7 @@
 # Putting the "MAX" back into NARMAX
 <div align="justify">
 
-The library doesn't just raises exceptions; it raises eyebrows and occasionally, the bar for what is assumed to be possible...
-
-Anyways, this GPU-accelerated Python package implements the [series of papers that constitute my PhD](#library--phd-roadmap) in mathematics for AI / ML where I present new algorithms for learning symbolic NARMAX machine learning models.
+In the lawless wastelands of Python, there was once a GPU-accelerated NARMAX-fitting library. That library didn't just raise exceptions; it raised eyebrows and occasionally, the bar for what was assumed to be possible... To this day it implements the [series of papers that constitute my PhD](#library--phd-roadmap) in mathematics for AI / Machine Learning, where I present new algorithms for learning symbolic NARMAX models.
 
 It currently fully implements the machine learning algorithms described my first paper "*[Arborescent Orthogonal Least Squares Regression](#arborescent-orthogonal-least-squares-regression---aorlsr) (AOrLSR)*" and already partially implements elements from the upcoming papers, which include  [NARMAX-expression compiler (Symbolic Oscillator)](#symbolic-oscillator) and "*[Dictionary Morphing Orthogonal Least Squares Regression](#dictionary-morphing-orthogonal-least-squares-regression---dmorlsr) (DMOrLSR)*" both based on my "*[Recursive Forward Orthogonal Least Squares Regression](#recursive-forward-orthogonal-least-squares-regression---rforlsr) (rFOrLSR)*" to fit "*[Non-Linear Auto-Regressive Moving-Average Exogenous input systems](#narmaxwho) (NARMAX)*".
 So, now that we have covered all the fancy acronyms, we might get into some explanations.  
