@@ -1,19 +1,14 @@
-# TODO: 
-
-
 # Example 8: ODE Discovery via Derivative‑Augmented Regressors
 This example / tutorial illustrates:
-- Using `SmoothDeriver` to augment measurement data with **time‑scaled** smoothed derivatives
+- Using the `SmoothDeriver` to augment measurement data with **time‑scaled** smoothed derivatives
 - Using `DiffedGaussianMollifier` to build differentiated Gaussian FIR kernels
 - Creating a custom validation function for the arborescence (with edge trimming)
-- Running the `NARMAX.Arborescence` to discover the structure **and** exact physical coefficients of an ODE from position measurements alone
+- Running the `NARMAX.Arborescence` to discover the structure **and** exact physical coefficients of an ODE (ordinary differential equation) from position measurements alone
 - Validating the discovered model by forward simulation
 
 <br/>
 
-The core idea: An ODE relates a system's position, velocity, and acceleration. If we can estimate velocities and accelerations from position measurements via smoothed derivatives, the arborescence can discover which regressors (positions, velocities, input) are needed to explain each acceleration — and with what coefficients. The `SmoothDeriver` CTor provides the derivative estimations, now with **built‑in time‑scaling** to obtain physical units (m/s, m/s², …).
-
-**Key insight:** The original `SmoothDeriver` computed derivatives with respect to a dimensionless filter axis `X`, not time. The new `dt` parameter automatically scales each derivative order by `(1 / (dt·(FilterOrder−1)))^order`, converting them to correct physical time derivatives. Together with **edge trimming** (removing the filter's start‑up transient) this allows the arborescence to directly recover the true physical parameters.
+**Idea:** An ODE relates a system's position, velocity, and acceleration. If we can estimate velocities and accelerations from position measurements via smoothed derivatives, the library can discover which regressors (positions, velocities, input) are needed to explain each acceleration and its coefficients. The `SmoothDeriver` CTor generated numeric derivative estimations, with **built‑in time‑scaling** to obtain physical units (m/s, m/s², …). Together with **edge trimming** (removing the filter's start‑up transient) this allows the arborescence to directly recover the true physical parameters.
 
 ---
 
@@ -23,29 +18,24 @@ A **mollifier** is a smooth, localised function used to approximate non-smooth f
 
 **Parameters:**
 
-- **`FilterOrder` (int, odd ≥ 4):** Length (in samples) of the FIR kernel. Larger = wider = more smoothing.
+- **`FilterOrder` (int, odd ≥ 4):** Length (in samples) of the smoothiing FIR kernel. Larger int = wider kernel = more smoothing.
 - **`nDerivatives` (int):** Number of derivative orders to compute. `nDerivatives=2` returns 3 kernels: Gaussian, 1st derivative, 2nd derivative.
-- **`std` (float > 0):** Gaussian standard deviation. Larger = wider bell = more smoothing.
+- **`std` (float > 0):** Gaussian standard deviation. Larger float = wider gaussian bell = more smoothing for the derivatives.
 
 The `DiffedGaussianMollifier` CTor returns a list of FIR kernels:
 
-```python
+```py
 from NARMAX.CTors import DiffedGaussianMollifier
 
 Coeffs = DiffedGaussianMollifier( FilterOrder = 31, nDerivatives = 2, std = 0.12 )
-print( f"{len(Coeffs)} filters" )
+print( f"{ len( Coeffs ) } filters" )
 for d in range( len( Coeffs ) ):
-    print( f"  ∂^{d} sum = {Coeffs[d].sum():.6f}" )
+    print( f"  ∂^{ d } sum = { Coeffs[ d ].sum():.6f }" )
 ```
-
-Key properties:
-- **Zero-order** sum ≈ 1 (L1 normalised — preserves constant signals).
-- **First-order** sum ≈ 0 (antisymmetric kernel — zero DC response).
-- **Second-order** sum ≈ 0 (zero DC response).
 
 Visualising the kernels for different `FilterOrder` values:
 
-```python
+```py
 for fo in [ 11, 31, 61 ]:
     C = DiffedGaussianMollifier( FilterOrder = fo, nDerivatives = 2, std = 0.12 )
     # Plot C[0], C[1], C[2]
@@ -64,7 +54,7 @@ To find the best mollifier parameters for ODE discovery, we performed a grid sea
 
 - **FilterOrder:** [5, 7, 11, 15, 21, 31, 41, 51, 61, 81, 101]
 - **std (σ):** [0.02, 0.03, 0.05, 0.08, 0.10, 0.12, 0.15, 0.18, 0.20, 0.25, 0.30, 0.40, 0.50]
-- **Metric:** Pearson correlation between the smoothed derivatives and the true analytical derivatives (v1, v2, a1, a2), averaged over all 4 channels. Correlation is amplitude-independent — it measures shape fidelity.
+- **Metric:** Pearson correlation between the smoothed derivatives and the true analytical first and second derivatives (v1, v2, a1, a2), averaged over all 4 channels. Correlation is amplitude-independent — it measures shape fidelity.
 
 **Top 5 results (by mean correlation):**
 
@@ -78,7 +68,7 @@ To find the best mollifier parameters for ODE discovery, we performed a grid sea
 
 All top entries achieve r > 0.9999, confirming that the differentiated Gaussian mollifier preserves signal shape almost perfectly for a wide range of parameters.
 
-**Why we use `FilterOrder=31, σ=0.03`:** The shape correlation is virtually perfect (r > 0.9999). This setting provides a mild smoothing that stabilises the least‑squares fit without distorting the dynamics. The earlier tutorial used σ=0.12 for stronger smoothing; the improved time‑scaling now makes the very shape‑accurate parameter set (`σ=0.03`) the best choice.
+**Why `FilterOrder=31, σ=0.03`:** The shape correlation is virtually perfect (r > 0.9999). This setting provides a mild smoothing that stabilises the least‑squares fit without distorting the dynamics.
 
 <figure>
 <img src="grid_search_correlation.png" alt="Grid search heatmap">
@@ -88,18 +78,24 @@ All top entries achieve r > 0.9999, confirming that the differentiated Gaussian 
 <br/>
 
 # 2. The SmoothDeriver CTor
-`SmoothDeriver` is the practical wrapper around `DiffedGaussianMollifier`.  
-Given a data matrix $\underline{D} \in \mathbb{R}^{p \times n}$ (columns = measurement channels) and variable names, it returns:
+`SmoothDeriver` is a wrapper around `DiffedGaussianMollifier` that directly applies the filters to compute the smoothed derivatives.  
+Given a data matrix $D \in \mathbb{R}^{p \times n}$ (columns = measurement channels) and variable names, it returns:
 
-$$ \text{AugData} = \begin{bmatrix} \underline{D} & \partial^1\underline{D} & \partial^2\underline{D} & \dots \end{bmatrix} $$
+$$ \text{AugData} = \begin{bmatrix} D & \partial^1D & \partial^2D & \dots \end{bmatrix} $$
 
-Each $\partial^j\underline{D}$ block contains the $j$-th smoothed derivative of every channel.  
+Each $\partial^jD$ block contains the $j$-th smoothed derivative of every channel with the order zero derivative being the data itself: $\partial^0D = D$ 
 
-**New parameter `dt`** (sampling interval in seconds):  
+**Parameters:**
+
+- **`Data` (required):** The data matrix.
+- **`VarNames` (required):** A list of variable names.
+- **`nDerivatives` (default `1`):** The number of derivatives to compute.
+- **`FilterOrder` (default `31`):** The length of the smoothing filter (see `DiffedGaussianMollifier` for details).
+- **`dt` (default `None`):**  (sampling interval in seconds):  
 When provided, each derivative order is scaled by `(1 / (dt * (FilterOrder-1)))^order`, so the resulting columns have the correct physical units (e.g., m/s, m/s²).  
-The `RegCoeffs` parameter still allows per-derivative weighting, and `NormDerivatives` (default `True`) applies peak normalisation **after** the time scaling.
+- **`RegCoeffs` (default `None`):** The `RegCoeffs` parameter still allows per-derivative weighting, and `NormDerivatives` (default `True`) applies peak normalisation **after** the time scaling.
 
-```python
+```py
 from NARMAX.CTors import SmoothDeriver
 
 Data = tor.column_stack( [ x1, x2, u_sig ] )
@@ -116,10 +112,10 @@ Because the FIR filter creates start‑up and end‑of‑data transients, we dis
 
 ```python
 half = FilterOrder // 2
-AugData = AugData[half:-half, :]   # trim transients
+AugData = AugData[ half : -half, : ]   # trim transients
 ```
 
-This step is crucial for obtaining reliable training and validation metrics.
+This step is crucial for obtaining reliable (filter artefact-free) training and validation metrics.
 
 <br/>
 
@@ -139,25 +135,25 @@ The goal: discover BOTH the structure (which terms belong in each equation) AND 
 
 <figure>
 <img src="Figure_2.png" alt="Simulation outputs: positions, velocities, chirp input">
-<figcaption>Figure 2: Simulated positions (top), velocities (middle), and chirp input (bottom).</figcaption>
+<figcaption>Figure 2: Simulated positions (top), chirp input (middle), and velocities (bottom).</figcaption>
 </figure>
 
 <br/>
 
 # 4. Augmenting the Training Data
 
-We build the measurement matrix from positions and force only, then augment with time‑scaled, smoothed derivatives:
+The measurement matrix is build from positions and force only, then augment with time‑scaled, smoothed derivatives:
 
-```python
+```py
 Data = tor.column_stack( [ x1, x2, u_sig ] )
 AugData, AugNames = SmoothDeriver( Data, [ "x1", "x2", "u" ],
                                    nDerivatives = 2,
                                    FilterOrder = 31,
                                    dt = dt,                 # sampling time
-                                   NormDerivatives = False ) # physical units
+                                   NormDerivatives = False ) # Keep physical units
 # Trim filter transients
 half = FilterOrder // 2
-AugData = AugData[half:-half, :]
+AugData = AugData[ half : -half, : ]
 ```
 
 The augmented matrix has 9 columns. For each mass, we set up a **MISO** regression:
@@ -183,7 +179,7 @@ The arborescence needs a validation function. Since the default validation uses 
 
 The validation dictionary holds raw measurement data **and the `dt` parameter** so that the validation function can reconstruct the derivative‑augmented matrix with identical time‑scaling:
 
-```python
+```py
 ValData1 = {
     "Data": [ val_set_1, val_set_2, val_set_3 ],  # each (p_val, 3): [x1, x2, u]
     "RegNamesIn": [ "x1", "x2", "u" ],
@@ -199,30 +195,29 @@ Three validation sets are generated by simulating the system with different chir
 
 ## 5b. Validation Function
 
-The function now includes **time‑scaling** and **edge trimming**:
+The function includes **time‑scaling** and **edge trimming** to recreate similar results as the training data:
 
-```python
+```py
 def ODE_MAE( theta, L, ERR, RegNames, ValDic, DcFilterIdx = None ):
     """Relative MAE on time‑scaled, trimmed validation data."""
     Error = 0.0
-    h = ValDic["FilterOrder"] // 2
-    for i in range( len( ValDic["Data"] ) ):
-        AugData_val, _ = SmoothDeriver( ValDic["Data"][i],
-                                        ValDic["RegNamesIn"],
-                                        nDerivatives = ValDic["nDerivatives"],
-                                        FilterOrder = ValDic["FilterOrder"],
+    h = ValDic[ "FilterOrder" ] // 2
+    for i in range( len( ValDic[ "Data" ] ) ):
+        AugData_val, _ = SmoothDeriver( ValDic[ "Data" ][ i ],
+                                        ValDic[ "RegNamesIn" ],
+                                        nDerivatives = ValDic[ "nDerivatives" ],
+                                        FilterOrder = ValDic[ "FilterOrder" ],
                                         NormDerivatives = False,
-                                        dt = ValDic["dt"] )
+                                        dt = ValDic[ "dt" ]
+                                      )
         # Trim filter transients
-        y_true = AugData_val[ h:-h, ValDic["TargetIdx"] ]
-        RegMat = AugData_val[ h:-h, ValDic["RegIdx"] ]
-        if DcFilterIdx is not None:
-            RegMat = RegMat[ :, DcFilterIdx ]
+        y_true = AugData_val[ h : -h, ValDic[ "TargetIdx" ] ]
+        RegMat = AugData_val[ h : -h, ValDic[ "RegIdx" ] ]
+        if ( DcFilterIdx is not None ): RegMat = RegMat[ :, DcFilterIdx ]
         yHat = RegMat[ :, L.astype( np.int64 ) ] @ theta
         denom = tor.mean( tor.abs( y_true ) )
-        if denom > 1e-15:
-            Error += ( tor.mean( tor.abs( y_true - yHat ) ) / denom ).item()
-    return Error / len( ValDic["Data"] )
+        if ( denom > 1e-15 ): Error += ( tor.mean( tor.abs( y_true - yHat ) ) / denom ).item()
+    return Error / len( ValDic[ "Data" ] )
 ```
 
 The function:
@@ -236,13 +231,13 @@ The function:
 
 With the training data, candidate dictionary and validation function ready, we create an `NARMAX.Arborescence` for each mass:
 
-```python
+```py
 Arbo1 = NARMAX.Arborescence( y1,
-                              Dc = Dc1, DcNames = DcNames1,
-                              tolRoot = 5e-3, tolRest = 5e-3,
-                              MaxDepth = 3,
-                              ValFunc = ODE_MAE, ValData = ValData1,
-                            )
+                             Dc = Dc1, DcNames = DcNames1,
+                             tolRoot = 5e-3, tolRest = 5e-3,
+                             MaxDepth = 3,
+                             ValFunc = ODE_MAE, ValData = ValData1,
+                           )
 theta1, L1, ERR1, _, _, _ = Arbo1.fit()
 ```
 
@@ -251,15 +246,18 @@ And similarly for $x_2''$.
 **Console output (representative):**
 
 ```
-Recognized regressors (x1''):
-    x1[k]          ∂¹ x1[k]      x2[k]          ∂¹ x2[k]      u[k]
+          Term   Recovered  (True)
+  ----------------------------------------
+            x1     43.9373     50.0000
+            x2    -47.3594    -50.0000
+         d1 x1      0.9950      1.0000
+         d1 x2     -0.9368     -1.0000
 
-Coefficients (x1''):
-  -149.95  x1[k]  +  49.98  x2[k]  +  0.997  u[k]  -  2.99  ∂¹ x1[k]  +  1.00  ∂¹ x2[k]
+  Fit MSE (vs physical d²x2): 2.7915e-04
 ```
 
-The arborescence correctly discards $\partial^1 u$ (and discards $u$ for mass 2).  
-The recovered coefficients **closely match the true physical parameters** (−150, 50, 1, −3, 1).
+The arborescence correctly discards discards $u$ and it's derivatives for mass 2.  
+The recovered coefficients **closely match the true physical parameters** (50, -50, 1, −1).
 
 <br/>
 
@@ -279,7 +277,7 @@ print( f"MSE(x1'' vs analytical): {tor.mean( (a1_true - a1_pred)**2 ):.4e}" )
 
 <figure>
 <img src="Figure_3.png" alt="Acceleration validation: analytical vs NARMAX estimate">
-<figcaption>Figure 3: Analytical acceleration (solid) vs recovered acceleration from the arborescence (dashed). The match is excellent because the coefficients are now physical.</figcaption>
+<figcaption>Figure 3: Analytical acceleration (solid) vs recovered acceleration from the arborescence (dashed). The match is excellent because the coefficients are physical.</figcaption>
 </figure>
 
 ## 7b. Full Trajectory Simulation
@@ -312,7 +310,7 @@ print( f"MSE(x1 trajectory): {np.mean( (sol.y[0] - solRec.y[0])**2 ):.4e}" )
 
 # 8. What Happens Without Derivatives
 
-To show that the derivative channels are essential, we run the arborescence using only positions and force (columns 0, 1, 2) as candidates — no velocity or acceleration columns:
+To show that the derivative signals are essential, we run the arborescence using only positions and force (columns 0, 1, 2) as candidates — no velocity or acceleration columns:
 
 ```python
 Dc_noDeriv = AugData[ :, [ 0, 1, 2 ] ]  # x1, x2, u only
