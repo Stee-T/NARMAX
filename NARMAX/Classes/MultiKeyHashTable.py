@@ -2,95 +2,89 @@ import sys
 import math
 import bisect
 import numpy as np
+from typing import Iterator
 from numpy.typing import NDArray
 
-class _LevelTable:
-  __slots__ = ( 'fingerprints', 'indices', 'occupied', 'capacity', 'mask', 'size' )
 
-  def __init__( self, capacity: int ) -> None:
-    self.capacity = capacity
-    self.mask = capacity - 1
-    self.size = 0
-    self.fingerprints = np.empty( capacity, dtype = np.uint64 )
-    self.indices = np.empty( capacity, dtype = np.int64 )
-    self.occupied = np.zeros( capacity, dtype = np.int8 )
+class LevelTable:
+  __slots__ = ( 'Fingerprints', 'Indices', 'Capacity', 'Mask', 'Size' )
+
+  def __init__( self, Capacity: int ) -> None:
+    self.Capacity: int = Capacity
+    self.Mask: int = Capacity - 1
+    self.Size: int = 0
+    self.Fingerprints: NDArray[ np.uint64 ] = np.empty( Capacity, dtype = np.uint64 )
+    self.Indices: NDArray[ np.int64 ] = np.full( Capacity, -1, dtype = np.int64 )
 
 
 class MultiKeyHashTable:
-  def __init__( self, int_type: type = np.uint32 ) -> None:
-    self.int_type: np.dtype = np.dtype( int_type )
-    self._initial_table_cap: int = 16
-    self.tables: list[ _LevelTable | None ] = []
+  def __init__( self, IntType: type = np.uint32 ) -> None:
+    self.IntType: np.dtype = np.dtype( IntType )
+    self.InitialTableCap: int = 16
+    self.Tables: list[ LevelTable | None ] = []
 
-    self._data_cap: int = 1024
-    self._flat_data: NDArray = np.empty( self._data_cap, dtype = self.int_type )
-    self._data_len: int = 0
-    self._offsets: list[ int ] = [ 0 ]
-    self._lengths: list[ int ] = []
-    self._data_count: int = 0
+    self.DataCap: int = 1024
+    self.FlatData: NDArray = np.empty( self.DataCap, dtype = self.IntType )
+    self.Offsets: list[ int ] = [ 0 ]
+    self.DataCount: int = 0
 
   @staticmethod
-  def _compute_rank( sorted_lst: list[ int ] ) -> int:
-    rank = 0
-    for k, e in enumerate( sorted_lst, 1 ):
-      if ( e < 0 ): return hash( tuple( sorted_lst ) ) & 0xFFFFFFFFFFFFFFFF # R[1/2]
-      if ( e >= k ): rank += math.comb( e, k )
-    return rank & 0xFFFFFFFFFFFFFFFF # R[2/2]
+  def ComputeRank( SortedList: list[ int ] ) -> int:
+    Rank = 0
+    for k, e in enumerate( SortedList, 1 ):
+      assert e >= 0, "negative elements are not supported by combinatorial rank"
+      if ( e >= k ): Rank += math.comb( e, k )
+    return Rank & 0xFFFFFFFFFFFFFFFF
 
   # ------------------------------------------------------ length ------------------------------------------------------
-  def __len__( self ) -> int: return self._data_count
+  def __len__( self ) -> int: return self.DataCount
 
   # ------------------------------------------------ Memory Usage ---------------------------------------------------
-  def get_memory_usage( self ) -> dict:
-    mem_array = 0
-    mem_tables = 0
-    mem_other = 0
+  def get_memory_usage( self ) -> dict[ str, int ]:
+    MemArray: int = 0
+    MemTables: int = 0
+    MemOther: int = 0
 
-    mem_other += sys.getsizeof( self )
+    MemOther += sys.getsizeof( self )
 
-    mem_array += sys.getsizeof( self._flat_data )
-    mem_array += sys.getsizeof( self._offsets )
-    for o in self._offsets:
-      if ( not ( isinstance( o, int ) and - 5 <= o <= 256 ) ): mem_array += sys.getsizeof( o )
-    mem_array += sys.getsizeof( self._lengths )
-    for l in self._lengths:
-      if ( not ( isinstance( l, int ) and - 5 <= l <= 256 ) ): mem_array += sys.getsizeof( l )
+    MemArray += sys.getsizeof( self.FlatData )
+    MemArray += sys.getsizeof( self.Offsets )
+    for o in self.Offsets:
+      if ( not ( isinstance( o, int ) and - 5 <= o <= 256 ) ): MemArray += sys.getsizeof( o )
 
-    mem_tables += sys.getsizeof( self.tables )
-    for tbl in self.tables:
+    MemTables += sys.getsizeof( self.Tables )
+    for tbl in self.Tables:
       if ( tbl is None ): continue
-      mem_tables += sys.getsizeof( tbl )
-      mem_tables += sys.getsizeof( tbl.fingerprints )
-      mem_tables += sys.getsizeof( tbl.indices )
-      mem_tables += sys.getsizeof( tbl.occupied )
-      mem_tables += sys.getsizeof( tbl.capacity )
-      mem_tables += sys.getsizeof( tbl.mask )
-      mem_tables += sys.getsizeof( tbl.size )
+      MemTables += sys.getsizeof( tbl )
+      MemTables += sys.getsizeof( tbl.Fingerprints )
+      MemTables += sys.getsizeof( tbl.Indices )
+      MemTables += sys.getsizeof( tbl.Capacity )
+      MemTables += sys.getsizeof( tbl.Mask )
+      MemTables += sys.getsizeof( tbl.Size )
 
-    mem_other += sys.getsizeof( self.int_type )
-    mem_other += sys.getsizeof( self._data_cap )
-    mem_other += sys.getsizeof( self._data_count )
-    mem_other += sys.getsizeof( self._data_len )
-    mem_other += sys.getsizeof( self._initial_table_cap )
+    MemOther += sys.getsizeof( self.IntType )
+    MemOther += sys.getsizeof( self.DataCap )
+    MemOther += sys.getsizeof( self.DataCount )
+    MemOther += sys.getsizeof( self.InitialTableCap )
 
     return {
-        'array': mem_array,
-        'tables': mem_tables,
-        'other': mem_other,
-        'total': mem_array + mem_tables + mem_other,
+        'array': MemArray,
+        'tables': MemTables,
+        'other': MemOther,
+        'total': MemArray + MemTables + MemOther,
     }
 
   # --------------------------------------------------- iteration ------------------------------------------------------
-  def __iter__( self ):
-    for i in range( self._data_count ): yield self[ i ]
+  def __iter__( self ) -> Iterator[ NDArray ]:
+    for i in range( self.DataCount ): yield self[ i ]
 
   # --------------------------------------------------- [] operator ----------------------------------------------------
-  def __getitem__( self, index: int ) -> NDArray:
-    if ( index < 0 ): index += self._data_count # Support negative indices with single negative wrap-around, emulate python container
-    if ( ( index < 0 ) or ( index >= self._data_count ) ): raise IndexError( "list index out of range" ) # If still fails after wrap-around
-    start = self._offsets[ index ]
-    length = self._lengths[ index ]
-    return self._flat_data[ start : start + length ].copy()
+  def __getitem__( self, Index: int ) -> NDArray:
+    if ( Index < 0 ): Index += self.DataCount
+    if ( ( Index < 0 ) or ( Index >= self.DataCount ) ): raise IndexError( "list index out of range" )
+    Start: int = self.Offsets[ Index ]
+    Length: int = self.Offsets[ Index + 1 ] - self.Offsets[ Index ]
+    return self.FlatData[ Start : Start + Length ].copy()
 
   # ---------------------------------------------------- Same Start ----------------------------------------------------
   def SameStart( self, Item: NDArray[ np.integer ] ) -> int | None:
@@ -103,15 +97,15 @@ class MultiKeyHashTable:
     ### Output:
     - `Out`: If a corresponding LG element is found, return it (int) else an empty list ([])
     '''
-    if ( ( len( Item ) >= len( self.tables ) ) or ( self.tables[ len( Item ) ] is None ) ): return None # R[1/3]
-    lst = Item.tolist()
-    lst.sort()
-    rank = self._compute_rank( lst )
-    tbl = self.tables[ len( Item ) ]
-    slot = int( rank & tbl.mask )
-    while ( tbl.occupied[ slot ] ):
-      if ( tbl.fingerprints[ slot ] == rank ): return int( tbl.indices[ slot ] ) # R[2/3]
-      slot = ( slot + 1 ) & tbl.mask
+    if ( ( len( Item ) >= len( self.Tables ) ) or ( self.Tables[ len( Item ) ] is None ) ): return None # R[1/3]
+    Lst = Item.tolist()
+    Lst.sort()
+    Rank = self.ComputeRank( Lst )
+    Tbl = self.Tables[ len( Item ) ]
+    Slot = int( Rank & Tbl.Mask )
+    while ( Tbl.Indices[ Slot ] != -1 ): # Slot occupied, -1 is sentinel
+      if ( Tbl.Fingerprints[ Slot ] == Rank ): return int( Tbl.Indices[ Slot ] ) # R[2/3]
+      Slot = ( Slot + 1 ) & Tbl.Mask
     return None # R[3/3]
 
   # ----------------------------------------------------- Add Data -----------------------------------------------------
@@ -124,20 +118,17 @@ class MultiKeyHashTable:
     ### Output:
     - `Out`: (int) index where the item was added in the data list
     '''
-    n = len( Item )
-    if ( self._data_len + n > self._data_cap ):
-      self._data_cap = max( self._data_cap * 2, self._data_len + n )
-      new_buf = np.empty( self._data_cap, dtype = self.int_type )
-      new_buf[ : self._data_len ] = self._flat_data[ : self._data_len ]
-      self._flat_data = new_buf
+    lenItem = len( Item )
+    if ( self.Offsets[ -1 ] + lenItem > self.DataCap ): # Doesn't fit into current array
+      self.DataCap = max( self.DataCap * 2, self.Offsets[ -1 ] + lenItem )
+      NewBuf = np.empty( self.DataCap, dtype = self.IntType )
+      NewBuf[ : self.Offsets[ -1 ] ] = self.FlatData[ : self.Offsets[ -1 ] ]
+      self.FlatData = NewBuf
 
-    self._flat_data[ self._data_len : self._data_len + n ] = Item
-    self._data_len += n
-    idx = self._data_count
-    self._data_count += 1
-    self._offsets.append( self._data_len )
-    self._lengths.append( n )
-    return idx
+    self.FlatData[ self.Offsets[ -1 ] : self.Offsets[ -1 ] + lenItem ] = Item
+    self.DataCount += 1
+    self.Offsets.append( self.Offsets[ -1 ] + lenItem )
+    return self.DataCount -1 # return index, -1 since zero-based
 
   # ---------------------------------------------------- Create Keys ---------------------------------------------------
   def CreateKeys( self, MinLen: int, IndexSet: NDArray[ np.integer ], Value: int ) -> None:
@@ -148,59 +139,57 @@ class MultiKeyHashTable:
     - `Value`: (int) containing the value to be stored in the LookUpDict, being the index in the Data list
     '''
     if ( MinLen == 0 ): MinLen = 1
-    max_len = len( IndexSet )
-    if ( len( self.tables ) <= max_len ): self.tables.extend( [ None ] * ( max_len - len( self.tables ) + 1 ) )
+    MaxLen: int = len( IndexSet )
+    if ( len( self.Tables ) <= MaxLen ): self.Tables.extend( [ None ] * ( MaxLen - len( self.Tables ) + 1 ) )
 
-    lst = IndexSet.tolist()
-    prefix = lst[ : MinLen ]
+    Lst = IndexSet.tolist()
+    Prefix = Lst[ : MinLen ]
 
-    for i in range( MinLen, max_len + 1 ):
-      if ( i > MinLen ): bisect.insort( prefix, lst[ i - 1 ] )
-      rank = self._compute_rank( prefix )
-      if ( self.tables[ i ] is None ): self.tables[ i ] = _LevelTable( self._initial_table_cap )
-      self._insert( i, rank, Value )
+    for i in range( MinLen, MaxLen + 1 ):
+      if ( i > MinLen ): bisect.insort( Prefix, Lst[ i - 1 ] )
+      Rank = self.ComputeRank( Prefix )
+      if ( self.Tables[ i ] is None ): self.Tables[ i ] = LevelTable( self.InitialTableCap )
+      self.Insert( i, Rank, Value )
 
   # --------------------------------------------------- insert ------------------------------------------------------
-  def _insert( self, level: int, rank: int, idx: int ) -> None:
-    tbl = self.tables[ level ]
-    slot = int( rank & tbl.mask )
-    while ( tbl.occupied[ slot ] ):
-      if ( tbl.fingerprints[ slot ] == rank ):
-        stored_len = self._lengths[ tbl.indices[ slot ] ]
-        new_len = self._lengths[ idx ]
-        if ( stored_len > new_len ): tbl.indices[ slot ] = idx
+  def Insert( self, Level: int, Rank: int, Idx: int ) -> None:
+    Tbl: LevelTable = self.Tables[ Level ]
+    Slot: int = int( Rank & Tbl.Mask )
+    while ( Tbl.Indices[ Slot ] != -1 ):
+      if ( Tbl.Fingerprints[ Slot ] == Rank ):
+        StoredLen = self.Offsets[ Tbl.Indices[ Slot ] + 1 ] - self.Offsets[ Tbl.Indices[ Slot ] ]
+        NewLen = self.Offsets[ Idx + 1 ] - self.Offsets[ Idx ]
+        if ( StoredLen > NewLen ): Tbl.Indices[ Slot ] = Idx
         return
-      slot = ( slot + 1 ) & tbl.mask
-    tbl.fingerprints[ slot ] = rank
-    tbl.indices[ slot ] = idx
-    tbl.occupied[ slot ] = 1
-    tbl.size += 1
-    if ( tbl.size >= int( tbl.capacity * 0.75 ) ): self._resize( level )
+      Slot = ( Slot + 1 ) & Tbl.Mask
+    Tbl.Fingerprints[ Slot ] = Rank
+    Tbl.Indices[ Slot ] = Idx
+    Tbl.Size += 1
+    if ( Tbl.Size >= int( Tbl.Capacity * 0.75 ) ): self.Resize( Level )
 
   # --------------------------------------------------- resize ------------------------------------------------------
-  def _resize( self, level: int ) -> None:
-    old_tbl = self.tables[ level ]
-    new_cap = old_tbl.capacity * 2
-    new_tbl = _LevelTable( new_cap )
-    occ_mask = old_tbl.occupied.astype( bool )
-    old_ranks = old_tbl.fingerprints[ occ_mask ]
-    old_idxs = old_tbl.indices[ occ_mask ]
+  def Resize( self, Level: int ) -> None:
+    OldTbl: LevelTable = self.Tables[ Level ]
+    NewCap: int = OldTbl.Capacity * 2
+    NewTbl: LevelTable = LevelTable( NewCap )
+    OccMask: NDArray[ np.bool_ ] = OldTbl.Indices != -1
+    OldRanks: NDArray[ np.uint64 ] = OldTbl.Fingerprints[ OccMask ]
+    OldIdxs: NDArray[ np.int64 ] = OldTbl.Indices[ OccMask ]
 
-    for rank, idx in zip( old_ranks, old_idxs ):
-      slot = int( rank & new_tbl.mask )
-      while ( new_tbl.occupied[ slot ] ):
-        if ( new_tbl.fingerprints[ slot ] == rank ):
-          stored_len = self._lengths[ new_tbl.indices[ slot ] ]
-          new_len = self._lengths[ idx ]
-          if ( stored_len > new_len ): new_tbl.indices[ slot ] = idx
+    for Rank, Idx in zip( OldRanks, OldIdxs ):
+      Slot: int = int( Rank & NewTbl.Mask )
+      while ( NewTbl.Indices[ Slot ] != -1 ):
+        if ( NewTbl.Fingerprints[ Slot ] == Rank ):
+          StoredLen = self.Offsets[ NewTbl.Indices[ Slot ] + 1 ] - self.Offsets[ NewTbl.Indices[ Slot ] ]
+          NewLen = self.Offsets[ Idx + 1 ] - self.Offsets[ Idx ]
+          if ( StoredLen > NewLen ): NewTbl.Indices[ Slot ] = Idx
           break
-        slot = ( slot + 1 ) & new_tbl.mask
+        Slot = ( Slot + 1 ) & NewTbl.Mask
       else:
-        new_tbl.fingerprints[ slot ] = rank
-        new_tbl.indices[ slot ] = idx
-        new_tbl.occupied[ slot ] = 1
-    new_tbl.size = old_tbl.size
-    self.tables[ level ] = new_tbl
+        NewTbl.Fingerprints[ Slot ] = Rank
+        NewTbl.Indices[ Slot ] = Idx
+    NewTbl.Size = OldTbl.Size
+    self.Tables[ Level ] = NewTbl
 
   # ------------------------------------------------ Delete All Of Size ------------------------------------------------
   def DeleteAllOfSize( self, n: int ) -> None:
@@ -211,4 +200,4 @@ class MultiKeyHashTable:
     '''
     if ( not isinstance( n, int ) ): raise TypeError( "n must be an int" )
     for i in range( 0, n + 1 ):
-      if ( i < len( self.tables ) ): self.tables[ i ] = None
+      if ( i < len( self.Tables ) ): self.Tables[ i ] = None

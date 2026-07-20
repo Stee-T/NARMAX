@@ -1707,7 +1707,7 @@ class TestMultiKeyHashTableSemantics:
         LI = np.array([1, 2, 3], dtype=np.int32)
         Output = [np.array([4, 5], dtype=np.int32)]
         ellG = np.concatenate((np.sort(LI), Output[0]))
-        Value = lg.AddData(np.array(ellG, dtype=lg.int_type))
+        Value = lg.AddData(np.array(ellG, dtype=lg.IntType))
         lg.CreateKeys(MinLen=len(LI), IndexSet=ellG, Value=Value)
         result = lg.SameStart(LI)
         assert result is not None, "SameStart returned None for a registered LI"
@@ -1727,7 +1727,7 @@ class TestMultiKeyHashTableSemantics:
         LI_2 = np.array([4, 5, 6], dtype=np.int32)
         Output = [np.array([7, 8], dtype=np.int32)]
         ellG = np.concatenate((np.sort(LI_1), Output[0]))
-        Value = lg.AddData(np.array(ellG, dtype=lg.int_type))
+        Value = lg.AddData(np.array(ellG, dtype=lg.IntType))
         lg.CreateKeys(MinLen=len(LI_1), IndexSet=ellG, Value=Value)
         result = lg.SameStart(LI_2)
         assert result is None, "SameStart should return None for a different LI"
@@ -1738,7 +1738,7 @@ class TestMultiKeyHashTableSemantics:
         LI = np.array([1, 2, 3], dtype=np.int32)
         Output = [np.array([4, 5], dtype=np.int32)]
         ellG = np.concatenate((np.sort(LI), Output[0]))
-        Value = lg.AddData(np.array(ellG, dtype=lg.int_type))
+        Value = lg.AddData(np.array(ellG, dtype=lg.IntType))
         lg.CreateKeys(MinLen=len(LI), IndexSet=ellG, Value=Value)
         LI_next = np.array([1, 2, 3, 4], dtype=np.int32)
         result = lg.SameStart(LI_next)
@@ -1752,7 +1752,7 @@ class TestMultiKeyHashTableSemantics:
         LI = np.array([3, 1, 2], dtype=np.int32)
         Output = [np.array([0, 5, 4], dtype=np.int32)]
         ellG = np.concatenate((np.sort(LI), Output[0]))
-        Value = lg.AddData(np.array(ellG, dtype=lg.int_type))
+        Value = lg.AddData(np.array(ellG, dtype=lg.IntType))
         lg.CreateKeys(MinLen=len(LI), IndexSet=ellG, Value=Value)
         LI_next = np.array([1, 2, 3, 0], dtype=np.int32)
         result = lg.SameStart(LI_next)
@@ -1765,7 +1765,7 @@ class TestMultiKeyHashTableSemantics:
     def test_add_data_stores_and_retrieves(self):
         """AddData stores data and __getitem__ retrieves it correctly."""
         lg = MultiKeyHashTable()
-        data = np.array([1, 2, 3], dtype=lg.int_type)
+        data = np.array([1, 2, 3], dtype=lg.IntType)
         idx = lg.AddData(data)
         assert idx == 0, f"First AddData should return 0, got {idx}"
         retrieved = lg[idx]
@@ -1778,7 +1778,7 @@ class TestMultiKeyHashTableSemantics:
         LI = np.array([1, 2], dtype=np.int32)
         Output = [np.array([3, 4, 5], dtype=np.int32)]
         ellG = np.concatenate((np.sort(LI), Output[0]))
-        Value = lg.AddData(np.array(ellG, dtype=lg.int_type))
+        Value = lg.AddData(np.array(ellG, dtype=lg.IntType))
         lg.CreateKeys(MinLen=len(LI), IndexSet=ellG, Value=Value)
         for length in range(len(LI), len(ellG) + 1):
             prefix = np.sort(ellG[:length])
@@ -1795,16 +1795,16 @@ class TestMultiKeyHashTableSemantics:
         Output = [np.array([4], dtype=np.int32)]
         ellG_l1 = np.concatenate((np.sort(LI_l1), Output[0]))
         ellG_l2 = np.concatenate((np.sort(LI_l2), Output[0]))
-        V1 = lg.AddData(np.array(ellG_l1, dtype=lg.int_type))
+        V1 = lg.AddData(np.array(ellG_l1, dtype=lg.IntType))
         lg.CreateKeys(MinLen=len(LI_l1), IndexSet=ellG_l1, Value=V1)
-        V2 = lg.AddData(np.array(ellG_l2, dtype=lg.int_type))
+        V2 = lg.AddData(np.array(ellG_l2, dtype=lg.IntType))
         lg.CreateKeys(MinLen=len(LI_l2), IndexSet=ellG_l2, Value=V2)
         assert lg.SameStart(LI_l1) is not None, "LI_l1 should be found before deletion"
         assert lg.SameStart(LI_l2) is not None, "LI_l2 should be found before deletion"
         lg.DeleteAllOfSize(1)
-        if (len(LI_l1) < len(lg.tables)):
+        if (len(LI_l1) < len(lg.Tables)):
             assert lg.SameStart(LI_l1) is None, "LI_l1 should be removed after DeleteAllOfSize(1)"
-        if (len(LI_l2) < len(lg.tables)):
+        if (len(LI_l2) < len(lg.Tables)):
             assert lg.SameStart(LI_l2) is not None, "LI_l2 should survive DeleteAllOfSize(1)"
 
     def test_delete_all_of_size_negative_is_noop(self):
@@ -1813,7 +1813,7 @@ class TestMultiKeyHashTableSemantics:
         LI = np.array([1, 2, 3], dtype=np.int32)
         Output = [np.array([4], dtype=np.int32)]
         ellG = np.concatenate((np.sort(LI), Output[0]))
-        Value = lg.AddData(np.array(ellG, dtype=lg.int_type))
+        Value = lg.AddData(np.array(ellG, dtype=lg.IntType))
         lg.CreateKeys(MinLen=len(LI), IndexSet=ellG, Value=Value)
         assert lg.SameStart(LI) is not None
         lg.DeleteAllOfSize(-1)
@@ -1828,9 +1828,9 @@ class TestMultiKeyHashTableSemantics:
         Output_2 = [np.array([4], dtype=np.int32)]
         ellG_1 = np.concatenate((np.sort(LI), Output_1[0]))
         ellG_2 = np.concatenate((np.sort(LI), Output_2[0]))
-        V1 = lg.AddData(np.array(ellG_1, dtype=lg.int_type))
+        V1 = lg.AddData(np.array(ellG_1, dtype=lg.IntType))
         lg.CreateKeys(MinLen=len(LI), IndexSet=ellG_1, Value=V1)
-        V2 = lg.AddData(np.array(ellG_2, dtype=lg.int_type))
+        V2 = lg.AddData(np.array(ellG_2, dtype=lg.IntType))
         lg.CreateKeys(MinLen=len(LI), IndexSet=ellG_2, Value=V2)
         result = lg.SameStart(LI)
         assert result is not None
@@ -1844,13 +1844,13 @@ class TestMultiKeyHashTableSemantics:
         Output = [np.array([9], dtype=np.int32)]
         ellG_1 = np.concatenate((np.sort(LI_1), Output[0]))
         ellG_2 = np.concatenate((np.sort(LI_2), Output[0]))
-        V1 = lg.AddData(np.array(ellG_1, dtype=lg.int_type))
+        V1 = lg.AddData(np.array(ellG_1, dtype=lg.IntType))
         lg.CreateKeys(MinLen=len(LI_1), IndexSet=ellG_1, Value=V1)
-        V2 = lg.AddData(np.array(ellG_2, dtype=lg.int_type))
+        V2 = lg.AddData(np.array(ellG_2, dtype=lg.IntType))
         lg.CreateKeys(MinLen=len(LI_2), IndexSet=ellG_2, Value=V2)
         assert lg.SameStart(LI_1) is not None
         assert lg.SameStart(LI_2) is not None
         retrieved_1 = lg[lg.SameStart(LI_1)]
         retrieved_2 = lg[lg.SameStart(LI_2)]
-        assert np.array_equal(retrieved_1, ellG_1.astype(lg.int_type))
-        assert np.array_equal(retrieved_2, ellG_2.astype(lg.int_type))
+        assert np.array_equal(retrieved_1, ellG_1.astype(lg.IntType))
+        assert np.array_equal(retrieved_2, ellG_2.astype(lg.IntType))

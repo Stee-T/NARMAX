@@ -207,7 +207,7 @@ class Arborescence:
     # the following variables are only used if Dc is not None
 
     self.Q: Queue.Queue = Queue.Queue()
-    self.LG: MultiKeyHashTable.MultiKeyHashTable = MultiKeyHashTable.MultiKeyHashTable( int_type = self.INT_TYPE )
+    self.LG: MultiKeyHashTable.MultiKeyHashTable = MultiKeyHashTable.MultiKeyHashTable( self.INT_TYPE )
 
     self.Abort: bool = False # Toggle activated at MaxDepth to finish regressions early
 
